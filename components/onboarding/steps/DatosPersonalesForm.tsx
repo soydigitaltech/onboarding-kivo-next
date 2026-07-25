@@ -1,272 +1,200 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
 
 import {
-  useOnboardingStore,
-  type DatosPersonales,
-} from "@/store/onboarding";
+  CIUDADES,
+  ciudadTieneCobertura,
+  datosPersonalesSchema,
+  type DatosPersonalesValues,
+} from "@/lib/schemas/datos-personales";
+import { useOnboardingStore } from "@/store/onboarding";
+import {
+  BusinessNotice,
+  Field,
+  PrefixedInputShell,
+  SelectChevron,
+  inputClassName,
+  prefixedInputClassName,
+  selectClassName,
+} from "@/components/ui/fields";
 
-const CIUDADES = [
-  { value: "la-paz", label: "La Paz", cubierta: true },
-  { value: "el-alto", label: "El Alto", cubierta: true },
-  { value: "cochabamba", label: "Cochabamba", cubierta: false },
-  { value: "santa-cruz", label: "Santa Cruz de la Sierra", cubierta: false },
-  { value: "sucre", label: "Sucre", cubierta: false },
-  { value: "oruro", label: "Oruro", cubierta: false },
-  { value: "potosi", label: "Potosí", cubierta: false },
-  { value: "tarija", label: "Tarija", cubierta: false },
-  { value: "trinidad", label: "Trinidad", cubierta: false },
-  { value: "cobija", label: "Cobija", cubierta: false },
-] as const;
-
-const MINIMUM_AGE = 18;
-
-type FormValues = DatosPersonales;
-
-type FieldErrors = Partial<Record<keyof FormValues, string>>;
-
-function calculateAge(birthDate: string): number | null {
-  if (!birthDate) return null;
-  const parsed = new Date(birthDate);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  const today = new Date();
-  let age = today.getFullYear() - parsed.getFullYear();
-  const hasHadBirthdayThisYear =
-    today.getMonth() > parsed.getMonth() ||
-    (today.getMonth() === parsed.getMonth() &&
-      today.getDate() >= parsed.getDate());
-
-  if (!hasHadBirthdayThisYear) age -= 1;
-  return age;
-}
+const EMPTY_VALUES: DatosPersonalesValues = {
+  nombres: "",
+  apellidos: "",
+  ci: "",
+  fechaNacimiento: "",
+  celular: "",
+  ciudad: "",
+};
 
 export function DatosPersonalesForm() {
-  const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
+  const datosGuardados = useOnboardingStore((s) => s.datosPersonales);
   const setDatosPersonales = useOnboardingStore((s) => s.setDatosPersonales);
   const completeAndAdvance = useOnboardingStore((s) => s.completeAndAdvance);
 
-  const [values, setValues] = useState<FormValues>(
-    datosPersonales ?? {
-      nombres: "",
-      apellidos: "",
-      ci: "",
-      fechaNacimiento: "",
-      celular: "",
-      ciudad: "",
-    },
-  );
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<DatosPersonalesValues>({
+    resolver: zodResolver(datosPersonalesSchema),
+    mode: "onTouched",
+    defaultValues: datosGuardados ?? EMPTY_VALUES,
+  });
 
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [cityNotCovered, setCityNotCovered] = useState(false);
+  const ciudadSeleccionada = watch("ciudad");
+  const sinCobertura =
+    ciudadSeleccionada !== "" && !ciudadTieneCobertura(ciudadSeleccionada);
 
-  function updateField<K extends keyof FormValues>(field: K, value: FormValues[K]) {
-    setValues((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-
-    if (field === "ciudad") {
-      const ciudad = CIUDADES.find((c) => c.value === value);
-      setCityNotCovered(Boolean(ciudad) && !ciudad!.cubierta);
-    }
-  }
-
-  function validate(): FieldErrors {
-    const nextErrors: FieldErrors = {};
-
-    if (!values.nombres.trim()) {
-      nextErrors.nombres = "Ingresa tus nombres.";
-    }
-
-    if (!values.apellidos.trim()) {
-      nextErrors.apellidos = "Ingresa tus apellidos.";
-    }
-
-    if (!/^\d{5,10}$/.test(values.ci.trim())) {
-      nextErrors.ci = "Ingresa un número de CI válido.";
-    }
-
-    const age = calculateAge(values.fechaNacimiento);
-    if (!values.fechaNacimiento) {
-      nextErrors.fechaNacimiento = "Selecciona tu fecha de nacimiento.";
-    } else if (age === null || age < MINIMUM_AGE) {
-      nextErrors.fechaNacimiento = `Debes tener al menos ${MINIMUM_AGE} años.`;
-    }
-
-    if (!/^\d{8}$/.test(values.celular.trim())) {
-      nextErrors.celular = "Ingresa un número de celular válido (8 dígitos).";
-    }
-
-    if (!values.ciudad) {
-      nextErrors.ciudad = "Selecciona tu ciudad.";
-    }
-
-    return nextErrors;
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (cityNotCovered) {
-      return;
-    }
-
-    const nextErrors = validate();
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
+  const onSubmit = (values: DatosPersonalesValues) => {
+    if (!ciudadTieneCobertura(values.ciudad)) return;
 
     setDatosPersonales(values);
     completeAndAdvance("datos-personales");
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombres" error={errors.nombres} htmlFor="nombres">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
+        ¡Te damos la bienvenida! Estás a pocos pasos de conocer el préstamo
+        compatible contigo. Completa tus datos para comenzar.
+      </p>
+
+      <div className="grid gap-5 rounded-2xl border border-border-soft bg-surface p-5 sm:grid-cols-2 sm:p-6">
+        <Field label="Nombres" htmlFor="nombres" error={errors.nombres?.message}>
           <input
             id="nombres"
             type="text"
-            value={values.nombres}
-            onChange={(e) => updateField("nombres", e.target.value)}
-            placeholder="Ej. María Fernanda"
-            className={inputClass(Boolean(errors.nombres))}
+            autoComplete="given-name"
+            placeholder="Ej. Sara Valentina"
+            className={inputClassName}
+            {...register("nombres")}
           />
         </Field>
 
-        <Field label="Apellidos" error={errors.apellidos} htmlFor="apellidos">
+        <Field
+          label="Apellidos"
+          htmlFor="apellidos"
+          error={errors.apellidos?.message}
+        >
           <input
             id="apellidos"
             type="text"
-            value={values.apellidos}
-            onChange={(e) => updateField("apellidos", e.target.value)}
-            placeholder="Ej. López Rojas"
-            className={inputClass(Boolean(errors.apellidos))}
+            autoComplete="family-name"
+            placeholder="Ej. Gonzales Mamani"
+            className={inputClassName}
+            {...register("apellidos")}
           />
         </Field>
 
-        <Field label="Cédula de identidad" error={errors.ci} htmlFor="ci">
+        <Field
+          label="Carnet de identidad"
+          htmlFor="ci"
+          error={errors.ci?.message}
+        >
           <input
             id="ci"
             type="text"
             inputMode="numeric"
-            value={values.ci}
-            onChange={(e) =>
-              updateField("ci", e.target.value.replace(/\D/g, ""))
-            }
-            placeholder="Ej. 12345678"
-            maxLength={10}
-            className={inputClass(Boolean(errors.ci))}
+            autoComplete="off"
+            placeholder="Ej. 6084527"
+            className={inputClassName}
+            {...register("ci")}
           />
         </Field>
 
         <Field
           label="Fecha de nacimiento"
-          error={errors.fechaNacimiento}
           htmlFor="fechaNacimiento"
+          error={errors.fechaNacimiento?.message}
         >
           <input
             id="fechaNacimiento"
             type="date"
-            value={values.fechaNacimiento}
-            onChange={(e) => updateField("fechaNacimiento", e.target.value)}
-            className={inputClass(Boolean(errors.fechaNacimiento))}
+            autoComplete="bday"
+            className={inputClassName}
+            {...register("fechaNacimiento")}
           />
         </Field>
 
-        <Field label="Número de celular" error={errors.celular} htmlFor="celular">
-          <div
-            className={[
-              "flex items-center rounded-xl border-2 bg-white transition focus-within:ring-4",
-              errors.celular
-                ? "border-error focus-within:border-error focus-within:ring-error/15"
-                : "border-[#d8deea] focus-within:border-[#075eeb] focus-within:ring-[#075eeb]/15",
-            ].join(" ")}
-          >
-            <span className="border-r border-[#d8deea] px-4 text-sm font-bold text-[#122044]">
-              +591
-            </span>
+        <Field
+          label="Número de celular"
+          htmlFor="celular"
+          error={errors.celular?.message}
+        >
+          <PrefixedInputShell prefix="+591">
             <input
               id="celular"
               type="tel"
               inputMode="numeric"
-              value={values.celular}
-              onChange={(e) =>
-                updateField("celular", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="70000000"
               maxLength={8}
-              className="h-12 w-full min-w-0 flex-1 rounded-r-xl bg-transparent px-4 text-base text-[#122044] outline-none placeholder:text-[#8a94a8]"
+              autoComplete="tel-national"
+              placeholder="70000000"
+              className={prefixedInputClassName}
+              {...register("celular")}
             />
-          </div>
+          </PrefixedInputShell>
         </Field>
 
-        <Field label="Ciudad de residencia" error={errors.ciudad} htmlFor="ciudad">
-          <select
-            id="ciudad"
-            value={values.ciudad}
-            onChange={(e) => updateField("ciudad", e.target.value)}
-            className={inputClass(Boolean(errors.ciudad))}
-          >
-            <option value="">Selecciona tu ciudad</option>
-            {CIUDADES.map((ciudad) => (
-              <option key={ciudad.value} value={ciudad.value}>
-                {ciudad.label}
-              </option>
-            ))}
-          </select>
+        <Field
+          label="¿En qué ciudad vives?"
+          htmlFor="ciudad"
+          error={errors.ciudad?.message}
+        >
+          <div className="relative">
+            <select
+              id="ciudad"
+              className={selectClassName}
+              {...register("ciudad")}
+            >
+              <option value="">Selecciona tu ciudad</option>
+              {CIUDADES.map((ciudad) => (
+                <option key={ciudad.value} value={ciudad.value}>
+                  {ciudad.label}
+                </option>
+              ))}
+            </select>
+            <SelectChevron />
+          </div>
         </Field>
       </div>
 
-      {cityNotCovered ? (
-        <p className="rounded-xl border border-[#f3d9ad] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a5a00]">
-          Por el momento no tenemos cobertura en tu ciudad. Estamos
-          trabajando para llegar pronto — ¡gracias por tu interés!
-        </p>
-      ) : null}
+      {/* Regla del negocio: cobertura solo en La Paz y El Alto */}
+      <AnimatePresence>
+        {sinCobertura ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.8, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pt-4">
+              <BusinessNotice>
+                Por ahora Kivo atiende solicitudes en{" "}
+                <strong>La Paz y El Alto</strong>. Estamos trabajando para
+                llegar pronto a tu ciudad.
+              </BusinessNotice>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      <button
-        type="submit"
-        disabled={cityNotCovered}
-        className="mt-1 flex min-h-[48px] items-center justify-center rounded-xl bg-gradient-to-r from-[#0754d9] via-[#0667f0] to-[#0754d9] px-5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(7,94,235,0.20)] transition hover:brightness-110 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#075eeb]/30 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Continuar
-      </button>
+      <div className="mt-6">
+        <button
+          type="submit"
+          disabled={sinCobertura}
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white shadow-[0_10px_24px_rgba(254,152,6,0.35)] transition hover:-translate-y-0.5 hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0"
+        >
+          Siguiente paso
+          <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
+        </button>
+      </div>
     </form>
   );
-}
-
-function Field({
-  label,
-  error,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  error?: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-bold text-[#0b1739]">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p className="mt-1.5 text-xs font-semibold text-error">{error}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function inputClass(hasError: boolean) {
-  return [
-    "h-12 w-full rounded-xl border-2 bg-white px-4 text-base text-[#122044] outline-none transition placeholder:text-[#8a94a8] focus:ring-4",
-    hasError
-      ? "border-error focus:border-error focus:ring-error/15"
-      : "border-[#d8deea] focus:border-[#075eeb] focus:ring-[#075eeb]/15",
-  ].join(" ");
 }
