@@ -34,6 +34,12 @@ const numericInputProps = {
   inputMode: "numeric",
 } as const;
 
+/**
+ * Pasos del bloqueo secuencial. "cuotas" solo cuenta cuando hay
+ * deudas declaradas (1 a 3); con 0 o "Más de 3" se salta.
+ */
+type Paso = "ingresoNeto" | "antiguedadMeses" | "numeroDeudas" | "cuotas" | "centralRiesgos";
+
 export function DatosFinancierosForm() {
   const guardados = useOnboardingStore((s) => s.datosFinancieros);
   const setDatosFinancieros = useOnboardingStore((s) => s.setDatosFinancieros);
@@ -63,32 +69,81 @@ export function DatosFinancierosForm() {
       : undefined,
   });
 
-  const numeroDeudas = watch("numeroDeudas");
-  const centralRiesgos = watch("centralRiesgos");
-  const cuotasVisibles = watch(["cuota1", "cuota2", "cuota3"]);
+  const values = watch();
 
-  const deudas = cantidadDeudas(numeroDeudas);
-  const excesoDeudas = numeroDeudas === "MAS_3";
-  const conReporte = centralRiesgos === "SI";
+  const deudas = cantidadDeudas(values.numeroDeudas);
+  const excesoDeudas = values.numeroDeudas === "MAS_3";
+  const conReporte = values.centralRiesgos === "SI";
   const descartado = excesoDeudas || conReporte;
 
-  const totalCuotas = cuotasVisibles
-    .slice(0, deudas)
-    .reduce<number>((suma, cuota) => suma + (cuota ?? 0), 0);
+  const cuotasActivas = CUOTA_KEYS.slice(0, deudas);
+  const totalCuotas = cuotasActivas.reduce<number>(
+    (suma, key) => suma + (values[key] ?? 0),
+    0,
+  );
 
-  const onSubmit = (values: DatosFinancierosValues) => {
-    if (values.centralRiesgos === "SI" || values.numeroDeudas === "MAS_3") {
+  // ---- Bloqueo secuencial -------------------------------------
+  const pasoCompleto = (paso: Paso): boolean => {
+    switch (paso) {
+      case "ingresoNeto":
+        return (values.ingresoNeto ?? 0) > 0;
+      case "antiguedadMeses":
+        return (
+          values.antiguedadMeses !== undefined &&
+          !Number.isNaN(values.antiguedadMeses) &&
+          values.antiguedadMeses >= 0
+        );
+      case "numeroDeudas":
+        return values.numeroDeudas !== undefined;
+      case "cuotas":
+        return cuotasActivas.every((key) => (values[key] ?? 0) > 0);
+      case "centralRiesgos":
+        return values.centralRiesgos !== undefined;
+    }
+  };
+
+  const pasosVisibles: Paso[] = [
+    "ingresoNeto",
+    "antiguedadMeses",
+    "numeroDeudas",
+    ...(deudas > 0 ? (["cuotas"] as Paso[]) : []),
+    "centralRiesgos",
+  ];
+
+  const primerIncompleto = pasosVisibles.findIndex(
+    (paso) => !pasoCompleto(paso),
+  );
+  const limite =
+    primerIncompleto === -1 ? pasosVisibles.length : primerIncompleto;
+
+  const bloqueado = (paso: Paso) => {
+    const indice = pasosVisibles.indexOf(paso);
+    return indice === -1 ? true : indice > limite;
+  };
+
+  const lockCls = (paso: Paso) =>
+    bloqueado(paso)
+      ? "pointer-events-none select-none opacity-45 transition-opacity duration-300"
+      : "transition-opacity duration-300";
+
+  const lockTab = (paso: Paso) => (bloqueado(paso) ? -1 : undefined);
+
+  const todoCompleto = primerIncompleto === -1;
+  // -------------------------------------------------------------
+
+  const onSubmit = (formValues: DatosFinancierosValues) => {
+    if (formValues.centralRiesgos === "SI" || formValues.numeroDeudas === "MAS_3") {
       return;
     }
 
-    const cantidad = cantidadDeudas(values.numeroDeudas);
+    const cantidad = cantidadDeudas(formValues.numeroDeudas);
     const cuotas = CUOTA_KEYS.slice(0, cantidad).map(
-      (key) => values[key] ?? 0,
+      (key) => formValues[key] ?? 0,
     );
 
     setDatosFinancieros({
-      ingresoNeto: values.ingresoNeto,
-      antiguedadMeses: values.antiguedadMeses,
+      ingresoNeto: formValues.ingresoNeto,
+      antiguedadMeses: formValues.antiguedadMeses,
       numeroDeudas: cantidad,
       cuotasDeudas: cuotas,
       totalCuotasMensuales: cuotas.reduce((suma, c) => suma + c, 0),
@@ -107,53 +162,65 @@ export function DatosFinancierosForm() {
       </p>
 
       {/* Ingreso y antigüedad */}
-      <div className="grid gap-5 rounded-2xl border border-border-soft bg-surface p-5 sm:grid-cols-2 sm:p-6">
-        <Field
-          label="Ingreso neto mensual"
-          htmlFor="ingresoNeto"
-          error={errors.ingresoNeto?.message}
-        >
-          <Controller
-            name="ingresoNeto"
-            control={control}
-            render={({ field }) => (
-              <PrefixedInputShell prefix="Bs">
-                <NumericFormat
-                  id="ingresoNeto"
-                  getInputRef={field.ref}
-                  value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.floatValue)}
-                  onBlur={field.onBlur}
-                  placeholder="Ej. 4.500"
-                  className={prefixedInputClassName}
-                  {...numericInputProps}
-                />
-              </PrefixedInputShell>
-            )}
-          />
-        </Field>
-
-        <Field
-          label="Antigüedad laboral"
-          htmlFor="antiguedadMeses"
-          error={errors.antiguedadMeses?.message}
-        >
-          <SuffixedInputShell suffix="meses">
-            <input
-              id="antiguedadMeses"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              placeholder="Ej. 24"
-              className={prefixedInputClassName}
-              {...register("antiguedadMeses", { valueAsNumber: true })}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className={lockCls("ingresoNeto")}>
+          <Field
+            label="Ingreso neto mensual"
+            htmlFor="ingresoNeto"
+            error={errors.ingresoNeto?.message}
+          >
+            <Controller
+              name="ingresoNeto"
+              control={control}
+              render={({ field }) => (
+                <PrefixedInputShell prefix="Bs">
+                  <NumericFormat
+                    id="ingresoNeto"
+                    getInputRef={field.ref}
+                    value={field.value ?? ""}
+                    onValueChange={(v) => field.onChange(v.floatValue)}
+                    onBlur={field.onBlur}
+                    placeholder="Ej. 4.500"
+                    className={prefixedInputClassName}
+                    tabIndex={lockTab("ingresoNeto")}
+                    {...numericInputProps}
+                  />
+                </PrefixedInputShell>
+              )}
             />
-          </SuffixedInputShell>
-        </Field>
+          </Field>
+        </div>
+
+        <div
+          className={lockCls("antiguedadMeses")}
+          aria-disabled={bloqueado("antiguedadMeses")}
+        >
+          <Field
+            label="Antigüedad laboral"
+            htmlFor="antiguedadMeses"
+            error={errors.antiguedadMeses?.message}
+          >
+            <SuffixedInputShell suffix="meses">
+              <input
+                id="antiguedadMeses"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                placeholder="Ej. 24"
+                className={prefixedInputClassName}
+                tabIndex={lockTab("antiguedadMeses")}
+                {...register("antiguedadMeses", { valueAsNumber: true })}
+              />
+            </SuffixedInputShell>
+          </Field>
+        </div>
       </div>
 
       {/* Deudas activas */}
-      <fieldset className="mt-5 rounded-2xl border border-border-soft bg-surface p-5 sm:p-6">
+      <fieldset
+        className={`mt-7 border-t border-border-soft pt-6 ${lockCls("numeroDeudas")}`}
+        aria-disabled={bloqueado("numeroDeudas")}
+      >
         <legend className="sr-only">Deudas activas</legend>
 
         <p className="text-sm font-bold text-ink">
@@ -167,6 +234,7 @@ export function DatosFinancierosForm() {
               label={opcion.label}
               inputProps={{
                 value: opcion.value,
+                tabIndex: lockTab("numeroDeudas"),
                 ...register("numeroDeudas"),
               }}
             />
@@ -178,20 +246,22 @@ export function DatosFinancierosForm() {
             {errors.numeroDeudas.message}
           </p>
         ) : null}
+      </fieldset>
 
-        {/* Cuotas por deuda, aparecen según la cantidad elegida */}
-        <AnimatePresence initial={false}>
-          {deudas > 0 ? (
-            <motion.div
-              key="cuotas"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={REVEAL}
-              className="overflow-hidden"
-            >
+      {/* Cuotas por deuda, aparecen según la cantidad elegida */}
+      <AnimatePresence initial={false}>
+        {deudas > 0 ? (
+          <motion.div
+            key="cuotas"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={REVEAL}
+            className="overflow-hidden"
+          >
+            <div className={lockCls("cuotas")} aria-disabled={bloqueado("cuotas")}>
               <div className="grid gap-4 pt-5 sm:grid-cols-3">
-                {CUOTA_KEYS.slice(0, deudas).map((key, index) => (
+                {cuotasActivas.map((key, index) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 8 }}
@@ -218,6 +288,7 @@ export function DatosFinancierosForm() {
                               onBlur={field.onBlur}
                               placeholder="Ej. 800"
                               className={prefixedInputClassName}
+                              tabIndex={lockTab("cuotas")}
                               {...numericInputProps}
                             />
                           </PrefixedInputShell>
@@ -229,40 +300,43 @@ export function DatosFinancierosForm() {
               </div>
 
               {totalCuotas > 0 ? (
-                <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-blue px-3.5 py-1.5 text-[13px] font-bold text-primary">
-                  <Wallet className="h-4 w-4" />
+                <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-blue px-3.5 py-1.5 text-[13px] font-bold text-primary-dark">
+                  <Wallet className="h-4 w-4 text-cerulean" />
                   Pago mensual actual: {formatBs(totalCuotas)}
                 </p>
               ) : null}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-        {/* Descarte: más de 3 deudas */}
-        <AnimatePresence>
-          {excesoDeudas ? (
-            <motion.div
-              key="exceso"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={REVEAL}
-              className="overflow-hidden"
-            >
-              <div className="pt-5">
-                <DangerNotice title="Por ahora no podemos continuar">
-                  Con más de 3 deudas activas no es posible acceder a un nuevo
-                  préstamo. Cuando canceles una de ellas, te esperamos de
-                  vuelta con gusto.
-                </DangerNotice>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </fieldset>
+      {/* Descarte: más de 3 deudas */}
+      <AnimatePresence>
+        {excesoDeudas ? (
+          <motion.div
+            key="exceso"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={REVEAL}
+            className="overflow-hidden"
+          >
+            <div className="pt-5">
+              <DangerNotice title="Por ahora no podemos continuar">
+                Con más de 3 deudas activas no es posible acceder a un nuevo
+                préstamo. Cuando canceles una de ellas, te esperamos de
+                vuelta con gusto.
+              </DangerNotice>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Central de riesgos */}
-      <fieldset className="mt-5 rounded-2xl border border-border-soft bg-surface p-5 sm:p-6">
+      <fieldset
+        className={`mt-7 border-t border-border-soft pt-6 ${lockCls("centralRiesgos")}`}
+        aria-disabled={bloqueado("centralRiesgos")}
+      >
         <legend className="sr-only">Central de riesgos</legend>
 
         <p className="text-sm font-bold text-ink">
@@ -273,11 +347,19 @@ export function DatosFinancierosForm() {
         <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
           <RadioPill
             label="No"
-            inputProps={{ value: "NO", ...register("centralRiesgos") }}
+            inputProps={{
+              value: "NO",
+              tabIndex: lockTab("centralRiesgos"),
+              ...register("centralRiesgos"),
+            }}
           />
           <RadioPill
             label="Sí"
-            inputProps={{ value: "SI", ...register("centralRiesgos") }}
+            inputProps={{
+              value: "SI",
+              tabIndex: lockTab("centralRiesgos"),
+              ...register("centralRiesgos"),
+            }}
           />
         </div>
 
@@ -314,8 +396,8 @@ export function DatosFinancierosForm() {
       <div className="mt-6">
         <button
           type="submit"
-          disabled={descartado}
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white shadow-[0_10px_24px_rgba(254,152,6,0.35)] transition hover:-translate-y-0.5 hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0"
+          disabled={!todoCompleto || descartado}
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Siguiente paso
           <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />

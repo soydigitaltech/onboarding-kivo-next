@@ -26,7 +26,7 @@
   --color-placeholder: #9aa2b1;
 
   /* ---- Superficies y bordes ---- */
-  --color-page: #eef2f6;
+  --color-page: #5fdaf8;
   --color-surface: #f7fafc;
   --color-surface-blue: #e9f7ff;   /* tinte del Azul Brillante */
   --color-border: #d9dfe8;
@@ -61,4 +61,16 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Chrome pinta de celeste los campos autocompletados (autofill);
+   forzamos fondo blanco y texto de marca para mantener el diseño. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+  transition: background-color 9999s ease-in-out 0s;
 }

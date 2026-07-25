@@ -47,16 +47,18 @@ export function calcularEdad(fechaNacimiento: string): number {
 export const EDAD_MINIMA = 18;
 export const EDAD_MAXIMA = 75;
 
-export const datosPersonalesSchema = z.object({
-  nombres: z
-    .string()
-    .trim()
-    .min(2, "Ingresa tus nombres."),
+/** Nombre completo: al menos dos palabras (nombre y apellido). */
+export const NOMBRE_COMPLETO_REGEX = /^\s*\S+(\s+\S+)+\s*$/;
 
-  apellidos: z
+export const datosPersonalesSchema = z.object({
+  nombreCompleto: z
     .string()
     .trim()
-    .min(2, "Ingresa tus apellidos."),
+    .min(5, "Ingresa tu nombre completo.")
+    .regex(
+      NOMBRE_COMPLETO_REGEX,
+      "Ingresa al menos un nombre y un apellido.",
+    ),
 
   ci: z
     .string()

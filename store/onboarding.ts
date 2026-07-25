@@ -16,8 +16,7 @@ export type StepId = (typeof STEP_ORDER)[number];
 export type StepStatus = "locked" | "active" | "done";
 
 export interface DatosPersonales {
-  nombres: string;
-  apellidos: string;
+  nombreCompleto: string;
   ci: string;
   fechaNacimiento: string;
   celular: string;

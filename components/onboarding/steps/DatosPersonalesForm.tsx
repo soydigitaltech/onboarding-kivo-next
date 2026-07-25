@@ -7,6 +7,10 @@ import { ArrowRight } from "lucide-react";
 
 import {
   CIUDADES,
+  EDAD_MAXIMA,
+  EDAD_MINIMA,
+  NOMBRE_COMPLETO_REGEX,
+  calcularEdad,
   ciudadTieneCobertura,
   datosPersonalesSchema,
   type DatosPersonalesValues,
@@ -23,13 +27,44 @@ import {
 } from "@/components/ui/fields";
 
 const EMPTY_VALUES: DatosPersonalesValues = {
-  nombres: "",
-  apellidos: "",
+  nombreCompleto: "",
   ci: "",
   fechaNacimiento: "",
   celular: "",
   ciudad: "",
 };
+
+/**
+ * Bloqueo secuencial: cada campo se habilita recién cuando el
+ * anterior está completo, guiando el llenado en orden.
+ */
+const FIELD_ORDER = [
+  "nombreCompleto",
+  "ci",
+  "fechaNacimiento",
+  "celular",
+  "ciudad",
+] as const;
+
+function campoCompleto(
+  campo: (typeof FIELD_ORDER)[number],
+  values: DatosPersonalesValues,
+): boolean {
+  switch (campo) {
+    case "nombreCompleto":
+      return NOMBRE_COMPLETO_REGEX.test(values.nombreCompleto ?? "");
+    case "ci":
+      return /^\d{5,10}$/.test((values.ci ?? "").trim());
+    case "fechaNacimiento": {
+      const edad = calcularEdad(values.fechaNacimiento ?? "");
+      return edad >= EDAD_MINIMA && edad <= EDAD_MAXIMA;
+    }
+    case "celular":
+      return /^[67]\d{7}$/.test((values.celular ?? "").trim());
+    case "ciudad":
+      return (values.ciudad ?? "") !== "";
+  }
+}
 
 export function DatosPersonalesForm() {
   const datosGuardados = useOnboardingStore((s) => s.datosPersonales);
@@ -47,14 +82,33 @@ export function DatosPersonalesForm() {
     defaultValues: datosGuardados ?? EMPTY_VALUES,
   });
 
-  const ciudadSeleccionada = watch("ciudad");
+  const values = watch();
+
+  // Índice del primer campo incompleto: todo lo posterior queda bloqueado.
+  const primerIncompleto = FIELD_ORDER.findIndex(
+    (campo) => !campoCompleto(campo, values),
+  );
+  const limite = primerIncompleto === -1 ? FIELD_ORDER.length : primerIncompleto;
+
+  const bloqueado = (campo: (typeof FIELD_ORDER)[number]) =>
+    FIELD_ORDER.indexOf(campo) > limite;
+
+  const lockCls = (campo: (typeof FIELD_ORDER)[number]) =>
+    bloqueado(campo)
+      ? "pointer-events-none select-none opacity-45 transition-opacity duration-300"
+      : "transition-opacity duration-300";
+
+  const lockTab = (campo: (typeof FIELD_ORDER)[number]) =>
+    bloqueado(campo) ? -1 : undefined;
+
+  const todoCompleto = primerIncompleto === -1;
   const sinCobertura =
-    ciudadSeleccionada !== "" && !ciudadTieneCobertura(ciudadSeleccionada);
+    values.ciudad !== "" && !ciudadTieneCobertura(values.ciudad);
 
-  const onSubmit = (values: DatosPersonalesValues) => {
-    if (!ciudadTieneCobertura(values.ciudad)) return;
+  const onSubmit = (formValues: DatosPersonalesValues) => {
+    if (!ciudadTieneCobertura(formValues.ciudad)) return;
 
-    setDatosPersonales(values);
+    setDatosPersonales(formValues);
     completeAndAdvance("datos-personales");
   };
 
@@ -65,103 +119,110 @@ export function DatosPersonalesForm() {
         compatible contigo. Completa tus datos para comenzar.
       </p>
 
-      <div className="grid gap-5 rounded-2xl border border-border-soft bg-surface p-5 sm:grid-cols-2 sm:p-6">
-        <Field label="Nombres" htmlFor="nombres" error={errors.nombres?.message}>
-          <input
-            id="nombres"
-            type="text"
-            autoComplete="given-name"
-            placeholder="Ej. Sara Valentina"
-            className={inputClassName}
-            {...register("nombres")}
-          />
-        </Field>
-
-        <Field
-          label="Apellidos"
-          htmlFor="apellidos"
-          error={errors.apellidos?.message}
-        >
-          <input
-            id="apellidos"
-            type="text"
-            autoComplete="family-name"
-            placeholder="Ej. Gonzales Mamani"
-            className={inputClassName}
-            {...register("apellidos")}
-          />
-        </Field>
-
-        <Field
-          label="Carnet de identidad"
-          htmlFor="ci"
-          error={errors.ci?.message}
-        >
-          <input
-            id="ci"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="Ej. 6084527"
-            className={inputClassName}
-            {...register("ci")}
-          />
-        </Field>
-
-        <Field
-          label="Fecha de nacimiento"
-          htmlFor="fechaNacimiento"
-          error={errors.fechaNacimiento?.message}
-        >
-          <input
-            id="fechaNacimiento"
-            type="date"
-            autoComplete="bday"
-            className={inputClassName}
-            {...register("fechaNacimiento")}
-          />
-        </Field>
-
-        <Field
-          label="Número de celular"
-          htmlFor="celular"
-          error={errors.celular?.message}
-        >
-          <PrefixedInputShell prefix="+591">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className={`sm:col-span-2 ${lockCls("nombreCompleto")}`}>
+          <Field
+            label="Nombre completo"
+            htmlFor="nombreCompleto"
+            error={errors.nombreCompleto?.message}
+          >
             <input
-              id="celular"
-              type="tel"
-              inputMode="numeric"
-              maxLength={8}
-              autoComplete="tel-national"
-              placeholder="70000000"
-              className={prefixedInputClassName}
-              {...register("celular")}
+              id="nombreCompleto"
+              type="text"
+              autoComplete="name"
+              placeholder="Ej. Sara Valentina Gonzales Mamani"
+              className={inputClassName}
+              tabIndex={lockTab("nombreCompleto")}
+              {...register("nombreCompleto")}
             />
-          </PrefixedInputShell>
-        </Field>
+          </Field>
+        </div>
 
-        <Field
-          label="¿En qué ciudad vives?"
-          htmlFor="ciudad"
-          error={errors.ciudad?.message}
+        <div className={lockCls("ci")} aria-disabled={bloqueado("ci")}>
+          <Field
+            label="Carnet de identidad"
+            htmlFor="ci"
+            error={errors.ci?.message}
+          >
+            <input
+              id="ci"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Ej. 6084527"
+              className={inputClassName}
+              tabIndex={lockTab("ci")}
+              {...register("ci")}
+            />
+          </Field>
+        </div>
+
+        <div
+          className={lockCls("fechaNacimiento")}
+          aria-disabled={bloqueado("fechaNacimiento")}
         >
-          <div className="relative">
-            <select
-              id="ciudad"
-              className={selectClassName}
-              {...register("ciudad")}
-            >
-              <option value="">Selecciona tu ciudad</option>
-              {CIUDADES.map((ciudad) => (
-                <option key={ciudad.value} value={ciudad.value}>
-                  {ciudad.label}
-                </option>
-              ))}
-            </select>
-            <SelectChevron />
-          </div>
-        </Field>
+          <Field
+            label="Fecha de nacimiento"
+            htmlFor="fechaNacimiento"
+            error={errors.fechaNacimiento?.message}
+          >
+            <input
+              id="fechaNacimiento"
+              type="date"
+              autoComplete="bday"
+              className={inputClassName}
+              tabIndex={lockTab("fechaNacimiento")}
+              {...register("fechaNacimiento")}
+            />
+          </Field>
+        </div>
+
+        <div className={lockCls("celular")} aria-disabled={bloqueado("celular")}>
+          <Field
+            label="Número de celular"
+            htmlFor="celular"
+            error={errors.celular?.message}
+          >
+            <PrefixedInputShell prefix="+591">
+              <input
+                id="celular"
+                type="tel"
+                inputMode="numeric"
+                maxLength={8}
+                autoComplete="tel-national"
+                placeholder="70000000"
+                className={prefixedInputClassName}
+                tabIndex={lockTab("celular")}
+                {...register("celular")}
+              />
+            </PrefixedInputShell>
+          </Field>
+        </div>
+
+        <div className={lockCls("ciudad")} aria-disabled={bloqueado("ciudad")}>
+          <Field
+            label="¿En qué ciudad vives?"
+            htmlFor="ciudad"
+            error={errors.ciudad?.message}
+          >
+            <div className="relative">
+              <select
+                id="ciudad"
+                className={selectClassName}
+                tabIndex={lockTab("ciudad")}
+                {...register("ciudad")}
+              >
+                <option value="">Selecciona tu ciudad</option>
+                {CIUDADES.map((ciudad) => (
+                  <option key={ciudad.value} value={ciudad.value}>
+                    {ciudad.label}
+                  </option>
+                ))}
+              </select>
+              <SelectChevron />
+            </div>
+          </Field>
+        </div>
       </div>
 
       {/* Regla del negocio: cobertura solo en La Paz y El Alto */}
@@ -188,8 +249,8 @@ export function DatosPersonalesForm() {
       <div className="mt-6">
         <button
           type="submit"
-          disabled={sinCobertura}
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white shadow-[0_10px_24px_rgba(254,152,6,0.35)] transition hover:-translate-y-0.5 hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0"
+          disabled={!todoCompleto || sinCobertura}
+          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Siguiente paso
           <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />

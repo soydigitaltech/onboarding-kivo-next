@@ -1,82 +1,97 @@
 "use client";
 
+import { motion } from "motion/react";
 import { Check } from "lucide-react";
-
 import {
   STEP_ORDER,
   getStepStatus,
   type StepId,
+  type StepStatus,
 } from "@/store/onboarding";
+
+const STEP_LABELS: Record<StepId, string> = {
+  "datos-personales": "Tus datos",
+  "datos-financieros": "Finanzas",
+  simulacion: "Simulación",
+};
 
 interface StepperProps {
   currentStep: StepId;
   completed: Record<StepId, boolean>;
 }
 
-const STEP_LABELS: Record<StepId, string> = {
-  "datos-personales": "Datos personales",
-  "datos-financieros": "Datos financieros",
-  simulacion: "Simulación",
-};
-
 export function Stepper({ currentStep, completed }: StepperProps) {
+  const doneCount = STEP_ORDER.filter((id) => completed[id]).length;
+  const progress =
+    STEP_ORDER.length > 1 ? doneCount / (STEP_ORDER.length - 1) : 0;
+
   return (
-    <ol className="flex w-full max-w-md items-start">
-      {STEP_ORDER.map((step, index) => {
-        const status = getStepStatus(step, currentStep, completed);
-        const isLast = index === STEP_ORDER.length - 1;
+    <nav aria-label="Progreso de tu solicitud" className="mx-auto w-full max-w-md">
+      <ol className="relative flex items-start justify-between">
+        {/* Línea base + línea de progreso animada */}
+        <div
+          aria-hidden="true"
+          className="absolute left-5 right-5 top-[19px] h-[3px] rounded-full bg-border"
+        />
+        <motion.div
+          aria-hidden="true"
+          className="absolute left-5 top-[19px] h-[3px] origin-left rounded-full bg-primary"
+          style={{ right: 20 }}
+          initial={false}
+          animate={{ scaleX: progress }}
+          transition={{ type: "spring", stiffness: 170, damping: 26 }}
+        />
 
-        return (
-          <li
-            key={step}
-            className={["flex items-center", !isLast && "flex-1"]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            <div className="flex flex-col items-center gap-1.5">
+        {STEP_ORDER.map((id, index) => {
+          const status = getStepStatus(id, currentStep, completed);
+
+          return (
+            <li
+              key={id}
+              className="relative z-10 flex w-20 flex-col items-center gap-2"
+              aria-current={status === "active" ? "step" : undefined}
+            >
+              <StepDot status={status} number={index + 1} />
               <span
-                aria-current={status === "active" ? "step" : undefined}
-                className={[
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-300",
-                  status === "done" &&
-                    "bg-[#16a34a] text-white",
-                  status === "active" &&
-                    "bg-[#075eeb] text-white ring-4 ring-[#075eeb]/15",
-                  status === "locked" &&
-                    "bg-[#eef1f6] text-muted",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                className={`text-center text-xs font-bold leading-tight ${
+                  status === "locked" ? "text-placeholder" : "text-ink-soft"
+                }`}
               >
-                {status === "done" ? (
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  index + 1
-                )}
+                {STEP_LABELS[id]}
               </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
 
-              <span
-                className={[
-                  "max-w-[5.5rem] text-center text-[11px] font-semibold leading-tight",
-                  status === "locked" ? "text-muted" : "text-[#0b1739]",
-                ].join(" ")}
-              >
-                {STEP_LABELS[step]}
-              </span>
-            </div>
+function StepDot({ status, number }: { status: StepStatus; number: number }) {
+  if (status === "done") {
+    return (
+      <motion.span
+        initial={{ scale: 0.6 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-dark text-white shadow-[0_6px_16px_rgba(27,91,182,0.35)]"
+      >
+        <Check className="h-5 w-5" strokeWidth={3} />
+      </motion.span>
+    );
+  }
 
-            {!isLast ? (
-              <span
-                aria-hidden="true"
-                className={[
-                  "mx-2 mt-4 h-0.5 flex-1 rounded-full transition-colors duration-300",
-                  completed[step] ? "bg-[#16a34a]" : "bg-[#e6e9ef]",
-                ].join(" ")}
-              />
-            ) : null}
-          </li>
-        );
-      })}
-    </ol>
+  if (status === "active") {
+    return (
+      <span className="flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-primary bg-white text-sm font-extrabold text-primary shadow-[0_6px_16px_rgba(3,174,254,0.25)]">
+        {number}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-border bg-white text-sm font-extrabold text-placeholder">
+      {number}
+    </span>
   );
 }
