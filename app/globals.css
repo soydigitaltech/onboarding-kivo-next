@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Colores de marca Kivo ---- */
+  --color-primary: #075eeb;
+  --color-primary-dark: #064fc8;
+  --color-secondary: #04d99d;
+  --color-accent: #fc2e08;
+  --color-cyan: #08d0df;
+
+  /* ---- Neutros / texto ---- */
+  --color-ink: #0b1739;
+  --color-ink-soft: #122044;
+  --color-body: #53617d;
+  --color-muted: #66728a;
+  --color-placeholder: #8a94a8;
+
+  /* ---- Superficies y bordes ---- */
+  --color-surface: #f8faff;
+  --color-surface-blue: #eaf3ff;
+  --color-border: #d8deea;
+  --color-border-soft: #dce3ee;
+
+  /* ---- Estados ---- */
+  --color-success: #04d99d;
+  --color-error: #e02424;
+}
+
+@theme inline {
+  /* La fuente va en "inline" porque --font-manrope
+     la inyecta next/font en runtime */
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  @apply bg-white font-sans text-ink antialiased;
+}
