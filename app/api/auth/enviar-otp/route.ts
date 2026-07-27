@@ -52,19 +52,9 @@ export async function POST(request: Request) {
 
   try {
     const { data, error } = await resend.emails.send({
-      /*
-       * Este dominio debe estar verificado en Resend.
-       * Si verificaste otro dominio, cambia únicamente esta dirección.
-       */
-      from: "Kivo <no-reply@mail.soydigital.tech>",
-
+      from: "Kivo <no-reply@notify.soydigital.tech>",
       to: email,
-
-      /*
-       * Las respuestas llegarán a este correo.
-       */
       replyTo: "hugo@soydigital.tech",
-
       subject: `${codigo} es tu código de verificación Kivo`,
 
       text: `
@@ -292,10 +282,6 @@ Si no solicitaste este código, puedes ignorar este correo.
       );
     }
 
-    /*
-     * Guardamos el OTP solamente después de confirmar que Resend aceptó
-     * correctamente el envío.
-     */
     guardarOtp(email, codigo);
 
     console.info("OTP enviado correctamente:", {
