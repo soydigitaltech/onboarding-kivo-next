@@ -9,11 +9,20 @@ export const STEP_ORDER = [
   "datos-personales",
   "datos-financieros",
   "simulacion",
+  "informacion-complementaria",
+  "carga-documentos",
+  "resumen",
 ] as const;
 
 export type StepId = (typeof STEP_ORDER)[number];
 
 export type StepStatus = "locked" | "active" | "done";
+
+/** Cuenta verificada por OTP. */
+export interface Cuenta {
+  email: string;
+  verificadaEn: string;
+}
 
 export interface DatosPersonales {
   nombreCompleto: string;
@@ -31,6 +40,78 @@ export interface DatosFinancieros {
   totalCuotasMensuales: number;
   /** Declaró no tener reporte negativo en la Central de Riesgos. */
   sinReporteCentral: boolean;
+  /**
+   * Si declaró más de 3 deudas, la excepción que le permite continuar:
+   * ULTIMA_CUOTA (una deuda está por terminar) o COMPRA_DEUDA
+   * (pide que Kivo compre una deuda; cuotaCompra guarda su cuota).
+   */
+  excepcionMasDeTres: {
+    tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";
+    cuotaCompra?: number;
+  } | null;
+}
+
+export interface SimulacionConfirmada {
+  monto: number;
+  plazoMeses: number;
+  cuotaMensual: number;
+  totalPagar: number;
+  interesTotal: number;
+  cuotaMaxima: number;
+  tasaMensualPorcentaje: number;
+  confirmadaEn: string;
+}
+
+export interface DatosComplementarios {
+  perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
+
+  empresa?: string;
+  cargo?: string;
+  tipoContrato?: "INDEFINIDO" | "PLAZO_FIJO" | "CONSULTORIA" | "OTRO";
+  aportaAFP?: "SI" | "NO";
+  tieneBoletas?: "SI" | "NO";
+
+  actividadEconomica?: string;
+  nombreNegocio?: string;
+  tieneNit?: "SI" | "NO";
+  tienePatente?: "SI" | "NO";
+
+  vivienda: "PROPIA" | "FAMILIAR" | "ALQUILER" | "ANTICRETICO";
+  estadoCivil: "SOLTERO" | "CASADO" | "DIVORCIADO" | "VIUDO" | "CONYUGE";
+
+  conyugeNombre?: string;
+  conyugeCelular?: string;
+
+  tieneGarante?: "SI" | "NO";
+
+  direccion: string;
+  destinoPrestamo: string;
+  /** Ubicación marcada en el mapa (referencial). */
+  ubicacionLat?: number;
+  ubicacionLng?: number;
+
+  extractos: "SI" | "NO";
+}
+
+/** Metadatos de un archivo cargado (el binario no se persiste). */
+export interface DocumentoMeta {
+  nombre: string;
+  tamanoBytes: number;
+  tipo: string;
+  subidoEn: string;
+}
+
+export interface DatosDocumentos {
+  autorizacionBic: DocumentoMeta | null;
+  ciAnverso: DocumentoMeta | null;
+  ciReverso: DocumentoMeta | null;
+  selfie: DocumentoMeta | null;
+}
+
+/** Se genera al enviar la solicitud desde el paso "Resumen". */
+export interface SolicitudEnviada {
+  numero: string;
+  enviadoEn: string;
 }
 
 interface OnboardingState {
@@ -38,9 +119,19 @@ interface OnboardingState {
   completed: Record<StepId, boolean>;
   datosPersonales: DatosPersonales | null;
   datosFinancieros: DatosFinancieros | null;
+  simulacion: SimulacionConfirmada | null;
+  datosComplementarios: DatosComplementarios | null;
+  datosDocumentos: DatosDocumentos | null;
+  solicitudEnviada: SolicitudEnviada | null;
+  cuenta: Cuenta | null;
 
+  setCuenta: (cuenta: Cuenta) => void;
   setDatosPersonales: (datos: DatosPersonales) => void;
   setDatosFinancieros: (datos: DatosFinancieros) => void;
+  setSimulacion: (datos: SimulacionConfirmada) => void;
+  setDatosComplementarios: (datos: DatosComplementarios) => void;
+  setDatosDocumentos: (datos: DatosDocumentos) => void;
+  setSolicitudEnviada: (solicitud: SolicitudEnviada) => void;
   completeAndAdvance: (step: StepId) => void;
   editStep: (step: StepId) => void;
   reset: () => void;
@@ -50,6 +141,9 @@ const initialCompleted: Record<StepId, boolean> = {
   "datos-personales": false,
   "datos-financieros": false,
   simulacion: false,
+  "informacion-complementaria": false,
+  "carga-documentos": false,
+  resumen: false,
 };
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -59,10 +153,27 @@ export const useOnboardingStore = create<OnboardingState>()(
       completed: { ...initialCompleted },
       datosPersonales: null,
       datosFinancieros: null,
+      simulacion: null,
+      datosComplementarios: null,
+      datosDocumentos: null,
+      solicitudEnviada: null,
+      cuenta: null,
+
+      setCuenta: (cuenta) => set({ cuenta }),
 
       setDatosPersonales: (datos) => set({ datosPersonales: datos }),
 
       setDatosFinancieros: (datos) => set({ datosFinancieros: datos }),
+
+      setSimulacion: (datos) => set({ simulacion: datos }),
+
+      setDatosComplementarios: (datos) =>
+        set({ datosComplementarios: datos }),
+
+      setDatosDocumentos: (datos) => set({ datosDocumentos: datos }),
+
+      setSolicitudEnviada: (solicitud) =>
+        set({ solicitudEnviada: solicitud }),
 
       completeAndAdvance: (step) =>
         set((state) => {
@@ -83,11 +194,16 @@ export const useOnboardingStore = create<OnboardingState>()(
           completed: { ...initialCompleted },
           datosPersonales: null,
           datosFinancieros: null,
+          simulacion: null,
+          datosComplementarios: null,
+          datosDocumentos: null,
+          solicitudEnviada: null,
+          cuenta: null,
         }),
     }),
     {
       name: "kivo-onboarding",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 );

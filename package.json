@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.3",
+    "boring-avatars": "^2.0.4",
+    "canvas-confetti": "^1.9.4",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.26.0",
     "motion": "^12.42.2",
@@ -19,11 +21,13 @@
     "react-hook-form": "^7.83.0",
     "react-leaflet": "^5.0.0",
     "react-number-format": "^5.4.5",
+    "resend": "^6.18.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19",

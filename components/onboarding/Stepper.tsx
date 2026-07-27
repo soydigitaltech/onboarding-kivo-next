@@ -13,20 +13,35 @@ const STEP_LABELS: Record<StepId, string> = {
   "datos-personales": "Tus datos",
   "datos-financieros": "Finanzas",
   simulacion: "Simulación",
+  "informacion-complementaria": "Información",
+  "carga-documentos": "Documentos",
+  resumen: "Resumen",
 };
 
 interface StepperProps {
   currentStep: StepId;
   completed: Record<StepId, boolean>;
+  /** Permite volver a un paso ya completado al hacer clic en su número. */
+  onStepClick?: (step: StepId) => void;
 }
 
-export function Stepper({ currentStep, completed }: StepperProps) {
+export function Stepper({ currentStep, completed, onStepClick }: StepperProps) {
+  // Progreso = índice del paso activo (o del último completado si ya
+  // se terminó todo), nunca más allá de eso, para que la línea nunca
+  // se adelante a un paso que aún no está activo/completado.
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
   const doneCount = STEP_ORDER.filter((id) => completed[id]).length;
+  const pasosAlcanzados = Math.max(currentIndex, doneCount);
   const progress =
-    STEP_ORDER.length > 1 ? doneCount / (STEP_ORDER.length - 1) : 0;
+    STEP_ORDER.length > 1
+      ? Math.min(1, pasosAlcanzados / (STEP_ORDER.length - 1))
+      : 0;
 
   return (
-    <nav aria-label="Progreso de tu solicitud" className="mx-auto w-full max-w-md">
+    <nav
+      aria-label="Progreso de tu solicitud"
+      className="mx-auto w-full max-w-md overflow-hidden"
+    >
       <ol className="relative flex items-start justify-between">
         {/* Línea base + línea de progreso animada */}
         <div
@@ -35,7 +50,7 @@ export function Stepper({ currentStep, completed }: StepperProps) {
         />
         <motion.div
           aria-hidden="true"
-          className="absolute left-5 top-[19px] h-[3px] origin-left rounded-full bg-primary"
+          className="absolute left-5 top-[19px] h-[3px] origin-left rounded-full bg-sky"
           style={{ right: 20 }}
           initial={false}
           animate={{ scaleX: progress }}
@@ -44,6 +59,7 @@ export function Stepper({ currentStep, completed }: StepperProps) {
 
         {STEP_ORDER.map((id, index) => {
           const status = getStepStatus(id, currentStep, completed);
+          const clickable = status === "done" && Boolean(onStepClick);
 
           return (
             <li
@@ -51,7 +67,18 @@ export function Stepper({ currentStep, completed }: StepperProps) {
               className="relative z-10 flex w-20 flex-col items-center gap-2"
               aria-current={status === "active" ? "step" : undefined}
             >
-              <StepDot status={status} number={index + 1} />
+              {clickable ? (
+                <button
+                  type="button"
+                  onClick={() => onStepClick?.(id)}
+                  aria-label={`Volver a ${STEP_LABELS[id]}`}
+                  className="rounded-full transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
+                >
+                  <StepDot status={status} number={index + 1} />
+                </button>
+              ) : (
+                <StepDot status={status} number={index + 1} />
+              )}
               <span
                 className={`text-center text-xs font-bold leading-tight ${
                   status === "locked" ? "text-placeholder" : "text-ink-soft"
@@ -74,7 +101,7 @@ function StepDot({ status, number }: { status: StepStatus; number: number }) {
         initial={{ scale: 0.6 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 20 }}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-dark text-white shadow-[0_6px_16px_rgba(27,91,182,0.35)]"
+        className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-sky bg-ink text-white shadow-[0_6px_16px_rgba(95,218,248,0.35)]"
       >
         <Check className="h-5 w-5" strokeWidth={3} />
       </motion.span>
@@ -83,7 +110,7 @@ function StepDot({ status, number }: { status: StepStatus; number: number }) {
 
   if (status === "active") {
     return (
-      <span className="flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-primary bg-white text-sm font-extrabold text-primary shadow-[0_6px_16px_rgba(3,174,254,0.25)]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-sky bg-ink text-sm font-extrabold text-sky shadow-[0_6px_16px_rgba(95,218,248,0.3)]">
         {number}
       </span>
     );
