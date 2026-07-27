@@ -241,7 +241,7 @@ export default function AppShell({
 
           <div className="min-w-0">
             <h1 className="truncate text-[18px] font-extrabold tracking-tight">
-              {saludoEmoji} Hola, Cliente Kivo
+               ¡Hola, cliente Kivo!
             </h1>
             <p className="truncate text-[13px] text-[#6A7F94]">{subtitulo}</p>
           </div>
