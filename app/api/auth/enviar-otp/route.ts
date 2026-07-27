@@ -4,7 +4,10 @@ import { Resend } from "resend";
 import { emailSchema } from "@/lib/schemas/cuenta";
 import { guardarOtp, puedeReenviar } from "@/lib/otp-store";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Solo inicializar Resend si la API key existe
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -31,6 +34,15 @@ export async function POST(request: Request) {
 
   const codigo = String(Math.floor(100000 + Math.random() * 900000));
   guardarOtp(email, codigo);
+
+  // Verificar si Resend está configurado
+  if (!resend) {
+    console.error("❌ RESEND_API_KEY no configurada");
+    return NextResponse.json(
+      { error: "Servicio de email no configurado. Contacta al administrador." },
+      { status: 503 },
+    );
+  }
 
   try {
     await resend.emails.send({
