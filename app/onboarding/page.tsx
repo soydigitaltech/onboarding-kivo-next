@@ -19,7 +19,7 @@ import { ConfirmacionFinal } from "@/components/onboarding/steps/ConfirmacionFin
 const STEP_TITLES: Record<StepId, string> = {
   "datos-personales": "Datos personales",
   "datos-financieros": "Datos financieros",
-  simulacion: "Simula tu préstamo",
+  simulacion: "Simula tu cuota",
   "informacion-complementaria": "Información complementaria",
   "carga-documentos": "Carga tus documentos",
   resumen: "Resumen de tu solicitud",

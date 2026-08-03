@@ -32,7 +32,7 @@ export default function LandingPage() {
               Encuentra la cuota que se ajusta a tu bolsillo
             </h1>
             <p className="mt-5 max-w-md text-base leading-7 text-white/85">
-              Simula tu préstamo, conoce tu cuota al instante y completa tu
+              Simula tu cuota, conoce el resultado al instante y completa tu
               solicitud en minutos, sin filas ni papeleo.
             </p>
             <p className="mt-6 text-sm font-semibold italic text-white/70">
@@ -46,7 +46,7 @@ export default function LandingPage() {
               ¡Empecemos!
             </p>
             <p className="mt-2 text-sm leading-6 text-body">
-              Crea tu cuenta gratis y simula tu préstamo en minutos.
+              Crea tu cuenta gratis y simula tu cuota en minutos.
             </p>
             <Link
               href="/onboarding"

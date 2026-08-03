@@ -240,10 +240,10 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
     tono: "aprobada",
     icono: "fiesta",
     antetitulo: "Buenas noticias",
-    titulo: "Tu crédito fue aprobado",
+    titulo: "Tu préstamo fue aprobado",
     texto:
       "Bs 35.000 a 24 meses, con cuota de Bs 1.842. Firma tu contrato en línea y el dinero llega a tu cuenta en menos de 24 horas hábiles.",
-    subtituloTopbar: "Tu crédito por Bs 35.000 fue aprobado",
+    subtituloTopbar: "Tu préstamo por Bs 35.000 fue aprobado",
     meta: [
       { icono: "aprobado", texto: "Aprobado el 27 jul · 16:20" },
       { icono: "firma", texto: "Contrato listo para firmar" },
@@ -260,7 +260,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
     notaRamal: "No hubo observaciones",
     historial: [
       { titulo: "Firma del contrato", detalle: "Pendiente de tu firma electrónica", pendiente: true },
-      { titulo: "Crédito aprobado", detalle: "27 jul · 16:20 · Bs 35.000 a 24 meses" },
+      { titulo: "Préstamo aprobado", detalle: "27 jul · 16:20 · Bs 35.000 a 24 meses" },
       { titulo: "Revisión de capacidad de pago", detalle: "27 jul · 15:05 · sin observaciones" },
       { titulo: "Solicitud enviada", detalle: "27 jul · 09:12 · desde la web" },
     ],
@@ -269,7 +269,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
         id: "a1",
         tipo: "ok",
         icono: "fiesta",
-        titulo: "Aprobamos tu crédito",
+        titulo: "Aprobamos tu préstamo",
         texto: "Bs 35.000 a 24 meses con cuota de Bs 1.842. Las condiciones finales están en tu contrato.",
         cuando: "hace 20 min",
         noLeido: true,
@@ -371,7 +371,7 @@ export const DATOS_CAPTURADOS: Record<string, Campo[]> = {
   ],
 };
 
-/* ─────────── Crédito y cuotas ─────────── */
+/* ─────────── Préstamo y cuotas ─────────── */
 
 export type EstadoCuota = "pagada" | "revision" | "mora" | "pronto" | "pendiente";
 

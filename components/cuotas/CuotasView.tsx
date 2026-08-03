@@ -187,7 +187,7 @@ export default function CuotasView() {
         color: "text-[#F0736A]",
         icono: AlertTriangle,
         antetitulo: `Cuota ${foco.numero} · vencida`,
-        texto: `Se venció el ${foco.vence}. Cada día suma ${bs(CREDITO.moraDiaria)} de mora — págala hoy y tu crédito vuelve a estar al día.`,
+        texto: `Se venció el ${foco.vence}. Cada día suma ${bs(CREDITO.moraDiaria)} de mora — págala hoy y tu préstamo vuelve a estar al día.`,
         chips: [
           { icono: CalendarX, texto: `${foco.diasAtraso} días de atraso` },
           { icono: TrendingUp, texto: `Mora acumulada: ${bs(foco.mora ?? 0)}` },
@@ -307,7 +307,7 @@ export default function CuotasView() {
 
         <section className="rounded-[26px] border border-[#E9F0F6] bg-white p-6 shadow-[0_1px_2px_rgba(17,26,40,.03),0_16px_34px_-24px_rgba(27,91,182,.4)]">
           <div className="mb-3.5 flex flex-wrap items-baseline gap-2.5">
-            <b className="text-[16.5px] font-extrabold tracking-tight">Crédito {CREDITO.numero}</b>
+            <b className="text-[16.5px] font-extrabold tracking-tight">Préstamo {CREDITO.numero}</b>
             <span className="text-[12.5px] font-bold text-[#6A7F94]">
               Cuota {pagadas} de {CREDITO.totalCuotas} pagada{pagadas === 1 ? "" : "s"}
             </span>
@@ -513,7 +513,7 @@ export default function CuotasView() {
                   </h3>
                   <p className="mt-0.5 text-[13.5px] text-[#6A7F94]">
                     {paso === "pagar"
-                      ? `Crédito ${CREDITO.numero} · vence el ${enPago.vence}`
+                      ? `Préstamo ${CREDITO.numero} · vence el ${enPago.vence}`
                       : `Cuota ${enPago.numero} · ${bs(totalCuota(enPago))}`}
                   </p>
                 </div>
@@ -605,7 +605,7 @@ export default function CuotasView() {
                           ["Dirección", CREDITO.oficina.direccion],
                           ["Horario", CREDITO.oficina.horario],
                           ["Sábados", CREDITO.oficina.sabados],
-                          ["Lleva", "Tu CI y el número de crédito"],
+                          ["Lleva", "Tu CI y el número de préstamo"],
                         ].map(([k, v]) => (
                           <div key={k} className="flex justify-between gap-3 border-b border-[#F2F7FB] py-1.5 last:border-0">
                             <dt>{k}</dt>

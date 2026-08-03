@@ -49,7 +49,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
     ],
   },
   {
-    titulo: "Mi crédito",
+    titulo: "Mi préstamo",
     items: [
       { label: "Cuotas y pagos", href: "/cuotas", icono: CalendarClock, pill: "1" },
       { label: "Mis comprobantes", href: "/cuotas#comprobantes", icono: Receipt },

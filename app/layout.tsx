@@ -11,7 +11,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Kivo | Solicita tu préstamo",
   description:
-    "Simula tu préstamo y completa tu solicitud en línea de forma simple y transparente.",
+    "Simula tu cuota y completa tu solicitud en línea de forma simple y transparente.",
 };
 
 export default function RootLayout({
