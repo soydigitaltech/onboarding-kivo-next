@@ -50,6 +50,14 @@ export interface DatosPersonales {
   direccionTrabajo: string;
 }
 
+export interface DeudaFinanciera {
+  entidadFinanciera: string;
+  cuotaMensual: number;
+  capitalPendiente?: number;
+  estaEnUltimaCuota: boolean;
+  montoUltimaCuota?: number;
+}
+
 export interface DatosFinancieros {
   /** Ingreso mensual después de descuentos o costos operativos. */
   ingresoNeto: number;
@@ -67,30 +75,46 @@ export interface DatosFinancieros {
   segundoIngresoRespaldado: boolean;
 
   antiguedadMeses: number;
+
   numeroDeudas: number;
-  cuotasDeudas: number[];
+  deudas: DeudaFinanciera[];
   totalCuotasMensuales: number;
 
-  /** Declaró no tener reporte negativo en la Central de Riesgos. */
-  sinReporteCentral: boolean;
+  /** Declaró no tener deuda en mora ni vencida. */
+  sinDeudaMoraOVencida: boolean;
 
   /**
    * Excepción para solicitudes con más de tres deudas.
    */
   excepcionMasDeTres: {
     tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";
-    cuotaCompra?: number;
+    deudaIndice?: number;
+    capitalCompra?: number;
   } | null;
 }
 
 export interface SimulacionConfirmada {
   monto: number;
   plazoMeses: number;
+  destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
+
   cuotaMensual: number;
+  cuotaBase: number;
+
+  capitalPrimeraCuota: number;
+  interesPrimeraCuota: number;
+  seguroDesgravamenMensual: number;
+  gastosAdministrativosMensuales: number;
+
   totalPagar: number;
   interesTotal: number;
+  seguroTotal: number;
+  gastosAdministrativosTotal: number;
+
   cuotaMaxima: number;
+  porcentajeCapacidad: number;
   tasaMensualPorcentaje: number;
+
   confirmadaEn: string;
 }
 

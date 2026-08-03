@@ -16,10 +16,10 @@ export function DatosFinancierosResumen({ datos }: DatosFinancierosResumenProps)
           : `${datos.numeroDeudas} (${formatBs(datos.totalCuotasMensuales)}/mes)`,
     },
     {
-      label: "Central de riesgos",
-      value: datos.sinReporteCentral
-        ? "Sin reporte negativo"
-        : "Con reporte negativo",
+      label: "Deudas en mora o vencidas",
+      value: datos.sinDeudaMoraOVencida
+        ? "No declaró deudas en mora o vencidas"
+        : "Declaró una deuda en mora o vencida",
     },
   ];
 

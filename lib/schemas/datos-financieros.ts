@@ -1,16 +1,5 @@
 import { z } from "zod";
 
-/**
- * Reglas financieras del onboarding:
- *
- * - El ingreso neto debe representar el dinero disponible después de
- *   descuentos, para asalariados, o costos operativos, para independientes.
- * - El segundo ingreso solo se considera cuando puede respaldarse al 100%
- *   con extractos bancarios.
- * - La antigüedad mínima depende de la edad del solicitante.
- * - Se registran hasta tres deudas en el flujo principal.
- */
-
 export const MAX_DEUDAS = 3;
 export const ANTIGUEDAD_MAXIMA_MESES = 720;
 
@@ -29,11 +18,39 @@ export function mensajeAntiguedadMinima(edad: number): string {
   return "Necesitas al menos 12 meses de antigüedad laboral o en tu actividad económica.";
 }
 
-export const deudaSchema = z.object({
-  cuota: z
-    .number({ message: "Ingresa la cuota mensual de esta deuda." })
-    .min(1, "Ingresa una cuota mayor a cero."),
-});
+export const deudaSchema = z
+  .object({
+    entidadFinanciera: z
+      .string()
+      .trim()
+      .min(2, "Ingresa la entidad financiera."),
+
+    cuotaMensual: z
+      .number({ message: "Ingresa la cuota mensual de esta deuda." })
+      .min(1, "Ingresa una cuota mayor a cero."),
+
+    capitalPendiente: z
+      .number()
+      .min(1, "Ingresa un capital pendiente mayor a cero.")
+      .optional(),
+
+    estaEnUltimaCuota: z.boolean(),
+
+    montoUltimaCuota: z.number().optional(),
+  })
+  .superRefine((values, context) => {
+    if (
+      values.estaEnUltimaCuota &&
+      (values.montoUltimaCuota === undefined ||
+        values.montoUltimaCuota <= 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["montoUltimaCuota"],
+        message: "Ingresa el monto de la última cuota.",
+      });
+    }
+  });
 
 export const datosFinancierosSchema = z
   .object({
@@ -68,33 +85,54 @@ export const datosFinancierosSchema = z
 
     compraIndice: z.number().optional(),
 
-    cuotaCompra: z.number().optional(),
+    capitalCompra: z.number().optional(),
 
-    centralRiesgos: z.enum(["SI", "NO"], {
-      message: "Responde esta pregunta para continuar.",
+    deudaMoraOVencida: z.enum(["SI", "NO"], {
+      message: "Indica si tienes alguna deuda en mora o vencida.",
     }),
   })
   .superRefine((values, context) => {
-    if (!values.tieneSegundoIngreso) return;
+    if (values.tieneSegundoIngreso) {
+      if (
+        values.segundoIngresoMonto === undefined ||
+        values.segundoIngresoMonto <= 0
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["segundoIngresoMonto"],
+          message: "Ingresa el monto neto de tu segundo ingreso.",
+        });
+      }
 
-    if (
-      values.segundoIngresoMonto === undefined ||
-      values.segundoIngresoMonto <= 0
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["segundoIngresoMonto"],
-        message: "Ingresa el monto neto de tu segundo ingreso.",
-      });
+      if (!values.segundoIngresoRespaldado) {
+        context.addIssue({
+          code: "custom",
+          path: ["segundoIngresoRespaldado"],
+          message:
+            "El segundo ingreso debe estar respaldado al 100% con extractos bancarios.",
+        });
+      }
     }
 
-    if (!values.segundoIngresoRespaldado) {
-      context.addIssue({
-        code: "custom",
-        path: ["segundoIngresoRespaldado"],
-        message:
-          "El segundo ingreso debe estar respaldado al 100% con extractos bancarios.",
-      });
+    if (values.excepcionTipo === "COMPRA_DEUDA") {
+      if (values.compraIndice === undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["compraIndice"],
+          message: "Selecciona la deuda que Kivo evaluará comprar.",
+        });
+      }
+
+      if (
+        values.capitalCompra === undefined ||
+        values.capitalCompra <= 0
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["capitalCompra"],
+          message: "Ingresa el capital pendiente de la deuda.",
+        });
+      }
     }
   });
 

@@ -8,13 +8,26 @@ import {
   useTransform,
   type Transition,
 } from "motion/react";
-import { ArrowRight, CircleCheckBig, Lightbulb, Percent } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CircleCheckBig,
+  Gauge,
+  HeartHandshake,
+  Lightbulb,
+  Percent,
+  ShieldCheck,
+} from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
 import {
   REGLAS_SIMULACION,
   buscarAlternativa,
+  compararPlazos,
+  normalizarMonto,
+  obtenerPlazosPorMonto,
   simular,
+  type DestinoPrestamo,
 } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import { useOnboardingStore } from "@/store/onboarding";
@@ -24,12 +37,20 @@ import {
   prefixedInputClassName,
 } from "@/components/ui/fields";
 
-const REVEAL: Transition = { duration: 0.3, ease: [0.25, 0.8, 0.25, 1] };
+const REVEAL: Transition = {
+  duration: 0.3,
+  ease: [0.25, 0.8, 0.25, 1],
+};
 
-/** Número que se anima con física de spring al cambiar. */
 function CuotaAnimada({ valor }: { valor: number }) {
-  const spring = useSpring(valor, { stiffness: 130, damping: 22 });
-  const texto = useTransform(spring, (v) => formatBs(Math.round(v)));
+  const spring = useSpring(valor, {
+    stiffness: 130,
+    damping: 22,
+  });
+
+  const texto = useTransform(spring, (value) => {
+    return formatBs(Math.round(value));
+  });
 
   useEffect(() => {
     spring.set(valor);
@@ -38,58 +59,174 @@ function CuotaAnimada({ valor }: { valor: number }) {
   return <motion.span>{texto}</motion.span>;
 }
 
+function etiquetaCapacidad(
+  nivel: "COMODA" | "AJUSTADA" | "AL_LIMITE",
+): string {
+  if (nivel === "COMODA") return "Cómoda";
+  if (nivel === "AJUSTADA") return "Ajustada";
+  return "Al límite";
+}
+
 export function SimulacionForm() {
-  const datosFinancieros = useOnboardingStore((s) => s.datosFinancieros);
-  const setSimulacion = useOnboardingStore((s) => s.setSimulacion);
-  const completeAndAdvance = useOnboardingStore((s) => s.completeAndAdvance);
+  const datosFinancieros = useOnboardingStore((state) => {
+    return state.datosFinancieros;
+  });
 
-  const { montoMinimo, montoMaximo, pasoMonto } = REGLAS_SIMULACION;
-  const plazosMeses: readonly number[] = REGLAS_SIMULACION.plazosMeses;
+  const simulacionGuardada = useOnboardingStore((state) => {
+    return state.simulacion;
+  });
 
-  const [monto, setMonto] = useState<number>(15000);
-  const [plazoMeses, setPlazoMeses] = useState<number>(plazosMeses[1] ?? 12);
+  const setSimulacion = useOnboardingStore((state) => {
+    return state.setSimulacion;
+  });
 
-  const ingresoNeto = datosFinancieros?.ingresoNeto ?? 0;
+  const completeAndAdvance = useOnboardingStore((state) => {
+    return state.completeAndAdvance;
+  });
+
+  const ingresoPrincipal = datosFinancieros?.ingresoNeto ?? 0;
+
+  const segundoIngreso =
+    datosFinancieros?.tieneSegundoIngreso &&
+    datosFinancieros.segundoIngresoRespaldado
+      ? datosFinancieros.segundoIngresoMonto ?? 0
+      : 0;
+
+  const ingresoNeto = ingresoPrincipal + segundoIngreso;
   const totalDeudas = datosFinancieros?.totalCuotasMensuales ?? 0;
 
-  const resultado = useMemo(
-    () => simular({ monto, plazoMeses, ingresoNeto, totalDeudas }),
-    [monto, plazoMeses, ingresoNeto, totalDeudas],
+  const montoInicial = normalizarMonto(
+    simulacionGuardada?.monto ?? 15000,
   );
 
-  const alternativa = useMemo(
-    () =>
-      resultado.viable
-        ? null
-        : buscarAlternativa({ monto, plazoMeses, ingresoNeto, totalDeudas }),
-    [resultado.viable, monto, plazoMeses, ingresoNeto, totalDeudas],
-  );
+  const [monto, setMonto] = useState<number>(montoInicial);
+
+  const [destinoPrestamo, setDestinoPrestamo] =
+    useState<DestinoPrestamo>(
+      simulacionGuardada?.destinoPrestamo ?? "CAPITAL_TRABAJO",
+    );
+
+  const plazosDisponibles = useMemo(() => {
+    return obtenerPlazosPorMonto(monto);
+  }, [monto]);
+
+  const plazoInicial =
+    simulacionGuardada?.plazoMeses &&
+    plazosDisponibles.includes(simulacionGuardada.plazoMeses)
+      ? simulacionGuardada.plazoMeses
+      : plazosDisponibles[Math.floor(plazosDisponibles.length / 2)] ??
+        plazosDisponibles[0] ??
+        12;
+
+  const [plazoMeses, setPlazoMeses] = useState<number>(plazoInicial);
+  const [confirmo, setConfirmo] = useState(false);
+
+  const plazoSeleccionado = plazosDisponibles.includes(plazoMeses)
+    ? plazoMeses
+    : (plazosDisponibles[Math.floor(plazosDisponibles.length / 2)] ??
+      plazosDisponibles[0] ??
+      12);
+
+  const resultado = useMemo(() => {
+    return simular({
+      monto,
+      plazoMeses: plazoSeleccionado,
+      ingresoNeto,
+      totalDeudas,
+      destinoPrestamo,
+    });
+  }, [
+    monto,
+    plazoSeleccionado,
+    ingresoNeto,
+    totalDeudas,
+    destinoPrestamo,
+  ]);
+
+  const comparacion = useMemo(() => {
+    return compararPlazos({
+      monto,
+      ingresoNeto,
+      totalDeudas,
+      destinoPrestamo,
+    });
+  }, [monto, ingresoNeto, totalDeudas, destinoPrestamo]);
+
+  const alternativa = useMemo(() => {
+    if (resultado.viable) return null;
+
+    return buscarAlternativa({
+      monto,
+      plazoMeses: plazoSeleccionado,
+      ingresoNeto,
+      totalDeudas,
+      destinoPrestamo,
+    });
+  }, [
+    resultado.viable,
+    monto,
+    plazoSeleccionado,
+    ingresoNeto,
+    totalDeudas,
+    destinoPrestamo,
+  ]);
 
   const sinCapacidad = resultado.capacidad.cuotaMaxima <= 0;
-  const indicePlazo = Math.max(0, plazosMeses.indexOf(plazoMeses));
+
+  const cronogramaVisible = resultado.cronograma.slice(0, 3);
+
+  const porcentajeVisual = Math.min(
+    100,
+    Math.max(0, resultado.porcentajeCapacidad),
+  );
 
   const ajustarMonto = (valor: number) => {
-    const acotado = Math.min(montoMaximo, Math.max(montoMinimo, valor));
-    setMonto(acotado);
+    const normalizado = normalizarMonto(valor);
+    setMonto(normalizado);
   };
 
   const usarAlternativa = () => {
     if (!alternativa) return;
+
     setMonto(alternativa.monto);
     setPlazoMeses(alternativa.plazoMeses);
   };
 
   const confirmar = () => {
-    if (!resultado.viable) return;
+    if (!resultado.viable || !confirmo) return;
 
     setSimulacion({
       monto: resultado.monto,
       plazoMeses: resultado.plazoMeses,
+      destinoPrestamo: resultado.destinoPrestamo,
+
       cuotaMensual: resultado.cuotaMensual,
+      cuotaBase: resultado.cuotaBase,
+
+      capitalPrimeraCuota:
+        resultado.desglosePrimeraCuota.capital,
+
+      interesPrimeraCuota:
+        resultado.desglosePrimeraCuota.interes,
+
+      seguroDesgravamenMensual:
+        resultado.desglosePrimeraCuota.seguroDesgravamen,
+
+      gastosAdministrativosMensuales:
+        resultado.desglosePrimeraCuota.gastosAdministrativos,
+
       totalPagar: resultado.totalPagar,
       interesTotal: resultado.interesTotal,
+      seguroTotal: resultado.seguroTotal,
+      gastosAdministrativosTotal:
+        resultado.gastosAdministrativosTotal,
+
       cuotaMaxima: resultado.capacidad.cuotaMaxima,
-      tasaMensualPorcentaje: REGLAS_SIMULACION.tasaMensualPorcentaje,
+      porcentajeCapacidad: resultado.porcentajeCapacidad,
+
+      tasaMensualPorcentaje:
+        REGLAS_SIMULACION.tasaMensualPorcentaje,
+
       confirmadaEn: new Date().toISOString(),
     });
 
@@ -107,25 +244,105 @@ export function SimulacionForm() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Ajusta el monto y el plazo: tu cuota se calcula al instante según tu
-        capacidad de pago.
+        Elige el destino, monto y plazo. Te mostraremos una cuota estimada,
+        el costo total y qué tan cómoda resulta para tu capacidad de pago.
       </p>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr]">
+      {/* Destino */}
+      <fieldset>
+        <legend className="text-sm font-bold text-ink">
+          ¿Para qué necesitas el préstamo?
+        </legend>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label
+            className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+              destinoPrestamo === "CAPITAL_TRABAJO"
+                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
+                : "border-border bg-white hover:border-primary/40"
+            }`}
+          >
+            <input
+              type="radio"
+              className="sr-only"
+              checked={destinoPrestamo === "CAPITAL_TRABAJO"}
+              onChange={() => {
+                setDestinoPrestamo("CAPITAL_TRABAJO");
+              }}
+            />
+
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BriefcaseBusiness className="h-5 w-5" />
+              </span>
+
+              <div>
+                <p className="font-extrabold text-ink">
+                  Capital de trabajo
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Mercadería, proveedores, herramientas o flujo de caja.
+                </p>
+              </div>
+            </div>
+          </label>
+
+          <label
+            className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+              destinoPrestamo === "USO_PERSONAL"
+                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
+                : "border-border bg-white hover:border-primary/40"
+            }`}
+          >
+            <input
+              type="radio"
+              className="sr-only"
+              checked={destinoPrestamo === "USO_PERSONAL"}
+              onChange={() => {
+                setDestinoPrestamo("USO_PERSONAL");
+              }}
+            />
+
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                <HeartHandshake className="h-5 w-5" />
+              </span>
+
+              <div>
+                <p className="font-extrabold text-ink">
+                  Uso personal
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Salud, estudios, hogar u otra necesidad personal.
+                </p>
+              </div>
+            </div>
+          </label>
+        </div>
+      </fieldset>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.95fr]">
         {/* Controles */}
         <div>
-          {/* Monto */}
-          <p className="text-sm font-bold text-ink">¿Cuánto necesitas?</p>
+          <p className="text-sm font-bold text-ink">
+            ¿Cuánto necesitas?
+          </p>
 
           <div className="mt-2">
             <PrefixedInputShell prefix="Bs">
               <NumericFormat
                 id="montoSimulacion"
                 value={monto}
-                onValueChange={(v) => {
-                  if (v.floatValue !== undefined) setMonto(v.floatValue);
+                onValueChange={(value) => {
+                  if (value.floatValue !== undefined) {
+                    setMonto(value.floatValue);
+                  }
                 }}
-                onBlur={() => ajustarMonto(monto)}
+                onBlur={() => {
+                  ajustarMonto(monto);
+                }}
                 thousandSeparator="."
                 decimalSeparator=","
                 allowNegative={false}
@@ -136,79 +353,92 @@ export function SimulacionForm() {
               />
             </PrefixedInputShell>
           </div>
+
           <p className="mt-1.5 text-xs text-muted">
-            Monto mínimo disponible: {formatBs(montoMinimo)}.
+            Puedes elegir montos de Bs 1.000 en Bs 1.000, desde{" "}
+            {formatBs(REGLAS_SIMULACION.montoMinimo)} hasta{" "}
+            {formatBs(REGLAS_SIMULACION.montoMaximo)}.
           </p>
 
           <input
             type="range"
-            min={montoMinimo}
-            max={montoMaximo}
-            step={pasoMonto}
-            value={Math.min(montoMaximo, Math.max(montoMinimo, monto))}
-            onChange={(e) => setMonto(Number(e.target.value))}
+            min={REGLAS_SIMULACION.montoMinimo}
+            max={REGLAS_SIMULACION.montoMaximo}
+            step={REGLAS_SIMULACION.pasoMonto}
+            value={normalizarMonto(monto)}
+            onChange={(event) => {
+              setMonto(Number(event.target.value));
+            }}
             aria-label="Ajustar monto del préstamo"
-            className="mt-3 w-full accent-primary"
+            className="mt-4 w-full accent-primary"
           />
+
           <div className="mt-1 flex justify-between text-xs font-semibold text-muted">
-            <span>{formatBs(montoMinimo)}</span>
-            <span>{formatBs(montoMaximo)}</span>
+            <span>{formatBs(REGLAS_SIMULACION.montoMinimo)}</span>
+            <span>{formatBs(REGLAS_SIMULACION.montoMaximo)}</span>
           </div>
 
-          {/* Plazo: card con número grande + slider */}
-          <p className="mt-6 text-sm font-bold text-ink">Selecciona el plazo</p>
+          <p className="mt-6 text-sm font-bold text-ink">
+            Selecciona el plazo
+          </p>
 
-          <div className="mt-2 rounded-xl border-2 border-border bg-white px-4 py-4">
-            <div className="flex items-start justify-between">
-              <span className="pt-1.5 text-sm font-medium text-muted">
-                Tiempo de pago
-              </span>
-              <div className="text-right">
-                <span className="block text-3xl font-extrabold leading-none text-primary">
-                  {plazoMeses}
-                </span>
-                <span className="text-xs font-medium text-placeholder">
-                  meses
-                </span>
-              </div>
-            </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {comparacion.map((opcion) => (
+              <button
+                key={opcion.plazoMeses}
+                type="button"
+                onClick={() => {
+                  setPlazoMeses(opcion.plazoMeses);
+                }}
+                className={`relative rounded-2xl border-2 p-3 text-left transition-all ${
+                  plazoSeleccionado === opcion.plazoMeses
+                    ? "border-primary bg-surface-blue"
+                    : opcion.viable
+                      ? "border-border bg-white hover:border-primary/40"
+                      : "border-border bg-surface opacity-55"
+                }`}
+              >
+                {opcion.recomendado ? (
+                  <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold text-white">
+                    Recomendado
+                  </span>
+                ) : null}
 
-            <input
-              type="range"
-              min={0}
-              max={plazosMeses.length - 1}
-              step={1}
-              value={indicePlazo}
-              onChange={(e) => {
-                const elegido = plazosMeses[Number(e.target.value)];
-                if (elegido !== undefined) setPlazoMeses(elegido);
-              }}
-              aria-label="Plazo en meses"
-              className="mt-4 w-full accent-primary"
-            />
-            <div className="mt-1 flex justify-between text-xs font-medium text-placeholder">
-              <span>{Math.min(...plazosMeses)} meses</span>
-              <span>{Math.max(...plazosMeses)} meses</span>
-            </div>
+                <p className="text-xl font-extrabold text-ink">
+                  {opcion.plazoMeses}
+                </p>
+
+                <p className="text-xs text-muted">meses</p>
+
+                <p className="mt-2 text-sm font-bold text-primary-dark">
+                  {formatBs(opcion.cuotaMensual)}
+                </p>
+
+                <p className="text-[11px] text-muted">
+                  Total {formatBs(opcion.totalPagar)}
+                </p>
+              </button>
+            ))}
           </div>
 
-          {/* Tasa mensual */}
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
             <div>
               <p className="text-xs font-medium text-muted">
-                Tasa de interés referencial
+                Tasa mensual
               </p>
+
               <p className="mt-0.5 text-lg font-bold text-ink">
                 {REGLAS_SIMULACION.tasaMensualPorcentaje}% mensual
               </p>
             </div>
+
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
               <Percent className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        {/* Resultado en vivo */}
+        {/* Resultado */}
         <div
           className={`rounded-2xl p-5 text-white transition-colors sm:p-6 ${
             resultado.viable ? "bg-primary-dark" : "bg-ink-soft"
@@ -216,35 +446,194 @@ export function SimulacionForm() {
           aria-live="polite"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/70">
-            Tu cuota mensual
+            Tu cuota mensual estimada
           </p>
+
           <p className="mt-1 text-4xl font-extrabold tracking-tight sm:text-[42px]">
             <CuotaAnimada valor={resultado.cuotaMensual} />
           </p>
+
           <p className="mt-1 text-sm text-white/70">
-            durante {plazoMeses} meses
+            durante {plazoSeleccionado} meses
           </p>
+
+          <div className="mt-5 border-t border-white/15 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-white/60">
+                  Uso de tu capacidad
+                </p>
+
+                <p className="font-bold">
+                  {etiquetaCapacidad(resultado.nivelCapacidad)}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-2xl font-extrabold">
+                  {Math.round(resultado.porcentajeCapacidad)}%
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-white transition-[width]"
+                style={{ width: `${porcentajeVisual}%` }}
+              />
+            </div>
+
+            <p className="mt-2 text-xs text-white/65">
+              Cuota máxima estimada:{" "}
+              {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}
+            </p>
+          </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/15 pt-4 text-sm">
             <div>
-              <p className="text-xs text-white/60">Total a pagar</p>
-              <p className="font-bold">{formatBs(resultado.totalPagar)}</p>
+              <p className="text-xs text-white/60">Monto solicitado</p>
+              <p className="font-bold">{formatBs(resultado.monto)}</p>
             </div>
+
+            <div>
+              <p className="text-xs text-white/60">Total a pagar</p>
+              <p className="font-bold">
+                {formatBs(resultado.totalPagar)}
+              </p>
+            </div>
+
             <div>
               <p className="text-xs text-white/60">Interés total</p>
-              <p className="font-bold">{formatBs(resultado.interesTotal)}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-xs text-white/60">
-                Tu cuota máxima según capacidad de pago
-              </p>
               <p className="font-bold">
-                {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}
+                {formatBs(resultado.interesTotal)}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-white/60">Seguro total</p>
+              <p className="font-bold">
+                {formatBs(resultado.seguroTotal)}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Desglose */}
+      <section className="mt-6 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-blue text-primary">
+            <Gauge className="h-5 w-5" />
+          </span>
+
+          <div>
+            <h3 className="text-sm font-extrabold text-ink">
+              Desglose de la primera cuota
+            </h3>
+
+            <p className="text-xs text-muted">
+              Valores estimados para que entiendas cómo se compone.
+            </p>
+          </div>
+        </div>
+
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            [
+              "Capital",
+              resultado.desglosePrimeraCuota.capital,
+            ],
+            [
+              "Interés",
+              resultado.desglosePrimeraCuota.interes,
+            ],
+            [
+              "Seguro",
+              resultado.desglosePrimeraCuota.seguroDesgravamen,
+            ],
+            [
+              "Administración",
+              resultado.desglosePrimeraCuota.gastosAdministrativos,
+            ],
+            [
+              "Total cuota",
+              resultado.desglosePrimeraCuota.total,
+            ],
+          ].map(([label, value]) => (
+            <div
+              key={String(label)}
+              className="rounded-xl bg-surface p-3"
+            >
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                {label}
+              </dt>
+
+              <dd className="mt-1 text-base font-extrabold text-ink-soft">
+                {formatBs(Number(value))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Cronograma */}
+      <section className="mt-6 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
+        <h3 className="text-sm font-extrabold text-ink">
+          Primeras cuotas estimadas
+        </h3>
+
+        <p className="mt-1 text-xs text-muted">
+          El capital aumenta y el interés disminuye conforme avanzan los pagos.
+        </p>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-border-soft text-[11px] uppercase tracking-wide text-muted">
+                <th className="px-3 py-2">Cuota</th>
+                <th className="px-3 py-2">Capital</th>
+                <th className="px-3 py-2">Interés</th>
+                <th className="px-3 py-2">Seguro</th>
+                <th className="px-3 py-2">Total</th>
+                <th className="px-3 py-2">Saldo</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {cronogramaVisible.map((cuota) => (
+                <tr
+                  key={cuota.numero}
+                  className="border-b border-border-soft last:border-0"
+                >
+                  <td className="px-3 py-3 font-bold text-ink">
+                    {cuota.numero}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    {formatBs(cuota.capital)}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    {formatBs(cuota.interes)}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    {formatBs(cuota.seguroDesgravamen)}
+                  </td>
+
+                  <td className="px-3 py-3 font-bold text-ink-soft">
+                    {formatBs(cuota.cuotaTotal)}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    {formatBs(cuota.saldoCapital)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* Veredicto */}
       <AnimatePresence mode="wait" initial={false}>
@@ -277,12 +666,15 @@ export function SimulacionForm() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
                 <CircleCheckBig className="h-4.5 w-4.5" />
               </span>
+
               <div>
                 <p className="text-sm font-bold text-ink-soft">
                   Esta opción es compatible contigo
                 </p>
+
                 <p className="mt-0.5 text-[13px] leading-5 text-body">
-                  La cuota está dentro de tu capacidad de pago estimada.
+                  La cuota está dentro de tu capacidad estimada y puede pasar
+                  a la siguiente etapa de evaluación.
                 </p>
               </div>
             </div>
@@ -298,8 +690,8 @@ export function SimulacionForm() {
           >
             <div className="pt-5">
               <DangerNotice title="Esta combinación supera tu capacidad">
-                La cuota de {formatBs(resultado.cuotaMensual)} está por
-                encima de tu máximo de{" "}
+                La cuota de {formatBs(resultado.cuotaMensual)} está por encima
+                de tu máximo de{" "}
                 {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}.
                 Ajusta el monto o el plazo.
               </DangerNotice>
@@ -307,11 +699,14 @@ export function SimulacionForm() {
               {alternativa ? (
                 <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning-border bg-warning-bg px-4 py-3.5">
                   <Lightbulb className="h-4.5 w-4.5 shrink-0 text-warning" />
+
                   <p className="flex-1 text-[13px] leading-5 text-ink-soft">
                     <strong>Te sugerimos:</strong>{" "}
-                    {formatBs(alternativa.monto)} a {alternativa.plazoMeses}{" "}
-                    meses, con cuota de {formatBs(alternativa.cuotaMensual)}.
+                    {formatBs(alternativa.monto)} a{" "}
+                    {alternativa.plazoMeses} meses, con cuota de{" "}
+                    {formatBs(alternativa.cuotaMensual)}.
                   </p>
+
                   <button
                     type="button"
                     onClick={usarAlternativa}
@@ -326,13 +721,30 @@ export function SimulacionForm() {
         )}
       </AnimatePresence>
 
+      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-4">
+        <input
+          type="checkbox"
+          checked={confirmo}
+          onChange={(event) => {
+            setConfirmo(event.target.checked);
+          }}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+        />
+
+        <span className="text-sm leading-6 text-ink-soft">
+          Confirmo que revisé esta simulación y entiendo que los valores son
+          estimados hasta completar la evaluación de Kivo.
+        </span>
+      </label>
+
       <div className="mt-6">
         <button
           type="button"
           onClick={confirmar}
-          disabled={!resultado.viable}
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!resultado.viable || !confirmo}
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
+          <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2.5} />
           Confirmar simulación
           <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
         </button>
