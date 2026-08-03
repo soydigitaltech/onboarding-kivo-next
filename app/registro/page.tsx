@@ -11,12 +11,13 @@ import { CrearCuentaForm } from "@/components/onboarding/steps/CrearCuentaForm";
 export default function RegistroPage() {
   const router = useRouter();
   const cuenta = useOnboardingStore((s) => s.cuenta);
-
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
-  // Si ya hay una cuenta verificada en este navegador (avance guardado),
-  // se salta el registro y se va directo a continuar la solicitud.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (mounted && cuenta) {
       router.replace("/onboarding");
@@ -39,6 +40,7 @@ export default function RegistroPage() {
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
               Bienvenido a Kivo
             </p>
+
             <h1 className="mt-1 text-xl font-extrabold tracking-tight text-ink sm:text-2xl">
               Crea tu cuenta para continuar
             </h1>

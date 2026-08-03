@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, type ReactNode, useEffect } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   Calculator,
   CalendarClock,
   FileText,
@@ -16,7 +15,6 @@ import {
   PanelLeftOpen,
   Receipt,
   Route as RouteIcon,
-  Settings,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -68,17 +66,9 @@ export default function AppShell({
   const [mini, setMini] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [saludoEmoji, setSaludoEmoji] = useState("👋");
   const pathname = usePathname();
 
   const anchoMenu = mini ? "lg:w-20" : "lg:w-[250px]";
-
-  useEffect(() => {
-    // Emojis de saludo aleatorios
-    const saludos = ["👋", "🙌", "✨", "👋🏻", "🙋", "🤗", "😊", "🌟", "💪", "🚀"];
-    const randomEmoji = saludos[Math.floor(Math.random() * saludos.length)];
-    setSaludoEmoji(randomEmoji);
-  }, []);
 
   const handleLogout = () => {
     setShowLogoutModal(true);

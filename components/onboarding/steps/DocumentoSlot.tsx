@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
   CircleCheckBig,
   Download,
@@ -46,19 +46,18 @@ function formatBytes(bytes: number): string {
 
 /** Objeto URL para previsualizar imágenes, con limpieza automática. */
 function useObjectUrl(file: File | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!file || !file.type.startsWith("image/")) {
-      setUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
+  const objectUrl = useMemo(() => {
+    if (!file || !file.type.startsWith("image/")) return null;
+    return URL.createObjectURL(file);
   }, [file]);
 
-  return url;
+  useEffect(() => {
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [objectUrl]);
+
+  return objectUrl;
 }
 
 interface DocumentoSlotProps {

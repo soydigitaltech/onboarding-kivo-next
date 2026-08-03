@@ -366,7 +366,7 @@ export default function TableroView({
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#F2F7FB] pt-3.5">
               {[
                 ["Cuota estimada", bs(SOLICITUD.cuota)],
-                ["Tasa referencial", SOLICITUD.tasa],
+                ["Tasa mensual", "3% mensual"],
                 ["Primer pago", SOLICITUD.primerPago],
                 ["Destino", SOLICITUD.destino],
               ].map(([k, v]) => (
@@ -382,7 +382,7 @@ export default function TableroView({
                 {SOLICITUD.analista.iniciales}
               </div>
               <div>
-                <small className="block text-[11.5px] font-semibold text-[#6A7F94]">Analista asignada</small>
+                <small className="block text-[11.5px] font-semibold text-[#6A7F94]">Asesor de préstamos asignado</small>
                 <b className="text-[13.5px]">{SOLICITUD.analista.nombre}</b>
               </div>
               <button className="ml-auto text-[13px] font-extrabold text-primary-dark">Escribirle</button>

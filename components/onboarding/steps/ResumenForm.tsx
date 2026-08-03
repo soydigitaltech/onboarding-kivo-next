@@ -9,7 +9,6 @@ import { calcularCapacidadPago } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import { CIUDADES } from "@/lib/schemas/datos-personales";
 import {
-  CONTRACT_TYPES,
   HOUSING_TYPES,
   MARITAL_STATUSES,
 } from "@/lib/schemas/informacion-complementaria";

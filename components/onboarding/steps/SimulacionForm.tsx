@@ -192,7 +192,7 @@ export function SimulacionForm() {
             </div>
           </div>
 
-          {/* Tasa referencial */}
+          {/* Tasa mensual */}
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
             <div>
               <p className="text-xs font-medium text-muted">

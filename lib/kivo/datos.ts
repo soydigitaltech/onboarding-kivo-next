@@ -88,7 +88,7 @@ export const SOLICITUD = {
   primerPago: "05 sep 2026",
   destino: "Capital de trabajo",
   enviadaEl: "27 jul 2026",
-  analista: { nombre: "Andrea Villarroel", iniciales: "AV" },
+  analista: { nombre: "Asesor de préstamos", iniciales: "AP" },
 };
 
 export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
@@ -98,7 +98,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
     antetitulo: "Solicitud en curso",
     titulo: "Estamos revisando tu solicitud",
     texto:
-      "Andrea revisa tus ingresos y tu capacidad de pago. Te avisamos aquí y por correo apenas haya novedad — no necesitas hacer nada más por ahora.",
+      "El equipo de revisión está verificando tus ingresos y tu capacidad de pago. Te avisaremos aquí y por WhatsApp apenas haya novedades. Si tu solicitud resulta preaprobada, un asesor de préstamos se comunicará contigo.",
     subtituloTopbar: "Tu solicitud KV-2026-00184 está en revisión",
     meta: [
       { icono: "reloj", texto: "Respuesta estimada: hoy hasta las 18:00" },
@@ -112,7 +112,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
     subtitulos: { revision: "Desde hoy 10:02", aprobada: "Pendiente", desembolso: "Pendiente" },
     notaRamal: "Solo si falta algo",
     historial: [
-      { titulo: "Revisión de capacidad de pago", detalle: "En curso · Andrea Villarroel", pendiente: true },
+      { titulo: "Revisión de capacidad de pago", detalle: "En curso · Equipo de revisión Kivo", pendiente: true },
       { titulo: "Solicitud asignada a análisis", detalle: "27 jul · 10:02" },
       { titulo: "Identidad verificada con Segip", detalle: "27 jul · 09:14 · automático" },
       { titulo: "Solicitud enviada", detalle: "27 jul · 09:12 · desde la web" },
@@ -131,7 +131,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
         id: "m2",
         tipo: "info",
         icono: "usuario",
-        titulo: "Andrea Villarroel es tu analista",
+        titulo: "Tu solicitud está en revisión",
         texto: "Ella te escribirá por este mismo canal si necesita algo más.",
         cuando: "hace 2 h",
         noLeido: true,
@@ -219,7 +219,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
         id: "o3",
         tipo: "info",
         icono: "usuario",
-        titulo: "Andrea Villarroel es tu analista",
+        titulo: "Tu solicitud está en revisión",
         texto: "Ella te escribirá por este mismo canal si necesita algo más.",
         cuando: "hace 5 h",
         noLeido: false,
@@ -298,7 +298,7 @@ export const VISTAS_SOLICITUD: Record<EstadoSolicitud, VistaSolicitud> = {
         id: "a4",
         tipo: "info",
         icono: "usuario",
-        titulo: "Andrea Villarroel es tu analista",
+        titulo: "Tu solicitud está en revisión",
         texto: "Ella te acompaña hasta el desembolso.",
         cuando: "hace 6 h",
         noLeido: false,

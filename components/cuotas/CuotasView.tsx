@@ -43,8 +43,11 @@ function QrDemo({ semilla, tamano = 176 }: { semilla: number; tamano?: number })
   const modulos = useMemo(() => {
     const N = 25;
     const celda = tamano / N;
-    let s = semilla * 9301 + 49297;
-    const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    const pseudoAleatorio = (indice: number) => {
+      const valor = Math.sin(semilla * 9301 + indice * 49297) * 10000;
+      return valor - Math.floor(valor);
+    };
+
     const enFinder = (c: number, r: number) =>
       (c < 8 && r < 8) || (c > N - 9 && r < 8) || (c < 8 && r > N - 9);
 
@@ -52,7 +55,10 @@ function QrDemo({ semilla, tamano = 176 }: { semilla: number; tamano?: number })
     for (let r = 0; r < N; r++) {
       for (let c = 0; c < N; c++) {
         if (enFinder(c, r)) continue;
-        if (rnd() > 0.53) puntos.push({ x: c * celda, y: r * celda });
+        const indice = r * N + c;
+        if (pseudoAleatorio(indice) > 0.53) {
+          puntos.push({ x: c * celda, y: r * celda });
+        }
       }
     }
     return { puntos, celda, N };
@@ -186,10 +192,10 @@ export default function CuotasView() {
         marco: "bg-[#FFEFEE] border-[#FBD5D1]",
         color: "text-[#F0736A]",
         icono: AlertTriangle,
-        antetitulo: `Cuota ${foco.numero} · vencida`,
+        antetitulo: `Cuota ${foco.numero} · en mora`,
         texto: `Se venció el ${foco.vence}. Cada día suma ${bs(CREDITO.moraDiaria)} de mora — págala hoy y tu préstamo vuelve a estar al día.`,
         chips: [
-          { icono: CalendarX, texto: `${foco.diasAtraso} días de atraso` },
+          { icono: CalendarX, texto: `${foco.diasAtraso} días en mora` },
           { icono: TrendingUp, texto: `Mora acumulada: ${bs(foco.mora ?? 0)}` },
         ],
       },
@@ -391,7 +397,7 @@ export default function CuotasView() {
               cuota.estado === "pagada"
                 ? `Pagada el ${cuota.pagadaEl} · ${cuota.metodo}`
                 : cuota.estado === "mora"
-                  ? `Venció el ${cuota.vence} · ${cuota.diasAtraso} días de atraso`
+                  ? `No pagada desde el ${cuota.vence} · ${cuota.diasAtraso} días en mora`
                   : cuota.estado === "pronto"
                     ? `Vence el ${cuota.vence} · en ${cuota.diasRestantes} días`
                     : cuota.estado === "revision"

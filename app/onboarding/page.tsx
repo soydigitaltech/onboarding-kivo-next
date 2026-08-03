@@ -26,10 +26,12 @@ const STEP_TITLES: Record<StepId, string> = {
 };
 
 export default function OnboardingPage() {
-  // Evita el desajuste de hidratación con el store persistido:
-  // el contenido se monta recién en cliente.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   const router = useRouter();
   const currentStep = useOnboardingStore((s) => s.currentStep);
