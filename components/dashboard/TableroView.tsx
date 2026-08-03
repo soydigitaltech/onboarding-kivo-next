@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
@@ -10,7 +10,6 @@ import {
   Check,
   ChevronRight,
   Clock4,
-  Download,
   FileCheck2,
   FileSignature,
   FileText,
@@ -18,7 +17,6 @@ import {
   Landmark,
   Mail,
   PartyPopper,
-  Pencil,
   SearchCheck,
   ShieldCheck,
   TrendingUp,
@@ -29,7 +27,6 @@ import {
 
 import {
   BLOQUES_PERFIL,
-  DATOS_CAPTURADOS,
   PORCENTAJE_PERFIL,
   SOLICITUD,
   VISTAS_SOLICITUD,
@@ -180,7 +177,6 @@ export default function TableroView({
   onCambiarEstado: (estado: EstadoSolicitud) => void;
 }) {
   const vista = VISTAS_SOLICITUD[estado];
-  const [tab, setTab] = useState<string>("Personales");
 
   const IconoEstado = ICONOS[vista.icono];
   const noLeidos = vista.mensajes.filter((m) => m.noLeido).length;
@@ -243,109 +239,70 @@ export default function TableroView({
         </div>
       </section>
 
-      {/* Ruta + resumen */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-[1.55fr_1fr]">
+      {/* Seguimiento resumido + resumen del préstamo */}
+      <div className="mb-4 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
         <Tarjeta>
-          <div id="ruta" className="scroll-mt-24">
-            <Encabezado
-              titulo="La ruta de tu solicitud"
-              texto="Cada paso se actualiza solo. No necesitas llamar ni ir a una oficina."
-              lado={vista.pasoLabel}
-            />
-          </div>
+          <Encabezado
+            titulo="Estado de tu solicitud"
+            texto="Consulta la ruta completa, fechas y observaciones."
+            lado={vista.pasoLabel}
+          />
 
-          <div className="px-6 pb-6 pt-6">
-            <div className="grid gap-y-6 sm:grid-cols-4">
-              {PASOS.map((paso, i) => {
-                const hecho = vista.pasosHechos.includes(paso.id);
-                const ahora = vista.pasoActual === paso.id;
-                const sub =
-                  paso.id === "enviada"
-                    ? `${SOLICITUD.enviadaEl.slice(0, 6)} · 09:12`
-                    : vista.subtitulos[paso.id as "revision" | "aprobada" | "desembolso"];
+          <div className="px-6 pb-6 pt-5">
+            <div className="flex items-start gap-4 rounded-2xl bg-[#F5F9FC] p-4">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#EAF7FE] text-primary-dark">
+                <IconoEstado className="h-5 w-5" strokeWidth={2} />
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-extrabold text-ink">
+                  {vista.titulo}
+                </p>
+
+                <p className="mt-1 text-[13px] leading-5 text-[#6A7F94]">
+                  {vista.texto}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {PASOS.map((paso, index) => {
+                const completado = vista.pasosHechos.includes(paso.id);
+                const actual = vista.pasoActual === paso.id;
 
                 return (
-                  <div
-                    key={paso.id}
-                    className="relative flex items-start gap-3.5 pb-5 text-left sm:block sm:pb-0 sm:text-center"
-                  >
-                    {i < PASOS.length - 1 && (
-                      <>
-                        <span
-                          className={`absolute left-[19px] bottom-0 top-11 hidden w-[3px] rounded max-sm:block ${
-                            hecho ? "bg-primary" : "bg-[#E9F0F6]"
-                          }`}
-                        />
-                        <span
-                          className={`absolute left-[calc(50%+27px)] right-[calc(-50%+27px)] top-5 hidden h-[3px] rounded sm:block ${
-                            hecho ? "bg-primary" : "bg-[#E9F0F6]"
-                          }`}
-                        />
-                      </>
-                    )}
-
-                    <div
-                      className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-[3px] text-sm font-extrabold transition sm:mx-auto sm:mb-2.5 ${
-                        hecho
+                  <div key={paso.id} className="text-center">
+                    <span
+                      className={`mx-auto grid h-8 w-8 place-items-center rounded-full border-2 text-xs font-extrabold ${
+                        completado
                           ? "border-primary bg-primary text-white"
-                          : ahora
-                            ? "border-primary bg-white text-primary-dark shadow-[0_0_0_6px_rgba(3,174,254,.14)]"
+                          : actual
+                            ? "border-primary bg-white text-primary-dark"
                             : "border-[#E9F0F6] bg-white text-[#9DAEBF]"
                       }`}
                     >
-                      {hecho ? <Check className="h-[18px] w-[18px]" strokeWidth={3} /> : i + 1}
-                    </div>
+                      {completado ? (
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
 
-                    <div>
-                      <p
-                        className={`text-[13.5px] font-extrabold ${
-                          hecho || ahora ? "text-ink" : "text-[#43596F]"
-                        }`}
-                      >
-                        {paso.titulo}
-                      </p>
-                      <p
-                        className={`mt-0.5 min-h-[15px] text-[11.5px] font-semibold ${
-                          ahora ? "text-primary-dark" : "text-[#9DAEBF]"
-                        }`}
-                      >
-                        {sub}
-                      </p>
-                    </div>
+                    <p className="mt-1.5 text-[11px] font-bold text-[#6A7F94]">
+                      {paso.titulo}
+                    </p>
                   </div>
                 );
               })}
-
-              {/* Ramal: "Observada" es un desvío posible, no un paso obligatorio */}
-              <div className="relative flex items-start gap-3.5 pl-8 text-left sm:col-start-2 sm:block sm:pl-0 sm:pt-1.5 sm:text-center">
-                <span
-                  className={`absolute -top-3.5 left-[19px] h-[18px] border-l-[3px] border-dashed sm:left-1/2 sm:-top-6 sm:h-[30px] ${
-                    vista.ramalActivo ? "border-[#F0A429]" : "border-[#E9F0F6]"
-                  }`}
-                />
-                <div
-                  className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-[3px] sm:mx-auto sm:mb-2.5 ${
-                    vista.ramalActivo
-                      ? "border-[#F0A429] bg-[#F0A429] text-white shadow-[0_0_0_6px_rgba(240,164,41,.18)]"
-                      : "border-dashed border-[#E9F0F6] bg-white text-[#9DAEBF]"
-                  }`}
-                >
-                  <AlertCircle className="h-[18px] w-[18px]" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <p className={`text-[13.5px] font-extrabold ${vista.ramalActivo ? "text-ink" : "text-[#43596F]"}`}>
-                    Observada
-                  </p>
-                  <p
-                    className={`mt-0.5 text-[11.5px] font-semibold ${
-                      vista.ramalActivo ? "text-[#B0730B]" : "text-[#9DAEBF]"
-                    }`}
-                  >
-                    {vista.notaRamal}
-                  </p>
-                </div>
-              </div>
             </div>
+
+            <Link
+              href="/seguimiento"
+              className="mt-5 inline-flex items-center gap-2 text-[13px] font-extrabold text-primary-dark transition hover:text-primary"
+            >
+              Ver seguimiento completo
+              <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+            </Link>
           </div>
         </Tarjeta>
 
@@ -503,98 +460,8 @@ export default function TableroView({
         </Tarjeta>
       </div>
 
-      {/* Datos capturados */}
-      <Tarjeta className="mb-4">
-        <div id="datos" className="scroll-mt-24">
-          <Encabezado
-            titulo="Tus datos"
-            texto="Esto es lo que Kivo tiene registrado. Puedes corregirlo mientras la solicitud siga abierta."
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 border-b border-[#F2F7FB] px-6 pt-4" role="tablist">
-          {Object.keys(DATOS_CAPTURADOS).map((clave) => (
-            <button
-              key={clave}
-              role="tab"
-              aria-selected={tab === clave}
-              onClick={() => setTab(clave)}
-              className={`-mb-px rounded-t-xl border-b-[3px] px-3.5 py-2.5 text-[13.5px] font-bold transition ${
-                tab === clave
-                  ? "border-primary bg-[#EAF7FE] text-primary-dark"
-                  : "border-transparent text-[#6A7F94]"
-              }`}
-            >
-              {clave}
-            </button>
-          ))}
-        </div>
-
-        <dl className="grid gap-4 px-6 pb-6 pt-5 sm:grid-cols-2 lg:grid-cols-3">
-          {DATOS_CAPTURADOS[tab].map((campo) => (
-            <div key={campo.etiqueta}>
-              <dt className="mb-0.5 text-[11.5px] font-extrabold uppercase tracking-wide text-[#9DAEBF]">
-                {campo.etiqueta}
-              </dt>
-              <dd
-                className={`text-[14.5px] font-bold ${
-                  campo.falta ? "italic font-semibold text-[#9DAEBF]" : ""
-                }`}
-              >
-                {campo.valor}
-                {campo.verificado && (
-                  <span className="ml-1.5 rounded-full bg-[#EAF8F0] px-2 py-px align-[2px] text-[11px] font-extrabold text-[#1B8B52]">
-                    verificado
-                  </span>
-                )}
-                {campo.porVerificar && (
-                  <span className="ml-1.5 rounded-full bg-[#FFF5E4] px-2 py-px align-[2px] text-[11px] font-extrabold text-[#B0730B]">
-                    por verificar
-                  </span>
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <div className="flex flex-wrap gap-4 border-t border-[#F2F7FB] px-6 py-3">
-          <button className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-primary-dark">
-            <Pencil className="h-3.5 w-3.5" strokeWidth={2.4} />
-            Editar este bloque
-          </button>
-          <button className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-primary-dark">
-            <Download className="h-3.5 w-3.5" strokeWidth={2.4} />
-            Descargar mi solicitud (PDF)
-          </button>
-        </div>
-      </Tarjeta>
-
-      {/* Historial + aprende */}
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <Tarjeta>
-          <Encabezado titulo="Historial del trámite" texto="Todo lo que pasó, con fecha y hora." />
-          <ol className="px-6 pb-6 pt-4">
-            {vista.historial.map((hito, i) => (
-              <li key={hito.titulo} className="relative flex gap-3.5 pb-5 last:pb-0">
-                {i < vista.historial.length - 1 && (
-                  <span className="absolute bottom-0 left-[7px] top-[18px] w-0.5 bg-[#F2F7FB]" />
-                )}
-                <span
-                  className={`z-10 mt-0.5 h-4 w-4 shrink-0 rounded-full border-[3px] bg-white ${
-                    hito.pendiente ? "border-dashed border-[#E9F0F6]" : "border-primary"
-                  }`}
-                />
-                <div>
-                  <h5 className={`text-sm font-extrabold ${hito.pendiente ? "text-[#6A7F94]" : ""}`}>
-                    {hito.titulo}
-                  </h5>
-                  <p className="mt-0.5 text-[12.5px] text-[#6A7F94]">{hito.detalle}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Tarjeta>
-
+      {/* Educación financiera */}
+      <div className="mb-4">
         <Tarjeta>
           <Encabezado titulo="Aprende con Kivo" texto="Tres minutos por tema, en palabras simples." />
           <div className="flex flex-col gap-2.5 px-6 pb-6 pt-4">

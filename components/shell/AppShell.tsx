@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Calculator,
   CalendarClock,
   FileText,
   LayoutDashboard,
@@ -35,23 +34,23 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
     titulo: "Principal",
     items: [
       { label: "Tablero", href: "/dashboard", icono: LayoutDashboard },
-      { label: "Mi perfil", href: "/dashboard#perfil", icono: UserRound, pill: "62%", pillTono: "azul" },
+      { label: "Mi perfil", href: "/perfil", icono: UserRound, pill: "62%", pillTono: "azul" },
     ],
   },
   {
     titulo: "Mi solicitud",
     items: [
-      { label: "Estado y seguimiento", href: "/dashboard#ruta", icono: RouteIcon },
-      { label: "Documentos", href: "/dashboard#datos", icono: FileText, pill: "2" },
-      { label: "Mensajes", href: "/dashboard#mensajes", icono: MessageSquare, pill: "3" },
+      { label: "Estado y seguimiento", href: "/seguimiento", icono: RouteIcon },
+      { label: "Documentos", href: "/documentos", icono: FileText, pill: "2" },
+      { label: "Mensajes", href: "/mensajes", icono: MessageSquare, pill: "3" },
     ],
   },
   {
     titulo: "Mi préstamo",
     items: [
       { label: "Cuotas y pagos", href: "/cuotas", icono: CalendarClock, pill: "1" },
-      { label: "Mis comprobantes", href: "/cuotas#comprobantes", icono: Receipt },
-      { label: "Simulador", href: "/onboarding", icono: Calculator },
+      { label: "Mis comprobantes", href: "/comprobantes", icono: Receipt },
+      //{ label: "Simulador", href: "/onboarding", icono: Calculator },//
     ],
   },
 ];

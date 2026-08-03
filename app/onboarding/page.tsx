@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { RotateCcw, ShieldCheck } from "lucide-react";
 
@@ -33,23 +32,16 @@ export default function OnboardingPage() {
     setMounted(true);
   }, []);
 
-  const router = useRouter();
   const currentStep = useOnboardingStore((s) => s.currentStep);
   const completed = useOnboardingStore((s) => s.completed);
-  const cuenta = useOnboardingStore((s) => s.cuenta);
   const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
   const simulacion = useOnboardingStore((s) => s.simulacion);
   const solicitudEnviada = useOnboardingStore((s) => s.solicitudEnviada);
   const editStep = useOnboardingStore((s) => s.editStep);
   const reset = useOnboardingStore((s) => s.reset);
 
-  // Puerta de acceso: sin cuenta verificada, no se puede entrar al
-  // onboarding directamente — hay que registrarse/ingresar primero.
-  useEffect(() => {
-    if (mounted && !cuenta) {
-      router.replace("/registro");
-    }
-  }, [mounted, cuenta, router]);
+  // Acceso directo habilitado temporalmente para probar el onboarding.
+  // Antes de producción se debe volver a exigir una cuenta verificada por OTP.
 
   const mostrarConfirmacion =
     currentStep === "resumen" &&
@@ -126,7 +118,7 @@ export default function OnboardingPage() {
               </AnimatePresence>
             </div>
 
-            {/* Nota de confianza + reinicio (útil para el demo) */}
+            {/* Nota de confianza + reinicio del formulario */}
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border-soft pt-5 text-xs text-muted">
               <span className="flex items-center gap-2">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-cerulean" />
@@ -138,7 +130,7 @@ export default function OnboardingPage() {
                 className="inline-flex items-center gap-1.5 font-semibold text-muted underline-offset-2 transition-colors hover:text-primary hover:underline"
               >
                 <RotateCcw className="h-3 w-3" />
-                Reiniciar demo
+                Reiniciar formulario
               </button>
             </div>
           </>
