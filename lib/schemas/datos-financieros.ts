@@ -1,17 +1,33 @@
 import { z } from "zod";
 
 /**
- * Reglas de esta sección (extraídas del flujo del chatbot de Kivo):
- * - Ingreso neto mensual obligatorio y mayor a cero.
- * - Deudas: el usuario las agrega una por una (máximo 3).
- *   Declarar más de 3 = descarte.
- * - Reporte negativo en la Central de Riesgos = descarte.
+ * Reglas financieras del onboarding:
+ *
+ * - El ingreso neto debe representar el dinero disponible después de
+ *   descuentos, para asalariados, o costos operativos, para independientes.
+ * - El segundo ingreso solo se considera cuando puede respaldarse al 100%
+ *   con extractos bancarios.
+ * - La antigüedad mínima depende de la edad del solicitante.
+ * - Se registran hasta tres deudas en el flujo principal.
  */
 
 export const MAX_DEUDAS = 3;
-
-// TODO: confirmar con Kivo el tope de antigüedad razonable.
 export const ANTIGUEDAD_MAXIMA_MESES = 720;
+
+export function obtenerAntiguedadMinima(edad: number): number {
+  if (edad >= 18 && edad <= 24) return 36;
+  return 12;
+}
+
+export function mensajeAntiguedadMinima(edad: number): string {
+  const meses = obtenerAntiguedadMinima(edad);
+
+  if (meses === 36) {
+    return "Por tu edad, necesitas al menos 36 meses de antigüedad laboral o en tu actividad económica.";
+  }
+
+  return "Necesitas al menos 12 meses de antigüedad laboral o en tu actividad económica.";
+}
 
 export const deudaSchema = z.object({
   cuota: z
@@ -19,46 +35,72 @@ export const deudaSchema = z.object({
     .min(1, "Ingresa una cuota mayor a cero."),
 });
 
-export const datosFinancierosSchema = z.object({
-  ingresoNeto: z
-    .number({ message: "Ingresa tu ingreso neto mensual." })
-    .min(1, "Ingresa un ingreso mayor a cero."),
+export const datosFinancierosSchema = z
+  .object({
+    ingresoNeto: z
+      .number({ message: "Ingresa tu ingreso neto mensual." })
+      .min(1, "Ingresa un ingreso mayor a cero."),
 
-  antiguedadMeses: z
-    .number({ message: "Ingresa tu antigüedad laboral en meses." })
-    .int("Ingresa meses completos, sin decimales.")
-    .min(0, "La antigüedad no puede ser negativa.")
-    .max(
-      ANTIGUEDAD_MAXIMA_MESES,
-      "Revisa la antigüedad: parece demasiado alta.",
-    ),
+    tieneSegundoIngreso: z.boolean(),
 
-  deudas: z
-    .array(deudaSchema)
-    .max(MAX_DEUDAS, `Máximo ${MAX_DEUDAS} deudas.`),
+    segundoIngresoMonto: z.number().optional(),
 
-  /** El usuario declaró tener más de 3 deudas. */
-  masDeTresDeudas: z.boolean(),
+    segundoIngresoRespaldado: z.boolean(),
 
-  /**
-   * Excepciones que permiten continuar con más de 3 deudas:
-   * - ULTIMA_CUOTA: una de sus deudas está en su última cuota.
-   * - COMPRA_DEUDA: pide que Kivo compre una de sus deudas.
-   */
-  excepcionTipo: z.enum(["ULTIMA_CUOTA", "COMPRA_DEUDA"]).optional(),
+    antiguedadMeses: z
+      .number({ message: "Ingresa tu antigüedad en meses." })
+      .int("Ingresa meses completos, sin decimales.")
+      .min(12, "La antigüedad mínima permitida es de 12 meses.")
+      .max(
+        ANTIGUEDAD_MAXIMA_MESES,
+        "Revisa la antigüedad: parece demasiado alta.",
+      ),
 
-  /** Índice (0-2) de la deuda registrada que quiere que Kivo compre. */
-  compraIndice: z.number().optional(),
+    deudas: z
+      .array(deudaSchema)
+      .max(MAX_DEUDAS, `Máximo ${MAX_DEUDAS} deudas.`),
 
-  /** Cuota mensual de la deuda que quiere que Kivo compre. */
-  cuotaCompra: z.number().optional(),
+    masDeTresDeudas: z.boolean(),
 
-  centralRiesgos: z.enum(["SI", "NO"], {
-    message: "Responde esta pregunta para continuar.",
-  }),
-});
+    excepcionTipo: z
+      .enum(["ULTIMA_CUOTA", "COMPRA_DEUDA"])
+      .optional(),
 
-export type DatosFinancierosValues = z.infer<typeof datosFinancierosSchema>;
+    compraIndice: z.number().optional(),
+
+    cuotaCompra: z.number().optional(),
+
+    centralRiesgos: z.enum(["SI", "NO"], {
+      message: "Responde esta pregunta para continuar.",
+    }),
+  })
+  .superRefine((values, context) => {
+    if (!values.tieneSegundoIngreso) return;
+
+    if (
+      values.segundoIngresoMonto === undefined ||
+      values.segundoIngresoMonto <= 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["segundoIngresoMonto"],
+        message: "Ingresa el monto neto de tu segundo ingreso.",
+      });
+    }
+
+    if (!values.segundoIngresoRespaldado) {
+      context.addIssue({
+        code: "custom",
+        path: ["segundoIngresoRespaldado"],
+        message:
+          "El segundo ingreso debe estar respaldado al 100% con extractos bancarios.",
+      });
+    }
+  });
+
+export type DatosFinancierosValues = z.infer<
+  typeof datosFinancierosSchema
+>;
 
 export function formatBs(valor: number): string {
   return `Bs ${new Intl.NumberFormat("es-BO", {

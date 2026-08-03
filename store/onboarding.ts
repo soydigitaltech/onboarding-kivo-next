@@ -51,17 +51,31 @@ export interface DatosPersonales {
 }
 
 export interface DatosFinancieros {
+  /** Ingreso mensual después de descuentos o costos operativos. */
   ingresoNeto: number;
+
+  /** Indica si declara una fuente adicional de ingresos. */
+  tieneSegundoIngreso: boolean;
+
+  /** Monto neto mensual de la segunda fuente de ingresos. */
+  segundoIngresoMonto?: number;
+
+  /**
+   * La segunda fuente solo se considera si puede respaldarse al 100%
+   * mediante extractos bancarios.
+   */
+  segundoIngresoRespaldado: boolean;
+
   antiguedadMeses: number;
   numeroDeudas: number;
   cuotasDeudas: number[];
   totalCuotasMensuales: number;
+
   /** Declaró no tener reporte negativo en la Central de Riesgos. */
   sinReporteCentral: boolean;
+
   /**
-   * Si declaró más de 3 deudas, la excepción que le permite continuar:
-   * ULTIMA_CUOTA (una deuda está por terminar) o COMPRA_DEUDA
-   * (pide que Kivo compre una deuda; cuotaCompra guarda su cuota).
+   * Excepción para solicitudes con más de tres deudas.
    */
   excepcionMasDeTres: {
     tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";

@@ -6,10 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import {
   ArrowRight,
+  BadgeDollarSign,
   Gauge,
   HandCoins,
+  Landmark,
   Plus,
+  ShieldCheck,
   Trash2,
+  TriangleAlert,
   Wallet,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
@@ -18,9 +22,12 @@ import {
   MAX_DEUDAS,
   datosFinancierosSchema,
   formatBs,
+  mensajeAntiguedadMinima,
+  obtenerAntiguedadMinima,
   type DatosFinancierosValues,
 } from "@/lib/schemas/datos-financieros";
 import { calcularCapacidadPago } from "@/lib/simulacion";
+import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
 import {
   DangerNotice,
@@ -44,10 +51,16 @@ const dineroInputProps = {
 } as const;
 
 /** Pasos del bloqueo secuencial, igual que en datos personales. */
-type Paso = "ingresoNeto" | "antiguedadMeses" | "deudas" | "centralRiesgos";
+type Paso =
+  | "ingresoNeto"
+  | "segundoIngreso"
+  | "antiguedadMeses"
+  | "deudas"
+  | "centralRiesgos";
 
 const PASOS: Paso[] = [
   "ingresoNeto",
+  "segundoIngreso",
   "antiguedadMeses",
   "deudas",
   "centralRiesgos",
@@ -55,6 +68,7 @@ const PASOS: Paso[] = [
 
 export function DatosFinancierosForm() {
   const guardados = useOnboardingStore((s) => s.datosFinancieros);
+  const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
   const setDatosFinancieros = useOnboardingStore((s) => s.setDatosFinancieros);
   const completeAndAdvance = useOnboardingStore((s) => s.completeAndAdvance);
 
@@ -71,6 +85,9 @@ export function DatosFinancierosForm() {
     defaultValues: guardados
       ? {
           ingresoNeto: guardados.ingresoNeto,
+          tieneSegundoIngreso: guardados.tieneSegundoIngreso,
+          segundoIngresoMonto: guardados.segundoIngresoMonto,
+          segundoIngresoRespaldado: guardados.segundoIngresoRespaldado,
           antiguedadMeses: guardados.antiguedadMeses,
           deudas: guardados.cuotasDeudas.map((cuota) => ({ cuota })),
           masDeTresDeudas: guardados.excepcionMasDeTres !== null,
@@ -87,6 +104,8 @@ export function DatosFinancierosForm() {
       : {
           deudas: [],
           masDeTresDeudas: false,
+          tieneSegundoIngreso: false,
+          segundoIngresoRespaldado: false,
         },
   });
 
@@ -99,6 +118,27 @@ export function DatosFinancierosForm() {
 
   const deudas = values.deudas ?? [];
   const conReporte = values.centralRiesgos === "SI";
+
+  const perfilLaboral = datosPersonales?.perfilLaboral;
+  const edad = calcularEdad(datosPersonales?.fechaNacimiento ?? "");
+  const antiguedadMinima = obtenerAntiguedadMinima(edad);
+
+  const tieneSegundoIngreso = values.tieneSegundoIngreso === true;
+  const segundoIngresoValido =
+    !tieneSegundoIngreso ||
+    ((values.segundoIngresoMonto ?? 0) > 0 &&
+      values.segundoIngresoRespaldado === true);
+
+  const ingresoTotalEvaluable =
+    (values.ingresoNeto ?? 0) +
+    (tieneSegundoIngreso && values.segundoIngresoRespaldado
+      ? values.segundoIngresoMonto ?? 0
+      : 0);
+
+  const antiguedadInsuficiente =
+    values.antiguedadMeses !== undefined &&
+    !Number.isNaN(values.antiguedadMeses) &&
+    values.antiguedadMeses < antiguedadMinima;
 
   // El panel de excepciones aparece apenas se registran las 3 deudas.
   const enLimiteDeudas = fields.length >= MAX_DEUDAS;
@@ -119,6 +159,15 @@ export function DatosFinancierosForm() {
       setValue("cuotaCompra", undefined);
     }
   }, [fields.length, values.excepcionTipo, setValue]);
+
+  // Si el usuario indica que no tiene un segundo ingreso,
+  // eliminamos cualquier monto o respaldo que hubiese seleccionado.
+  useEffect(() => {
+    if (!values.tieneSegundoIngreso) {
+      setValue("segundoIngresoMonto", undefined);
+      setValue("segundoIngresoRespaldado", false);
+    }
+  }, [values.tieneSegundoIngreso, setValue]);
 
   // Si la deuda seleccionada para compra ya no existe, limpiar la selección.
   useEffect(() => {
@@ -146,27 +195,36 @@ export function DatosFinancierosForm() {
   // las deudas y el margen de ahorro. Si no queda espacio, el
   // descarte ocurre aquí, sin llegar al simulador.
   const capacidad =
-    (values.ingresoNeto ?? 0) > 0
+    ingresoTotalEvaluable > 0
       ? calcularCapacidadPago({
-          ingresoNeto: values.ingresoNeto,
+          ingresoNeto: ingresoTotalEvaluable,
           totalDeudas: totalCuotas,
         })
       : null;
 
   const sinCapacidad = capacidad !== null && capacidad.cuotaMaxima <= 0;
 
-  const descartado = bloqueoPorDeudas || conReporte || sinCapacidad;
+  const descartado =
+    bloqueoPorDeudas ||
+    conReporte ||
+    sinCapacidad ||
+    antiguedadInsuficiente ||
+    !segundoIngresoValido;
 
   // ---- Bloqueo secuencial -------------------------------------
   const pasoCompleto = (paso: Paso): boolean => {
     switch (paso) {
       case "ingresoNeto":
         return (values.ingresoNeto ?? 0) > 0;
+
+      case "segundoIngreso":
+        return segundoIngresoValido;
+
       case "antiguedadMeses":
         return (
           values.antiguedadMeses !== undefined &&
           !Number.isNaN(values.antiguedadMeses) &&
-          values.antiguedadMeses >= 0
+          values.antiguedadMeses >= antiguedadMinima
         );
       case "deudas":
         // Sin deudas también cuenta como completo; con deudas,
@@ -217,6 +275,10 @@ export function DatosFinancierosForm() {
 
     if (
       formValues.centralRiesgos === "SI" ||
+      formValues.antiguedadMeses < antiguedadMinima ||
+      (formValues.tieneSegundoIngreso &&
+        (!formValues.segundoIngresoRespaldado ||
+          (formValues.segundoIngresoMonto ?? 0) <= 0)) ||
       (formValues.excepcionTipo === "COMPRA_DEUDA" &&
         (cuotaCompraElegida ?? 0) <= 0)
     ) {
@@ -227,6 +289,13 @@ export function DatosFinancierosForm() {
 
     setDatosFinancieros({
       ingresoNeto: formValues.ingresoNeto,
+      tieneSegundoIngreso: formValues.tieneSegundoIngreso,
+      segundoIngresoMonto: formValues.tieneSegundoIngreso
+        ? formValues.segundoIngresoMonto
+        : undefined,
+      segundoIngresoRespaldado: formValues.tieneSegundoIngreso
+        ? formValues.segundoIngresoRespaldado
+        : false,
       antiguedadMeses: formValues.antiguedadMeses,
       numeroDeudas: cuotas.length,
       cuotasDeudas: cuotas,
@@ -255,42 +324,196 @@ export function DatosFinancierosForm() {
         asumir.
       </p>
 
-      {/* Ingreso y antigüedad */}
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className={lockCls("ingresoNeto")}>
-          <Field
-            label="Ingreso neto mensual"
-            htmlFor="ingresoNeto"
-            error={errors.ingresoNeto?.message}
-          >
-            <Controller
-              name="ingresoNeto"
-              control={control}
-              render={({ field }) => (
-                <PrefixedInputShell prefix="Bs">
-                  <NumericFormat
-                    id="ingresoNeto"
-                    getInputRef={field.ref}
-                    value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.floatValue)}
-                    onBlur={field.onBlur}
-                    placeholder="Ej. 4.500"
-                    className={prefixedInputClassName}
-                    tabIndex={lockTab("ingresoNeto")}
-                    {...dineroInputProps}
-                  />
-                </PrefixedInputShell>
-              )}
-            />
-          </Field>
+      {/* Ingreso principal */}
+      <div className={lockCls("ingresoNeto")}>
+        <Field
+          label="Ingreso neto mensual"
+          htmlFor="ingresoNeto"
+          error={errors.ingresoNeto?.message}
+        >
+          <Controller
+            name="ingresoNeto"
+            control={control}
+            render={({ field }) => (
+              <PrefixedInputShell prefix="Bs">
+                <NumericFormat
+                  id="ingresoNeto"
+                  getInputRef={field.ref}
+                  value={field.value ?? ""}
+                  onValueChange={(value) => {
+                    field.onChange(value.floatValue);
+                  }}
+                  onBlur={field.onBlur}
+                  placeholder="Ej. 4.500"
+                  className={prefixedInputClassName}
+                  tabIndex={lockTab("ingresoNeto")}
+                  {...dineroInputProps}
+                />
+              </PrefixedInputShell>
+            )}
+          />
+        </Field>
+
+        <div className="mt-3 flex items-start gap-3 rounded-xl border border-primary/15 bg-surface-blue p-4">
+          <BadgeDollarSign className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+
+          <div>
+            <p className="text-sm font-bold text-ink-soft">
+              ¿Qué debes declarar como ingreso neto?
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-body">
+              {perfilLaboral === "INDEPENDIENTE"
+                ? "Ingresa el monto que realmente te queda cada mes después de pagar mercadería, alquiler, servicios, personal y otros costos de tu actividad."
+                : "Ingresa el monto que recibes cada mes después de descuentos como aportes, impuestos, anticipos, préstamos u otras retenciones."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Segundo ingreso */}
+      <fieldset
+        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+          "segundoIngreso",
+        )}`}
+      >
+        <legend className="text-sm font-bold text-ink">
+          ¿Tienes una segunda fuente de ingresos?
+        </legend>
+
+        <p className="mt-1 text-xs leading-5 text-muted">
+          Puede ser alquiler, otro trabajo, actividad profesional o ingresos
+          adicionales de un negocio.
+        </p>
+
+        <div className="mt-3 grid max-w-md grid-cols-2 gap-3">
+          <RadioPill
+            label="No"
+            inputProps={{
+              value: "false",
+              tabIndex: lockTab("segundoIngreso"),
+              checked: values.tieneSegundoIngreso === false,
+              onChange: () => {
+                setValue("tieneSegundoIngreso", false, {
+                  shouldValidate: true,
+                });
+              },
+            }}
+          />
+
+          <RadioPill
+            label="Sí"
+            inputProps={{
+              value: "true",
+              tabIndex: lockTab("segundoIngreso"),
+              checked: values.tieneSegundoIngreso === true,
+              onChange: () => {
+                setValue("tieneSegundoIngreso", true, {
+                  shouldValidate: true,
+                });
+              },
+            }}
+          />
         </div>
 
-        <div
-          className={lockCls("antiguedadMeses")}
-          aria-disabled={bloqueado("antiguedadMeses")}
-        >
+        <AnimatePresence initial={false}>
+          {tieneSegundoIngreso ? (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={REVEAL}
+              className="overflow-hidden"
+            >
+              <div className="mt-5 grid gap-4">
+                <div className="max-w-sm">
+                  <Field
+                    label="Monto neto del segundo ingreso"
+                    htmlFor="segundoIngresoMonto"
+                    error={errors.segundoIngresoMonto?.message}
+                  >
+                    <Controller
+                      name="segundoIngresoMonto"
+                      control={control}
+                      render={({ field }) => (
+                        <PrefixedInputShell prefix="Bs">
+                          <NumericFormat
+                            id="segundoIngresoMonto"
+                            getInputRef={field.ref}
+                            value={field.value ?? ""}
+                            onValueChange={(value) => {
+                              field.onChange(value.floatValue);
+                            }}
+                            onBlur={field.onBlur}
+                            placeholder="Ej. 1.500"
+                            className={prefixedInputClassName}
+                            {...dineroInputProps}
+                          />
+                        </PrefixedInputShell>
+                      )}
+                    />
+                  </Field>
+                </div>
+
+                <div className="rounded-2xl border-2 border-warning-border bg-warning-bg p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+
+                    <div>
+                      <p className="text-sm font-extrabold text-ink-soft">
+                        Este ingreso necesita respaldo bancario
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-body">
+                        Para incluirlo en tu capacidad de pago, el segundo
+                        ingreso debe estar respaldado al 100% mediante
+                        extractos bancarios.
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-white/70 p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                      {...register("segundoIngresoRespaldado")}
+                    />
+
+                    <span className="text-sm font-semibold leading-5 text-ink-soft">
+                      Confirmo que puedo respaldar este segundo ingreso al
+                      100% con extractos bancarios.
+                    </span>
+                  </label>
+
+                  {errors.segundoIngresoRespaldado ? (
+                    <p
+                      className="mt-2 text-xs font-semibold text-error"
+                      role="alert"
+                    >
+                      {errors.segundoIngresoRespaldado.message}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </fieldset>
+
+      {/* Antigüedad */}
+      <div
+        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+          "antiguedadMeses",
+        )}`}
+        aria-disabled={bloqueado("antiguedadMeses")}
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
           <Field
-            label="Antigüedad laboral"
+            label={
+              perfilLaboral === "INDEPENDIENTE"
+                ? "Antigüedad en tu actividad"
+                : "Antigüedad laboral"
+            }
             htmlFor="antiguedadMeses"
             error={errors.antiguedadMeses?.message}
           >
@@ -303,12 +526,14 @@ export function DatosFinancierosForm() {
                     id="antiguedadMeses"
                     getInputRef={field.ref}
                     value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.floatValue)}
+                    onValueChange={(value) => {
+                      field.onChange(value.floatValue);
+                    }}
                     onBlur={field.onBlur}
                     allowNegative={false}
                     decimalScale={0}
                     inputMode="numeric"
-                    placeholder="Ej. 24"
+                    placeholder={`Mínimo ${antiguedadMinima}`}
                     className={prefixedInputClassName}
                     tabIndex={lockTab("antiguedadMeses")}
                   />
@@ -316,6 +541,80 @@ export function DatosFinancierosForm() {
               )}
             />
           </Field>
+
+          <div
+            className={`rounded-xl border p-4 ${
+              antiguedadInsuficiente
+                ? "border-error/30 bg-error/5"
+                : "border-primary/15 bg-surface-blue"
+            }`}
+          >
+            <p className="text-[11px] font-extrabold uppercase tracking-wide text-muted">
+              Antigüedad mínima requerida
+            </p>
+
+            <p
+              className={`mt-1 text-2xl font-extrabold ${
+                antiguedadInsuficiente ? "text-error" : "text-primary-dark"
+              }`}
+            >
+              {antiguedadMinima} meses
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-body">
+              {mensajeAntiguedadMinima(edad)}
+            </p>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {antiguedadInsuficiente ? (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={REVEAL}
+              className="overflow-hidden"
+            >
+              <div className="pt-4">
+                <DangerNotice title="La antigüedad no alcanza el mínimo">
+                  Para continuar necesitas acreditar al menos{" "}
+                  <strong>{antiguedadMinima} meses</strong> de antigüedad.
+                </DangerNotice>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      {/* Requisitos de extractos */}
+      <div className="mt-6 rounded-2xl border border-primary/20 bg-surface-blue p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+
+          <div>
+            <p className="text-sm font-extrabold text-ink-soft">
+              Los extractos bancarios forman parte de la evaluación
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-body">
+              Para continuar con la evaluación formal deberás presentar
+              extractos bancarios que reflejen, como mínimo, el 70% de tus
+              movimientos e ingresos declarados.
+            </p>
+
+            <div className="mt-3 grid gap-2 text-xs font-semibold text-ink-soft sm:grid-cols-2">
+              <span className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-2">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
+                Extractos obligatorios
+              </span>
+
+              <span className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-2">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
+                Mínimo 70% de movimientos
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
