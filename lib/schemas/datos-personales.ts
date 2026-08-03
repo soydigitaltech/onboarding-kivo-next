@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 /**
- * Ciudades del selector: las capitales de departamento + El Alto,
- * y una opción final para poblaciones menores. La cobertura replica
- * la regla del chatbot de Kivo: por ahora solo La Paz y El Alto.
+ * Ciudades del selector: capitales de departamento, El Alto
+ * y una opción para otras localidades.
  */
 export const CIUDADES = [
   { value: "LA_PAZ", label: "La Paz", cubierta: true },
@@ -19,10 +18,17 @@ export const CIUDADES = [
   { value: "OTRA", label: "Otra localidad", cubierta: false },
 ] as const;
 
+export const CANALES_CONTACTO = [
+  { value: "WHATSAPP", label: "WhatsApp" },
+  { value: "LLAMADA", label: "Llamada telefónica" },
+] as const;
+
 export type CiudadValue = (typeof CIUDADES)[number]["value"];
 
 export function ciudadTieneCobertura(value: string): boolean {
-  return CIUDADES.some((c) => c.value === value && c.cubierta);
+  return CIUDADES.some((ciudad) => {
+    return ciudad.value === value && ciudad.cubierta;
+  });
 }
 
 export function calcularEdad(fechaNacimiento: string): number {
@@ -43,14 +49,17 @@ export function calcularEdad(fechaNacimiento: string): number {
   return edad;
 }
 
-// TODO: confirmar con Kivo el rango de edad exacto por producto.
 export const EDAD_MINIMA = 18;
 export const EDAD_MAXIMA = 75;
 
-/** Nombre completo: al menos dos palabras (nombre y apellido). */
+/** Nombre completo: al menos dos palabras. */
 export const NOMBRE_COMPLETO_REGEX = /^\s*\S+(\s+\S+)+\s*$/;
 
 export const datosPersonalesSchema = z.object({
+  perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"], {
+    message: "Selecciona tu situación laboral.",
+  }),
+
   nombreCompleto: z
     .string()
     .trim()
@@ -79,6 +88,34 @@ export const datosPersonalesSchema = z.object({
     .regex(/^[67]\d{7}$/, "Ingresa un celular válido de 8 dígitos."),
 
   ciudad: z.string().min(1, "Selecciona tu ciudad."),
+
+  numeroDependientes: z
+    .number({
+      message: "Indica cuántas personas dependen económicamente de ti.",
+    })
+    .int("Ingresa un número entero.")
+    .min(0, "El número de dependientes no puede ser negativo.")
+    .max(20, "Revisa el número de dependientes."),
+
+  diaPago: z
+    .number({ message: "Selecciona tu día habitual de pago." })
+    .int("Selecciona un día válido.")
+    .min(1, "Selecciona un día entre 1 y 31.")
+    .max(31, "Selecciona un día entre 1 y 31."),
+
+  canalContacto: z.enum(["WHATSAPP", "LLAMADA"], {
+    message: "Selecciona tu canal preferido de contacto.",
+  }),
+
+  rubroLaboral: z
+    .string()
+    .trim()
+    .min(3, "Ingresa el rubro de tu empresa o actividad."),
+
+  direccionTrabajo: z
+    .string()
+    .trim()
+    .min(5, "Ingresa la dirección de tu lugar de trabajo o negocio."),
 });
 
 export type DatosPersonalesValues = z.infer<typeof datosPersonalesSchema>;

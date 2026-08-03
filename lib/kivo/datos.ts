@@ -373,7 +373,13 @@ export const DATOS_CAPTURADOS: Record<string, Campo[]> = {
 
 /* ─────────── Préstamo y cuotas ─────────── */
 
-export type EstadoCuota = "pagada" | "revision" | "mora" | "pronto" | "pendiente";
+export type EstadoCuota =
+  | "pagada"
+  | "revision"
+  | "mora"
+  | "vencido"
+  | "pronto"
+  | "pendiente";
 
 export type Cuota = {
   numero: number;
@@ -391,6 +397,11 @@ export const CREDITO = {
   cuota: 1842,
   totalCuotas: 24,
   moraDiaria: 2.11,
+  /**
+   * Capital pendiente del préstamo. En producción llegará desde backend.
+   * Desde el día 31 de incumplimiento este saldo pasa a estado vencido.
+   */
+  saldoCapitalRestante: 31_280,
   banco: {
     entidad: "Banco Unión",
     cuenta: "10000045821",
@@ -423,10 +434,36 @@ export const ETIQUETA_CUOTA: Record<EstadoCuota, { texto: string; clases: string
   pagada: { texto: "Pagada", clases: "bg-[#EAF8F0] text-[#1B8B52]" },
   revision: { texto: "En revisión", clases: "bg-[#EAF7FE] text-primary-dark" },
   mora: { texto: "En mora", clases: "bg-[#FFEFEE] text-[#C6473D]" },
+  vencido: {
+    texto: "Vencido",
+    clases: "bg-[#8F1D18] text-white",
+  },
   pronto: { texto: "Se aproxima", clases: "bg-[#FFF5E4] text-[#B0730B]" },
   pendiente: { texto: "Por vencer", clases: "bg-[#F2F7FB] text-[#9DAEBF]" },
 };
 
+/**
+ * Regla de estado:
+ * - Del día 1 al 30: en mora.
+ * - Desde el día 31: vencido.
+ */
+export function resolverEstadoCuota(cuota: Cuota): EstadoCuota {
+  if (
+    (cuota.estado === "mora" || cuota.estado === "vencido") &&
+    (cuota.diasAtraso ?? 0) >= 31
+  ) {
+    return "vencido";
+  }
+
+  return cuota.estado;
+}
+
 export function totalCuota(cuota: Cuota): number {
+  const estado = resolverEstadoCuota(cuota);
+
+  if (estado === "vencido") {
+    return CREDITO.saldoCapitalRestante + (cuota.mora ?? 0);
+  }
+
   return CREDITO.cuota + (cuota.mora ?? 0);
 }

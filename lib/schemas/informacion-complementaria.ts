@@ -1,13 +1,11 @@
 import { z } from "zod";
 
 /**
- * Sección "Información complementaria" (paso 4 del flujo Kivo).
+ * Información adicional de la solicitud.
  *
- * Ingreso mensual y antigüedad laboral ya se capturaron en
- * "Datos financieros" — aquí solo se agrega lo que falta del
- * perfil laboral, vivienda, estado civil y garante.
+ * La situación laboral, el rubro y la dirección del lugar de trabajo
+ * ya se registran en el paso "Datos personales".
  */
-
 export const HOUSING_TYPES = [
   { value: "PROPIA", label: "Propia" },
   { value: "FAMILIAR", label: "Familiar" },
@@ -23,54 +21,34 @@ export const MARITAL_STATUSES = [
   { value: "CONYUGE", label: "Unión libre / Cónyuge" },
 ] as const;
 
-export const CONTRACT_TYPES = [
-  { value: "INDEFINIDO", label: "Indefinido" },
-  { value: "PLAZO_FIJO", label: "Plazo fijo" },
-  { value: "CONSULTORIA", label: "Consultoría" },
-  { value: "OTRO", label: "Otro" },
-] as const;
-
-/** Estados civiles que habilitan los campos del cónyuge. */
+/** Estados civiles que habilitan los datos del cónyuge. */
 export const ESTADOS_CON_CONYUGE = ["CASADO", "CONYUGE"] as const;
 
-/** Tipos de vivienda que habilitan la pregunta de garante. */
+/** Viviendas que habilitan la pregunta sobre garante. */
 export const VIVIENDAS_CON_GARANTE = ["ALQUILER", "ANTICRETICO"] as const;
 
 export const informacionComplementariaSchema = z.object({
-  perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"], {
-    message: "Selecciona tu situación laboral.",
-  }),
-
-  // -- Asalariado --
-  empresa: z.string().optional(),
-  cargo: z.string().optional(),
-  tipoContrato: z
-    .enum(["INDEFINIDO", "PLAZO_FIJO", "CONSULTORIA", "OTRO"])
-    .optional(),
-  aportaAFP: z.enum(["SI", "NO"]).optional(),
-  tieneBoletas: z.enum(["SI", "NO"]).optional(),
-
-  // -- Independiente --
-  actividadEconomica: z.string().optional(),
-  nombreNegocio: z.string().optional(),
-  tieneNit: z.enum(["SI", "NO"]).optional(),
-  tienePatente: z.enum(["SI", "NO"]).optional(),
-
-  // -- Vivienda y datos personales --
   vivienda: z.enum(["PROPIA", "FAMILIAR", "ALQUILER", "ANTICRETICO"], {
     message: "Selecciona tu tipo de vivienda.",
   }),
 
   estadoCivil: z.enum(
     ["SOLTERO", "CASADO", "DIVORCIADO", "VIUDO", "CONYUGE"],
-    { message: "Selecciona tu estado civil." },
+    {
+      message: "Selecciona tu estado civil.",
+    },
   ),
 
   conyugeNombre: z.string().optional(),
+
   conyugeCelular: z.string().optional(),
 
   tieneGarante: z.enum(["SI", "NO"]).optional(),
 
+  /**
+   * Dirección actual de residencia.
+   * La dirección laboral ya está en DatosPersonales.direccionTrabajo.
+   */
   direccion: z
     .string()
     .trim()
@@ -81,11 +59,10 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .min(5, "Cuéntanos para qué usarás el préstamo."),
 
-  /** Ubicación marcada en el mapa (referencial, no bloquea el flujo). */
+  /** Ubicación aproximada de la residencia. */
   ubicacionLat: z.number().optional(),
   ubicacionLng: z.number().optional(),
 
-  // -- Declaración de extractos --
   extractos: z.enum(["SI", "NO"], {
     message: "Indica si dispones de extractos bancarios.",
   }),

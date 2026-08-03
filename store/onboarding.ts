@@ -30,6 +30,24 @@ export interface DatosPersonales {
   fechaNacimiento: string;
   celular: string;
   ciudad: string;
+
+  /** Situación laboral elegida al inicio de la solicitud. */
+  perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
+
+  /** Personas que dependen económicamente del solicitante. */
+  numeroDependientes: number;
+
+  /** Día habitual en el que recibe sus ingresos. */
+  diaPago: number;
+
+  /** Medio preferido para el contacto de Kivo. */
+  canalContacto: "WHATSAPP" | "LLAMADA";
+
+  /** Rubro de la empresa o actividad económica independiente. */
+  rubroLaboral: string;
+
+  /** Dirección de la empresa, negocio o lugar habitual de trabajo. */
+  direccionTrabajo: string;
 }
 
 export interface DatosFinancieros {
@@ -63,19 +81,6 @@ export interface SimulacionConfirmada {
 }
 
 export interface DatosComplementarios {
-  perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
-
-  empresa?: string;
-  cargo?: string;
-  tipoContrato?: "INDEFINIDO" | "PLAZO_FIJO" | "CONSULTORIA" | "OTRO";
-  aportaAFP?: "SI" | "NO";
-  tieneBoletas?: "SI" | "NO";
-
-  actividadEconomica?: string;
-  nombreNegocio?: string;
-  tieneNit?: "SI" | "NO";
-  tienePatente?: "SI" | "NO";
-
   vivienda: "PROPIA" | "FAMILIAR" | "ALQUILER" | "ANTICRETICO";
   estadoCivil: "SOLTERO" | "CASADO" | "DIVORCIADO" | "VIUDO" | "CONYUGE";
 
@@ -84,9 +89,12 @@ export interface DatosComplementarios {
 
   tieneGarante?: "SI" | "NO";
 
+  /** Dirección actual de residencia. */
   direccion: string;
+
   destinoPrestamo: string;
-  /** Ubicación marcada en el mapa (referencial). */
+
+  /** Ubicación aproximada de la residencia. */
   ubicacionLat?: number;
   ubicacionLng?: number;
 

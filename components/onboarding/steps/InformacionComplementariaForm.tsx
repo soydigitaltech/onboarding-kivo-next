@@ -5,20 +5,11 @@ import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MapPin, ReceiptText } from "lucide-react";
 
 import type { Coordenadas } from "./MapaUbicacion";
 
-// Leaflet toca `window` al inicializar: debe cargar solo en cliente.
-const MapaUbicacion = dynamic(() => import("./MapaUbicacion"), {
-  ssr: false,
-  loading: () => (
-    <div className="mt-2 h-[200px] w-full animate-pulse rounded-xl bg-surface" />
-  ),
-});
-
 import {
-  CONTRACT_TYPES,
   ESTADOS_CON_CONYUGE,
   HOUSING_TYPES,
   MARITAL_STATUSES,
@@ -38,23 +29,20 @@ import {
   selectClassName,
 } from "@/components/ui/fields";
 
-const REVEAL: Transition = { duration: 0.3, ease: [0.25, 0.8, 0.25, 1] };
+// Leaflet utiliza window al inicializarse, por eso se carga solo en cliente.
+const MapaUbicacion = dynamic(() => import("./MapaUbicacion"), {
+  ssr: false,
+  loading: () => (
+    <div className="mt-2 h-[200px] w-full animate-pulse rounded-xl bg-surface" />
+  ),
+});
 
-/**
- * Pasos del bloqueo secuencial. Los grupos condicionales (asalariado,
- * independiente, cónyuge, garante) se agregan dinámicamente según lo
- * que el usuario elige en pasos anteriores.
- */
+const REVEAL: Transition = {
+  duration: 0.3,
+  ease: [0.25, 0.8, 0.25, 1],
+};
+
 type Paso =
-  | "perfilLaboral"
-  | "empresa"
-  | "cargo"
-  | "tipoContrato"
-  | "aportaAFP"
-  | "tieneBoletas"
-  | "actividadEconomica"
-  | "tieneNit"
-  | "tienePatente"
   | "vivienda"
   | "estadoCivil"
   | "conyugeNombre"
@@ -67,21 +55,7 @@ type Paso =
 function calcularPasosVisibles(
   values: Partial<InformacionComplementariaValues>,
 ): Paso[] {
-  const pasos: Paso[] = ["perfilLaboral"];
-
-  if (values.perfilLaboral === "ASALARIADO") {
-    pasos.push(
-      "empresa",
-      "cargo",
-      "tipoContrato",
-      "aportaAFP",
-      "tieneBoletas",
-    );
-  } else if (values.perfilLaboral === "INDEPENDIENTE") {
-    pasos.push("actividadEconomica", "tieneNit", "tienePatente");
-  }
-
-  pasos.push("vivienda", "estadoCivil");
+  const pasos: Paso[] = ["vivienda", "estadoCivil"];
 
   if (
     values.estadoCivil &&
@@ -107,53 +81,52 @@ function pasoCompleto(
   values: Partial<InformacionComplementariaValues>,
 ): boolean {
   switch (paso) {
-    case "perfilLaboral":
-      return values.perfilLaboral !== undefined;
-    case "empresa":
-      return (values.empresa ?? "").trim() !== "";
-    case "cargo":
-      return (values.cargo ?? "").trim() !== "";
-    case "tipoContrato":
-      return values.tipoContrato !== undefined;
-    case "aportaAFP":
-      return values.aportaAFP !== undefined;
-    case "tieneBoletas":
-      return values.tieneBoletas !== undefined;
-    case "actividadEconomica":
-      return (values.actividadEconomica ?? "").trim() !== "";
-    case "tieneNit":
-      return values.tieneNit !== undefined;
-    case "tienePatente":
-      return values.tienePatente !== undefined;
     case "vivienda":
       return values.vivienda !== undefined;
+
     case "estadoCivil":
       return values.estadoCivil !== undefined;
+
     case "conyugeNombre":
-      return (values.conyugeNombre ?? "").trim() !== "";
+      return (values.conyugeNombre ?? "").trim().length >= 5;
+
     case "conyugeCelular":
       return /^[67]\d{7}$/.test((values.conyugeCelular ?? "").trim());
+
     case "tieneGarante":
       return values.tieneGarante !== undefined;
+
     case "direccion":
       return (values.direccion ?? "").trim().length >= 5;
+
     case "destinoPrestamo":
       return (values.destinoPrestamo ?? "").trim().length >= 5;
+
     case "extractos":
       return values.extractos !== undefined;
   }
 }
 
 export function InformacionComplementariaForm() {
-  const guardados = useOnboardingStore((s) => s.datosComplementarios);
-  const setDatosComplementarios = useOnboardingStore(
-    (s) => s.setDatosComplementarios,
-  );
-  const completeAndAdvance = useOnboardingStore((s) => s.completeAndAdvance);
+  const guardados = useOnboardingStore((state) => {
+    return state.datosComplementarios;
+  });
+
+  const setDatosComplementarios = useOnboardingStore((state) => {
+    return state.setDatosComplementarios;
+  });
+
+  const completeAndAdvance = useOnboardingStore((state) => {
+    return state.completeAndAdvance;
+  });
 
   const [ubicacion, setUbicacion] = useState<Coordenadas | null>(
-    guardados?.ubicacionLat !== undefined && guardados?.ubicacionLng !== undefined
-      ? { lat: guardados.ubicacionLat, lng: guardados.ubicacionLng }
+    guardados?.ubicacionLat !== undefined &&
+      guardados?.ubicacionLng !== undefined
+      ? {
+          lat: guardados.ubicacionLat,
+          lng: guardados.ubicacionLng,
+        }
       : null,
   );
 
@@ -171,29 +144,37 @@ export function InformacionComplementariaForm() {
   const values = watch();
 
   const pasosVisibles = calcularPasosVisibles(values);
-  const primerIncompleto = pasosVisibles.findIndex(
-    (paso) => !pasoCompleto(paso, values),
-  );
+
+  const primerIncompleto = pasosVisibles.findIndex((paso) => {
+    return !pasoCompleto(paso, values);
+  });
+
   const limite =
     primerIncompleto === -1 ? pasosVisibles.length : primerIncompleto;
 
-  const estaVisible = (paso: Paso) => pasosVisibles.includes(paso);
-  const bloqueado = (paso: Paso) => {
-    const indice = pasosVisibles.indexOf(paso);
-    return indice === -1 ? true : indice > limite;
+  const estaVisible = (paso: Paso): boolean => {
+    return pasosVisibles.includes(paso);
   };
 
-  const lockCls = (paso: Paso) =>
-    bloqueado(paso)
+  const bloqueado = (paso: Paso): boolean => {
+    const indice = pasosVisibles.indexOf(paso);
+
+    if (indice === -1) return true;
+
+    return indice > limite;
+  };
+
+  const lockCls = (paso: Paso): string => {
+    return bloqueado(paso)
       ? "pointer-events-none select-none opacity-45 transition-opacity duration-300"
       : "transition-opacity duration-300";
+  };
 
-  const lockTab = (paso: Paso) => (bloqueado(paso) ? -1 : undefined);
+  const lockTab = (paso: Paso): number | undefined => {
+    return bloqueado(paso) ? -1 : undefined;
+  };
 
   const todoCompleto = primerIncompleto === -1;
-
-  const esAsalariado = values.perfilLaboral === "ASALARIADO";
-  const esIndependiente = values.perfilLaboral === "INDEPENDIENTE";
   const requiereConyuge = estaVisible("conyugeNombre");
   const requiereGarante = estaVisible("tieneGarante");
   const sinExtractos = values.extractos === "NO";
@@ -204,264 +185,19 @@ export function InformacionComplementariaForm() {
       ubicacionLat: ubicacion?.lat,
       ubicacionLng: ubicacion?.lng,
     });
+
     completeAndAdvance("informacion-complementaria");
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Responde según tu situación actual. En este paso no necesitas cargar
-        documentos.
+        Para completar tu evaluación necesitamos conocer algunos datos sobre
+        tu vivienda, tu dirección actual y el destino del préstamo.
       </p>
 
-      {/* Perfil laboral */}
-      <fieldset className={lockCls("perfilLaboral")}>
-        <legend className="text-sm font-bold text-ink">
-          ¿Cuál es tu situación laboral?
-        </legend>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <RadioPill
-            label="Asalariado"
-            inputProps={{
-              value: "ASALARIADO",
-              tabIndex: lockTab("perfilLaboral"),
-              ...register("perfilLaboral"),
-            }}
-          />
-          <RadioPill
-            label="Independiente"
-            inputProps={{
-              value: "INDEPENDIENTE",
-              tabIndex: lockTab("perfilLaboral"),
-              ...register("perfilLaboral"),
-            }}
-          />
-        </div>
-
-        {errors.perfilLaboral ? (
-          <p className="mt-2 text-xs font-semibold text-error" role="alert">
-            {errors.perfilLaboral.message}
-          </p>
-        ) : null}
-      </fieldset>
-
-      {/* Asalariado */}
-      <AnimatePresence initial={false}>
-        {esAsalariado ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={REVEAL}
-            className="overflow-hidden"
-          >
-            <div className="mt-6 grid gap-5 border-t border-border-soft pt-6 sm:grid-cols-2">
-              <div className={lockCls("empresa")}>
-                <Field
-                  label="Empresa o institución"
-                  htmlFor="empresa"
-                  error={errors.empresa?.message}
-                >
-                  <input
-                    id="empresa"
-                    type="text"
-                    placeholder="Ej. Empresa Andina"
-                    className={inputClassName}
-                    tabIndex={lockTab("empresa")}
-                    {...register("empresa")}
-                  />
-                </Field>
-              </div>
-
-              <div className={lockCls("cargo")}>
-                <Field
-                  label="Cargo"
-                  htmlFor="cargo"
-                  error={errors.cargo?.message}
-                >
-                  <input
-                    id="cargo"
-                    type="text"
-                    placeholder="Ej. Analista administrativo"
-                    className={inputClassName}
-                    tabIndex={lockTab("cargo")}
-                    {...register("cargo")}
-                  />
-                </Field>
-              </div>
-
-              <div className={lockCls("tipoContrato")}>
-                <Field
-                  label="Tipo de contrato"
-                  htmlFor="tipoContrato"
-                  error={errors.tipoContrato?.message}
-                >
-                  <div className="relative">
-                    <select
-                      id="tipoContrato"
-                      className={selectClassName}
-                      tabIndex={lockTab("tipoContrato")}
-                      {...register("tipoContrato")}
-                    >
-                      <option value="">Selecciona una opción</option>
-                      {CONTRACT_TYPES.map((tipo) => (
-                        <option key={tipo.value} value={tipo.value}>
-                          {tipo.label}
-                        </option>
-                      ))}
-                    </select>
-                    <SelectChevron />
-                  </div>
-                </Field>
-              </div>
-
-              <div className={`sm:col-span-2 ${lockCls("aportaAFP")}`}>
-                <p className="text-sm font-bold text-ink">
-                  ¿Realizas aportes a la Gestora (AFP)?
-                </p>
-                <div className="mt-2 grid max-w-xs grid-cols-2 gap-3">
-                  <RadioPill
-                    label="Sí"
-                    inputProps={{
-                      value: "SI",
-                      tabIndex: lockTab("aportaAFP"),
-                      ...register("aportaAFP"),
-                    }}
-                  />
-                  <RadioPill
-                    label="No"
-                    inputProps={{
-                      value: "NO",
-                      tabIndex: lockTab("aportaAFP"),
-                      ...register("aportaAFP"),
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className={`sm:col-span-2 ${lockCls("tieneBoletas")}`}>
-                <p className="text-sm font-bold text-ink">
-                  ¿Cuentas con boletas de pago de los últimos 3 meses?
-                </p>
-                <div className="mt-2 grid max-w-xs grid-cols-2 gap-3">
-                  <RadioPill
-                    label="Sí"
-                    inputProps={{
-                      value: "SI",
-                      tabIndex: lockTab("tieneBoletas"),
-                      ...register("tieneBoletas"),
-                    }}
-                  />
-                  <RadioPill
-                    label="No"
-                    inputProps={{
-                      value: "NO",
-                      tabIndex: lockTab("tieneBoletas"),
-                      ...register("tieneBoletas"),
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-
-        {/* Independiente */}
-        {esIndependiente ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={REVEAL}
-            className="overflow-hidden"
-          >
-            <div className="mt-6 grid gap-5 border-t border-border-soft pt-6 sm:grid-cols-2">
-              <div className={`sm:col-span-2 ${lockCls("actividadEconomica")}`}>
-                <Field
-                  label="Actividad económica"
-                  htmlFor="actividadEconomica"
-                  error={errors.actividadEconomica?.message}
-                >
-                  <input
-                    id="actividadEconomica"
-                    type="text"
-                    placeholder="Ej. Comercio de alimentos"
-                    className={inputClassName}
-                    tabIndex={lockTab("actividadEconomica")}
-                    {...register("actividadEconomica")}
-                  />
-                </Field>
-              </div>
-
-              <div className={`sm:col-span-2 ${lockCls("actividadEconomica")}`}>
-                <Field
-                  label="Nombre del negocio (opcional)"
-                  htmlFor="nombreNegocio"
-                >
-                  <input
-                    id="nombreNegocio"
-                    type="text"
-                    placeholder="Ej. Comercial San José"
-                    className={inputClassName}
-                    tabIndex={lockTab("actividadEconomica")}
-                    {...register("nombreNegocio")}
-                  />
-                </Field>
-              </div>
-
-              <div className={lockCls("tieneNit")}>
-                <p className="text-sm font-bold text-ink">¿Tienes NIT?</p>
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <RadioPill
-                    label="Sí"
-                    inputProps={{
-                      value: "SI",
-                      tabIndex: lockTab("tieneNit"),
-                      ...register("tieneNit"),
-                    }}
-                  />
-                  <RadioPill
-                    label="No"
-                    inputProps={{
-                      value: "NO",
-                      tabIndex: lockTab("tieneNit"),
-                      ...register("tieneNit"),
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className={lockCls("tienePatente")}>
-                <p className="text-sm font-bold text-ink">
-                  ¿Tienes Patente o Licencia de Funcionamiento?
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <RadioPill
-                    label="Sí"
-                    inputProps={{
-                      value: "SI",
-                      tabIndex: lockTab("tienePatente"),
-                      ...register("tienePatente"),
-                    }}
-                  />
-                  <RadioPill
-                    label="No"
-                    inputProps={{
-                      value: "NO",
-                      tabIndex: lockTab("tienePatente"),
-                      ...register("tienePatente"),
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
       {/* Vivienda y estado civil */}
-      <div className="mt-6 grid gap-5 border-t border-border-soft pt-6 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <div className={lockCls("vivienda")}>
           <Field
             label="Tipo de vivienda"
@@ -476,12 +212,14 @@ export function InformacionComplementariaForm() {
                 {...register("vivienda")}
               >
                 <option value="">Selecciona una opción</option>
+
                 {HOUSING_TYPES.map((tipo) => (
                   <option key={tipo.value} value={tipo.value}>
                     {tipo.label}
                   </option>
                 ))}
               </select>
+
               <SelectChevron />
             </div>
           </Field>
@@ -501,19 +239,21 @@ export function InformacionComplementariaForm() {
                 {...register("estadoCivil")}
               >
                 <option value="">Selecciona una opción</option>
+
                 {MARITAL_STATUSES.map((estado) => (
                   <option key={estado.value} value={estado.value}>
                     {estado.label}
                   </option>
                 ))}
               </select>
+
               <SelectChevron />
             </div>
           </Field>
         </div>
       </div>
 
-      {/* Cónyuge */}
+      {/* Datos del cónyuge */}
       <AnimatePresence initial={false}>
         {requiereConyuge ? (
           <motion.div
@@ -523,7 +263,7 @@ export function InformacionComplementariaForm() {
             transition={REVEAL}
             className="overflow-hidden"
           >
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div className="mt-6 grid gap-5 border-t border-border-soft pt-6 sm:grid-cols-2">
               <div className={lockCls("conyugeNombre")}>
                 <Field
                   label="Nombre completo del cónyuge"
@@ -533,6 +273,7 @@ export function InformacionComplementariaForm() {
                   <input
                     id="conyugeNombre"
                     type="text"
+                    autoComplete="name"
                     placeholder="Ej. María Fernanda López"
                     className={inputClassName}
                     tabIndex={lockTab("conyugeNombre")}
@@ -577,18 +318,20 @@ export function InformacionComplementariaForm() {
             className="overflow-hidden"
           >
             <div
-              className={`mt-5 rounded-xl border border-border-soft bg-surface p-4 ${lockCls(
+              className={`mt-6 rounded-2xl border border-border-soft bg-surface p-4 sm:p-5 ${lockCls(
                 "tieneGarante",
               )}`}
             >
               <p className="text-sm font-bold text-ink">
                 ¿Cuentas con un garante que tenga vivienda propia?
               </p>
+
               <p className="mt-1 text-xs leading-5 text-muted">
-                Esta condición aplica porque declaraste vivienda en alquiler
+                Esta condición aplica porque declaraste que vives en alquiler
                 o anticrético.
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-3">
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <RadioPill
                   label="Sí, cuento con garante"
                   inputProps={{
@@ -597,6 +340,7 @@ export function InformacionComplementariaForm() {
                     ...register("tieneGarante"),
                   }}
                 />
+
                 <RadioPill
                   label="No cuento con garante"
                   inputProps={{
@@ -611,58 +355,78 @@ export function InformacionComplementariaForm() {
         ) : null}
       </AnimatePresence>
 
-      {/* Dirección y destino */}
-      <div className="mt-6 grid gap-5 border-t border-border-soft pt-6">
+      {/* Dirección actual */}
+      <div className="mt-6 border-t border-border-soft pt-6">
         <div className={lockCls("direccion")}>
           <Field
-            label="Dirección actual"
+            label="Dirección actual de residencia"
             htmlFor="direccion"
             error={errors.direccion?.message}
           >
-            <input
-              id="direccion"
-              type="text"
-              placeholder="Ej. Zona Sopocachi, calle..."
-              className={inputClassName}
-              tabIndex={lockTab("direccion")}
-              {...register("direccion")}
-            />
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+
+              <input
+                id="direccion"
+                type="text"
+                autoComplete="street-address"
+                placeholder="Ej. Zona Sopocachi, calle..."
+                className={`${inputClassName} pl-11`}
+                tabIndex={lockTab("direccion")}
+                {...register("direccion")}
+              />
+            </div>
           </Field>
 
-          <MapaUbicacion value={ubicacion} onChange={setUbicacion} />
-          <p className="mt-1.5 text-xs text-muted">
-            Marca tu ubicación aproximada en el mapa (referencial).
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border-soft">
+            <MapaUbicacion value={ubicacion} onChange={setUbicacion} />
+          </div>
+
+          <p className="mt-2 text-xs leading-5 text-muted">
+            Marca en el mapa la ubicación aproximada de tu vivienda.
           </p>
         </div>
+      </div>
 
-        <div className={lockCls("destinoPrestamo")}>
-          <Field
-            label="Destino del préstamo"
-            htmlFor="destinoPrestamo"
-            error={errors.destinoPrestamo?.message}
-          >
+      {/* Destino del préstamo */}
+      <div
+        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+          "destinoPrestamo",
+        )}`}
+      >
+        <Field
+          label="Destino del préstamo"
+          htmlFor="destinoPrestamo"
+          error={errors.destinoPrestamo?.message}
+        >
+          <div className="relative">
+            <ReceiptText className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+
             <input
               id="destinoPrestamo"
               type="text"
-              placeholder="Ej. Compra de un vehículo para mi negocio"
-              className={inputClassName}
+              placeholder="Ej. Compra de mercadería para mi negocio"
+              className={`${inputClassName} pl-11`}
               tabIndex={lockTab("destinoPrestamo")}
               {...register("destinoPrestamo")}
             />
-          </Field>
-        </div>
+          </div>
+        </Field>
       </div>
 
       {/* Extractos bancarios */}
       <fieldset
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls("extractos")}`}
+        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+          "extractos",
+        )}`}
       >
         <legend className="text-sm font-bold text-ink">
           ¿Dispones de extractos bancarios?
         </legend>
+
         <p className="mt-1 text-xs leading-5 text-muted">
-          No necesitas cargarlos ahora. Podrán solicitarse más adelante,
-          después de la preaprobación.
+          Por ahora solo necesitamos que nos confirmes si cuentas con ellos.
+          No debes subirlos en este paso.
         </p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -674,6 +438,7 @@ export function InformacionComplementariaForm() {
               ...register("extractos"),
             }}
           />
+
           <RadioPill
             label="No dispongo de extractos"
             inputProps={{
@@ -683,6 +448,12 @@ export function InformacionComplementariaForm() {
             }}
           />
         </div>
+
+        {errors.extractos ? (
+          <p className="mt-2 text-xs font-semibold text-error" role="alert">
+            {errors.extractos.message}
+          </p>
+        ) : null}
 
         <AnimatePresence>
           {sinExtractos ? (
@@ -695,10 +466,9 @@ export function InformacionComplementariaForm() {
             >
               <div className="pt-4">
                 <BusinessNotice>
-                  No hay problema, puedes continuar sin ellos. Aun así, si
-                  logras conseguirlos más adelante, pueden ayudarte a
-                  agilizar tu evaluación y a que te ofrezcamos mejores
-                  condiciones.
+                  Registramos que actualmente no dispones de extractos
+                  bancarios. Más adelante revisaremos esta condición dentro
+                  de los requisitos de evaluación.
                 </BusinessNotice>
               </div>
             </motion.div>
@@ -710,7 +480,7 @@ export function InformacionComplementariaForm() {
         <button
           type="submit"
           disabled={!todoCompleto}
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           Evaluar y continuar
           <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />

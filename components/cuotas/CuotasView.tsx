@@ -29,6 +29,7 @@ import {
   ETIQUETA_CUOTA,
   WHATSAPP_KIVO,
   bs,
+  resolverEstadoCuota,
   totalCuota,
   type Cuota,
 } from "@/lib/kivo/datos";
@@ -112,19 +113,33 @@ export default function CuotasView() {
     return () => clearTimeout(t);
   }, [aviso]);
 
-  const pagadas = cuotas.filter((c) => c.estado === "pagada").length;
-  const enMora = cuotas.filter((c) => c.estado === "mora").length;
-  const enRevision = cuotas.filter((c) => c.estado === "revision").length;
+  const pagadas = cuotas.filter(
+    (c) => resolverEstadoCuota(c) === "pagada",
+  ).length;
+  const vencidas = cuotas.filter(
+    (c) => resolverEstadoCuota(c) === "vencido",
+  ).length;
+  const enMora = cuotas.filter(
+    (c) => resolverEstadoCuota(c) === "mora",
+  ).length;
+  const enRevision = cuotas.filter(
+    (c) => resolverEstadoCuota(c) === "revision",
+  ).length;
 
   const foco =
-    cuotas.find((c) => c.estado === "mora") ??
-    cuotas.find((c) => c.estado === "revision") ??
-    cuotas.find((c) => c.estado === "pronto") ??
-    cuotas.find((c) => c.estado === "pendiente");
+    cuotas.find((c) => resolverEstadoCuota(c) === "vencido") ??
+    cuotas.find((c) => resolverEstadoCuota(c) === "mora") ??
+    cuotas.find((c) => resolverEstadoCuota(c) === "revision") ??
+    cuotas.find((c) => resolverEstadoCuota(c) === "pronto") ??
+    cuotas.find((c) => resolverEstadoCuota(c) === "pendiente");
 
-  const lista = cuotas.filter((c) =>
-    filtro === "todas" ? true : filtro === "pagadas" ? c.estado === "pagada" : c.estado !== "pagada",
-  );
+  const lista = cuotas.filter((c) => {
+    const estado = resolverEstadoCuota(c);
+
+    if (filtro === "todas") return true;
+    if (filtro === "pagadas") return estado === "pagada";
+    return estado !== "pagada";
+  });
 
   function abrirPago(cuota: Cuota) {
     setEnPago(cuota);
@@ -188,6 +203,24 @@ export default function CuotasView() {
         chips: { icono: LucideIcon; texto: string }[];
       }
     > = {
+      vencido: {
+        marco: "bg-[#FFF0EF] border-[#E55249]",
+        color: "text-[#A42620]",
+        icono: AlertTriangle,
+        antetitulo: `Préstamo vencido · ${foco.diasAtraso} días`,
+        texto:
+          "Tu préstamo superó los 30 días de incumplimiento. Desde el día 31, el capital restante pasa a estado vencido. Comunícate con Kivo para regularizarlo.",
+        chips: [
+          {
+            icono: CalendarX,
+            texto: `${foco.diasAtraso} días de incumplimiento`,
+          },
+          {
+            icono: TrendingUp,
+            texto: `Capital vencido: ${bs(CREDITO.saldoCapitalRestante)}`,
+          },
+        ],
+      },
       mora: {
         marco: "bg-[#FFEFEE] border-[#FBD5D1]",
         color: "text-[#F0736A]",
@@ -240,7 +273,8 @@ export default function CuotasView() {
       },
     };
 
-    return { foco, ...config[foco.estado] };
+    const estado = resolverEstadoCuota(foco);
+    return { foco, estado, ...config[estado] };
   })();
 
   return (
@@ -280,7 +314,7 @@ export default function CuotasView() {
             </div>
 
             <div className="flex min-w-[180px] flex-col gap-2">
-              {destacada.foco.estado === "revision" ? (
+              {destacada.estado === "revision" ? (
                 <button
                   onClick={() => confirmarPago(destacada.foco.numero)}
                   className="rounded-[13px] border-[1.5px] border-[#DCE7F0] bg-white px-5 py-3 text-sm font-extrabold text-[#43596F] transition hover:border-primary hover:text-primary-dark"
@@ -292,11 +326,16 @@ export default function CuotasView() {
                   onClick={() => abrirPago(destacada.foco)}
                   className="rounded-[13px] bg-accent px-5 py-3 text-sm font-extrabold text-white shadow-[0_12px_24px_-14px_rgba(254,152,6,1)] transition hover:brightness-105 active:translate-y-px"
                 >
-                  {destacada.foco.estado === "pendiente" ? "Adelantar cuota" : "Pagar ahora"}
+                  {destacada.estado === "pendiente"
+                    ? "Adelantar cuota"
+                    : destacada.estado === "vencido"
+                      ? "Regularizar préstamo"
+                      : "Pagar ahora"}
                 </button>
               )}
 
-              {destacada.foco.estado === "mora" && (
+              {(destacada.estado === "mora" ||
+                destacada.estado === "vencido") && (
                 <a
                   href={WHATSAPP_KIVO}
                   target="_blank"
@@ -321,13 +360,28 @@ export default function CuotasView() {
 
           <div className="flex h-[11px] overflow-hidden rounded-full bg-[#F2F7FB]">
             <span className="h-full bg-primary" style={{ width: `${(pagadas / CREDITO.totalCuotas) * 100}%` }} />
-            <span className="h-full bg-[#F0736A]" style={{ width: `${(enMora / CREDITO.totalCuotas) * 100}%` }} />
+            <span
+              className="h-full bg-[#8F1D18]"
+              style={{
+                width: `${(vencidas / CREDITO.totalCuotas) * 100}%`,
+              }}
+            />
+            <span
+              className="h-full bg-[#F0736A]"
+              style={{
+                width: `${(enMora / CREDITO.totalCuotas) * 100}%`,
+              }}
+            />
           </div>
 
           <div className="mt-2.5 flex flex-wrap gap-3.5 text-xs font-bold text-[#6A7F94]">
             <span className="inline-flex items-center gap-1.5">
               <i className="h-2.5 w-2.5 rounded-full bg-primary" />
               Pagado
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-2.5 w-2.5 rounded-full bg-[#8F1D18]" />
+              Vencido
             </span>
             <span className="inline-flex items-center gap-1.5">
               <i className="h-2.5 w-2.5 rounded-full bg-[#F0736A]" />
@@ -364,7 +418,13 @@ export default function CuotasView() {
             </p>
           </div>
           <span className="ml-auto text-[12.5px] font-extrabold text-primary-dark">
-            {enMora ? `${enMora} cuota en mora` : enRevision ? `${enRevision} en revisión` : "Estás al día"}
+            {vencidas
+              ? `${vencidas} préstamo vencido`
+              : enMora
+                ? `${enMora} cuota en mora`
+                : enRevision
+                  ? `${enRevision} en revisión`
+                  : "Estás al día"}
           </span>
         </div>
 
@@ -391,16 +451,19 @@ export default function CuotasView() {
 
         <ul className="px-3.5 pb-3.5">
           {lista.map((cuota, i) => {
-            const etiqueta = ETIQUETA_CUOTA[cuota.estado];
+            const estado = resolverEstadoCuota(cuota);
+            const etiqueta = ETIQUETA_CUOTA[estado];
 
             const detalle =
-              cuota.estado === "pagada"
+              estado === "pagada"
                 ? `Pagada el ${cuota.pagadaEl} · ${cuota.metodo}`
-                : cuota.estado === "mora"
-                  ? `No pagada desde el ${cuota.vence} · ${cuota.diasAtraso} días en mora`
-                  : cuota.estado === "pronto"
+                : estado === "vencido"
+                  ? `Capital vencido desde el día 31 · ${cuota.diasAtraso} días de incumplimiento`
+                  : estado === "mora"
+                    ? `No pagada desde el ${cuota.vence} · ${cuota.diasAtraso} días en mora`
+                  : estado === "pronto"
                     ? `Vence el ${cuota.vence} · en ${cuota.diasRestantes} días`
-                    : cuota.estado === "revision"
+                    : estado === "revision"
                       ? "Aviso enviado · Kivo Office confirma en 2 h"
                       : `Vence el ${cuota.vence}`;
 
@@ -432,7 +495,7 @@ export default function CuotasView() {
                 <div className="col-start-2 sm:col-start-auto sm:text-right">
                   <b
                     className={`block text-[15px] tracking-tight ${
-                      cuota.estado === "pagada" ? "font-bold text-[#6A7F94]" : "font-extrabold"
+                      estado === "pagada" ? "font-bold text-[#6A7F94]" : "font-extrabold"
                     }`}
                   >
                     {bs(totalCuota(cuota))}
@@ -445,21 +508,23 @@ export default function CuotasView() {
                 </div>
 
                 <div className="col-span-2 flex justify-end sm:col-span-1 sm:min-w-[130px]">
-                  {cuota.estado === "mora" || cuota.estado === "pronto" ? (
+                  {estado === "mora" ||
+                  estado === "vencido" ||
+                  estado === "pronto" ? (
                     <button
                       onClick={() => abrirPago(cuota)}
                       className="w-full rounded-[11px] bg-accent px-4 py-2 text-[13px] font-extrabold text-white transition hover:brightness-105 sm:w-auto"
                     >
                       Pagar
                     </button>
-                  ) : cuota.estado === "pendiente" ? (
+                  ) : estado === "pendiente" ? (
                     <button
                       onClick={() => abrirPago(cuota)}
                       className="w-full rounded-[11px] border-[1.5px] border-[#DCE7F0] px-4 py-2 text-[13px] font-extrabold text-[#43596F] transition hover:border-primary hover:text-primary-dark sm:w-auto"
                     >
                       Adelantar
                     </button>
-                  ) : cuota.estado === "revision" ? (
+                  ) : estado === "revision" ? (
                     <button
                       onClick={() => confirmarPago(cuota.numero)}
                       className="w-full rounded-[11px] border-[1.5px] border-[#DCE7F0] px-4 py-2 text-[13px] font-extrabold text-[#43596F] transition hover:border-primary hover:text-primary-dark sm:w-auto"

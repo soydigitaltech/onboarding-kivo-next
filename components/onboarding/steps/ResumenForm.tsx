@@ -7,7 +7,11 @@ import { Pencil, ShieldCheck } from "lucide-react";
 import { useOnboardingStore } from "@/store/onboarding";
 import { calcularCapacidadPago } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
-import { CIUDADES } from "@/lib/schemas/datos-personales";
+import {
+  CANALES_CONTACTO,
+  CIUDADES,
+  calcularEdad,
+} from "@/lib/schemas/datos-personales";
 import {
   HOUSING_TYPES,
   MARITAL_STATUSES,
@@ -17,6 +21,7 @@ import {
 function generarNumeroSolicitud(): string {
   const anio = new Date().getFullYear();
   const digitos = Math.floor(100000 + Math.random() * 900000);
+
   return `KV-${anio}-${digitos}`;
 }
 
@@ -24,7 +29,7 @@ function buscarLabel(
   opciones: readonly { value: string; label: string }[],
   value: string | undefined,
 ): string {
-  return opciones.find((o) => o.value === value)?.label ?? value ?? "—";
+  return opciones.find((opcion) => opcion.value === value)?.label ?? value ?? "—";
 }
 
 function SummarySection({
@@ -42,6 +47,7 @@ function SummarySection({
         <p className="text-xs font-bold uppercase tracking-wide text-primary">
           {titulo}
         </p>
+
         <button
           type="button"
           onClick={onEdit}
@@ -51,6 +57,7 @@ function SummarySection({
           Editar
         </button>
       </div>
+
       <dl className="mt-3 grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
         {children}
       </dl>
@@ -58,28 +65,56 @@ function SummarySection({
   );
 }
 
-function Dato({ label, valor }: { label: string; valor: ReactNode }) {
+function Dato({
+  label,
+  valor,
+}: {
+  label: string;
+  valor: ReactNode;
+}) {
   return (
     <div>
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">
         {label}
       </dt>
+
       <dd className="mt-0.5 text-sm font-bold text-ink-soft">{valor}</dd>
     </div>
   );
 }
 
 export function ResumenForm() {
-  const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
-  const datosFinancieros = useOnboardingStore((s) => s.datosFinancieros);
-  const simulacion = useOnboardingStore((s) => s.simulacion);
-  const datosComplementarios = useOnboardingStore(
-    (s) => s.datosComplementarios,
-  );
-  const datosDocumentos = useOnboardingStore((s) => s.datosDocumentos);
-  const setSolicitudEnviada = useOnboardingStore((s) => s.setSolicitudEnviada);
-  const completeAndAdvance = useOnboardingStore((s) => s.completeAndAdvance);
-  const editStep = useOnboardingStore((s) => s.editStep);
+  const datosPersonales = useOnboardingStore((state) => {
+    return state.datosPersonales;
+  });
+
+  const datosFinancieros = useOnboardingStore((state) => {
+    return state.datosFinancieros;
+  });
+
+  const simulacion = useOnboardingStore((state) => {
+    return state.simulacion;
+  });
+
+  const datosComplementarios = useOnboardingStore((state) => {
+    return state.datosComplementarios;
+  });
+
+  const datosDocumentos = useOnboardingStore((state) => {
+    return state.datosDocumentos;
+  });
+
+  const setSolicitudEnviada = useOnboardingStore((state) => {
+    return state.setSolicitudEnviada;
+  });
+
+  const completeAndAdvance = useOnboardingStore((state) => {
+    return state.completeAndAdvance;
+  });
+
+  const editStep = useOnboardingStore((state) => {
+    return state.editStep;
+  });
 
   const [confirmo, setConfirmo] = useState(false);
 
@@ -103,17 +138,46 @@ export function ResumenForm() {
   });
 
   const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
-  const vivienda = buscarLabel(HOUSING_TYPES, datosComplementarios.vivienda);
+
+  const canalContacto = buscarLabel(
+    CANALES_CONTACTO,
+    datosPersonales.canalContacto,
+  );
+
+  const vivienda = buscarLabel(
+    HOUSING_TYPES,
+    datosComplementarios.vivienda,
+  );
+
   const estadoCivil = buscarLabel(
     MARITAL_STATUSES,
     datosComplementarios.estadoCivil,
   );
 
+  const edad = calcularEdad(datosPersonales.fechaNacimiento);
+
+  const perfilLaboral =
+    datosPersonales.perfilLaboral === "ASALARIADO"
+      ? "Asalariado"
+      : "Independiente";
+
   const documentosLista = [
-    { label: "Autorización BIC", meta: datosDocumentos.autorizacionBic },
-    { label: "Carnet (anverso)", meta: datosDocumentos.ciAnverso },
-    { label: "Carnet (reverso)", meta: datosDocumentos.ciReverso },
-    { label: "Selfie", meta: datosDocumentos.selfie },
+    {
+      label: "Autorización BIC",
+      meta: datosDocumentos.autorizacionBic,
+    },
+    {
+      label: "Carnet (anverso)",
+      meta: datosDocumentos.ciAnverso,
+    },
+    {
+      label: "Carnet (reverso)",
+      meta: datosDocumentos.ciReverso,
+    },
+    {
+      label: "Selfie",
+      meta: datosDocumentos.selfie,
+    },
   ];
 
   const onEnviar = () => {
@@ -126,7 +190,6 @@ export function ResumenForm() {
 
     completeAndAdvance("resumen");
 
-    // Celebración con los colores de marca Kivo.
     confetti({
       particleCount: 120,
       spread: 75,
@@ -138,22 +201,61 @@ export function ResumenForm() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Revisa que todo esté correcto antes de enviar. Puedes editar
-        cualquier sección si algo no coincide.
+        Revisa que toda la información esté correcta antes de enviar. Puedes
+        editar cualquier sección si algún dato no coincide.
       </p>
 
       <div className="flex flex-col gap-4">
         <SummarySection
-          titulo="Datos personales"
+          titulo="Datos personales y laborales"
           onEdit={() => editStep("datos-personales")}
         >
           <Dato
             label="Nombre completo"
             valor={datosPersonales.nombreCompleto}
           />
+
           <Dato label="Carnet" valor={datosPersonales.ci} />
-          <Dato label="Celular" valor={`+591 ${datosPersonales.celular}`} />
+
+          <Dato label="Edad" valor={`${edad} años`} />
+
+          <Dato
+            label="Celular"
+            valor={`+591 ${datosPersonales.celular}`}
+          />
+
           <Dato label="Ciudad" valor={ciudad} />
+
+          <Dato label="Situación laboral" valor={perfilLaboral} />
+
+          <Dato
+            label={
+              datosPersonales.perfilLaboral === "ASALARIADO"
+                ? "Rubro de la empresa"
+                : "Actividad económica o rubro"
+            }
+            valor={datosPersonales.rubroLaboral}
+          />
+
+          <Dato
+            label="Dirección de trabajo o negocio"
+            valor={datosPersonales.direccionTrabajo}
+          />
+
+          <Dato
+            label="Dependientes"
+            valor={datosPersonales.numeroDependientes}
+          />
+
+          <Dato
+            label="Día habitual de pago"
+            valor={`Día ${datosPersonales.diaPago}`}
+          />
+
+          <Dato
+            label="Canal de contacto"
+            valor={canalContacto}
+          />
         </SummarySection>
 
         <SummarySection
@@ -164,10 +266,12 @@ export function ResumenForm() {
             label="Ingreso neto"
             valor={formatBs(datosFinancieros.ingresoNeto)}
           />
+
           <Dato
             label="Antigüedad"
             valor={`${datosFinancieros.antiguedadMeses} meses`}
           />
+
           <Dato
             label="Deudas activas"
             valor={
@@ -178,6 +282,7 @@ export function ResumenForm() {
                   )}/mes`
             }
           />
+
           <Dato
             label="Capacidad de pago"
             valor={formatBs(Math.max(0, capacidad.cuotaMaxima))}
@@ -185,47 +290,80 @@ export function ResumenForm() {
         </SummarySection>
 
         <SummarySection
-          titulo="Simulación de préstamo"
+          titulo="Simulación del préstamo"
           onEdit={() => editStep("simulacion")}
         >
-          <Dato label="Monto" valor={formatBs(simulacion.monto)} />
-          <Dato label="Plazo" valor={`${simulacion.plazoMeses} meses`} />
+          <Dato
+            label="Monto"
+            valor={formatBs(simulacion.monto)}
+          />
+
+          <Dato
+            label="Plazo"
+            valor={`${simulacion.plazoMeses} meses`}
+          />
+
           <Dato
             label="Cuota mensual"
             valor={formatBs(simulacion.cuotaMensual)}
           />
-          <Dato label="Total a pagar" valor={formatBs(simulacion.totalPagar)} />
+
+          <Dato
+            label="Total a pagar"
+            valor={formatBs(simulacion.totalPagar)}
+          />
         </SummarySection>
 
         <SummarySection
           titulo="Información complementaria"
           onEdit={() => editStep("informacion-complementaria")}
         >
-          <Dato
-            label="Situación laboral"
-            valor={
-              datosComplementarios.perfilLaboral === "ASALARIADO"
-                ? "Asalariado"
-                : "Independiente"
-            }
-          />
-          {datosComplementarios.perfilLaboral === "ASALARIADO" ? (
-            <Dato
-              label="Empresa / Cargo"
-              valor={`${datosComplementarios.empresa} · ${datosComplementarios.cargo}`}
-            />
-          ) : (
-            <Dato
-              label="Actividad económica"
-              valor={datosComplementarios.actividadEconomica ?? "—"}
-            />
-          )}
           <Dato label="Vivienda" valor={vivienda} />
+
           <Dato label="Estado civil" valor={estadoCivil} />
-          <Dato label="Dirección" valor={datosComplementarios.direccion} />
+
+          {datosComplementarios.conyugeNombre ? (
+            <Dato
+              label="Cónyuge"
+              valor={datosComplementarios.conyugeNombre}
+            />
+          ) : null}
+
+          {datosComplementarios.conyugeCelular ? (
+            <Dato
+              label="Celular del cónyuge"
+              valor={`+591 ${datosComplementarios.conyugeCelular}`}
+            />
+          ) : null}
+
+          {datosComplementarios.tieneGarante ? (
+            <Dato
+              label="Garante"
+              valor={
+                datosComplementarios.tieneGarante === "SI"
+                  ? "Sí, cuenta con garante"
+                  : "No cuenta con garante"
+              }
+            />
+          ) : null}
+
+          <Dato
+            label="Dirección actual"
+            valor={datosComplementarios.direccion}
+          />
+
           <Dato
             label="Destino del préstamo"
             valor={datosComplementarios.destinoPrestamo}
+          />
+
+          <Dato
+            label="Extractos bancarios"
+            valor={
+              datosComplementarios.extractos === "SI"
+                ? "Sí, dispone de extractos"
+                : "No dispone de extractos"
+            }
           />
         </SummarySection>
 
@@ -233,12 +371,12 @@ export function ResumenForm() {
           titulo="Documentos"
           onEdit={() => editStep("carga-documentos")}
         >
-          {documentosLista.map((doc) => (
+          {documentosLista.map((documento) => (
             <Dato
-              key={doc.label}
-              label={doc.label}
+              key={documento.label}
+              label={documento.label}
               valor={
-                doc.meta ? (
+                documento.meta ? (
                   <span className="text-success">Cargado ✓</span>
                 ) : (
                   "—"
@@ -253,9 +391,12 @@ export function ResumenForm() {
         <input
           type="checkbox"
           checked={confirmo}
-          onChange={(e) => setConfirmo(e.target.checked)}
+          onChange={(event) => {
+            setConfirmo(event.target.checked);
+          }}
           className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
         />
+
         <span className="text-sm leading-6 text-ink-soft">
           Confirmo que la información proporcionada es correcta y autorizo a
           Kivo a evaluarla para procesar mi solicitud.
@@ -267,7 +408,7 @@ export function ResumenForm() {
           type="button"
           onClick={onEnviar}
           disabled={!confirmo}
-          className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2.5} />
           Enviar solicitud
