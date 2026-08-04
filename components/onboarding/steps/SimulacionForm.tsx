@@ -10,10 +10,7 @@ import {
 } from "motion/react";
 import {
   ArrowRight,
-  BriefcaseBusiness,
   CircleCheckBig,
-  Gauge,
-  HeartHandshake,
   Lightbulb,
   Percent,
   ShieldCheck,
@@ -23,11 +20,8 @@ import { NumericFormat } from "react-number-format";
 import {
   REGLAS_SIMULACION,
   buscarAlternativa,
-  compararPlazos,
   normalizarMonto,
-  obtenerPlazosPorMonto,
   simular,
-  type DestinoPrestamo,
 } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import { useOnboardingStore } from "@/store/onboarding";
@@ -100,32 +94,38 @@ export function SimulacionForm() {
   );
 
   const [monto, setMonto] = useState<number>(montoInicial);
-
-  const [destinoPrestamo, setDestinoPrestamo] =
-    useState<DestinoPrestamo>(
-      simulacionGuardada?.destinoPrestamo ?? "CAPITAL_TRABAJO",
-    );
-
-  const plazosDisponibles = useMemo(() => {
-    return obtenerPlazosPorMonto(monto);
-  }, [monto]);
-
-  const plazoInicial =
-    simulacionGuardada?.plazoMeses &&
-    plazosDisponibles.includes(simulacionGuardada.plazoMeses)
-      ? simulacionGuardada.plazoMeses
-      : plazosDisponibles[Math.floor(plazosDisponibles.length / 2)] ??
-        plazosDisponibles[0] ??
-        12;
-
-  const [plazoMeses, setPlazoMeses] = useState<number>(plazoInicial);
   const [confirmo, setConfirmo] = useState(false);
 
-  const plazoSeleccionado = plazosDisponibles.includes(plazoMeses)
-    ? plazoMeses
-    : (plazosDisponibles[Math.floor(plazosDisponibles.length / 2)] ??
-      plazosDisponibles[0] ??
-      12);
+  // Flujo Asalariado:
+  // El destino se asigna automáticamente.
+  const destinoPrestamo = "USO_PERSONAL" as const;
+
+  // El plazo se calcula automáticamente.
+  const plazoSeleccionado = useMemo(() => {
+    const plazos = REGLAS_SIMULACION.plazosMeses.filter((plazo) => {
+      if (monto <= 15000) return plazo <= 24;
+      if (monto <= 25000) return plazo >= 9 && plazo <= 30;
+      return plazo >= 12;
+    });
+
+    const resultados = plazos.map((plazoMeses) =>
+      simular({
+        monto,
+        plazoMeses,
+        ingresoNeto,
+        totalDeudas,
+        destinoPrestamo,
+      }),
+    );
+
+    const viables = resultados.filter((r) => r.viable);
+
+    if (viables.length > 0) {
+      return viables[Math.floor(viables.length / 2)].plazoMeses;
+    }
+
+    return plazos.at(-1) ?? 12;
+  }, [monto, ingresoNeto, totalDeudas]);
 
   const resultado = useMemo(() => {
     return simular({
@@ -140,17 +140,7 @@ export function SimulacionForm() {
     plazoSeleccionado,
     ingresoNeto,
     totalDeudas,
-    destinoPrestamo,
   ]);
-
-  const comparacion = useMemo(() => {
-    return compararPlazos({
-      monto,
-      ingresoNeto,
-      totalDeudas,
-      destinoPrestamo,
-    });
-  }, [monto, ingresoNeto, totalDeudas, destinoPrestamo]);
 
   const alternativa = useMemo(() => {
     if (resultado.viable) return null;
@@ -168,7 +158,6 @@ export function SimulacionForm() {
     plazoSeleccionado,
     ingresoNeto,
     totalDeudas,
-    destinoPrestamo,
   ]);
 
   const sinCapacidad = resultado.capacidad.cuotaMaxima <= 0;
@@ -181,18 +170,16 @@ export function SimulacionForm() {
   );
 
   const ajustarMonto = (valor: number) => {
-    const normalizado = normalizarMonto(valor);
-    setMonto(normalizado);
+    setMonto(normalizarMonto(valor));
   };
 
   const usarAlternativa = () => {
     if (!alternativa) return;
 
     setMonto(alternativa.monto);
-    setPlazoMeses(alternativa.plazoMeses);
   };
 
-  const confirmar = () => {
+    const confirmar = () => {
     if (!resultado.viable || !confirmo) return;
 
     setSimulacion({
@@ -244,84 +231,9 @@ export function SimulacionForm() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Elige el destino, monto y plazo. Te mostraremos una cuota estimada,
-        el costo total y qué tan cómoda resulta para tu capacidad de pago.
+        Elige el monto que necesitas. Kivo calculará automáticamente el
+        plazo recomendado y una cuota compatible con tu capacidad de pago.
       </p>
-
-      {/* Destino */}
-      <fieldset>
-        <legend className="text-sm font-bold text-ink">
-          ¿Para qué necesitas el préstamo?
-        </legend>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label
-            className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
-              destinoPrestamo === "CAPITAL_TRABAJO"
-                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
-                : "border-border bg-white hover:border-primary/40"
-            }`}
-          >
-            <input
-              type="radio"
-              className="sr-only"
-              checked={destinoPrestamo === "CAPITAL_TRABAJO"}
-              onChange={() => {
-                setDestinoPrestamo("CAPITAL_TRABAJO");
-              }}
-            />
-
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <BriefcaseBusiness className="h-5 w-5" />
-              </span>
-
-              <div>
-                <p className="font-extrabold text-ink">
-                  Capital de trabajo
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-muted">
-                  Mercadería, proveedores, herramientas o flujo de caja.
-                </p>
-              </div>
-            </div>
-          </label>
-
-          <label
-            className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
-              destinoPrestamo === "USO_PERSONAL"
-                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
-                : "border-border bg-white hover:border-primary/40"
-            }`}
-          >
-            <input
-              type="radio"
-              className="sr-only"
-              checked={destinoPrestamo === "USO_PERSONAL"}
-              onChange={() => {
-                setDestinoPrestamo("USO_PERSONAL");
-              }}
-            />
-
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <HeartHandshake className="h-5 w-5" />
-              </span>
-
-              <div>
-                <p className="font-extrabold text-ink">
-                  Uso personal
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-muted">
-                  Salud, estudios, hogar u otra necesidad personal.
-                </p>
-              </div>
-            </div>
-          </label>
-        </div>
-      </fieldset>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.95fr]">
         {/* Controles */}
@@ -378,50 +290,7 @@ export function SimulacionForm() {
             <span>{formatBs(REGLAS_SIMULACION.montoMaximo)}</span>
           </div>
 
-          <p className="mt-6 text-sm font-bold text-ink">
-            Selecciona el plazo
-          </p>
-
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {comparacion.map((opcion) => (
-              <button
-                key={opcion.plazoMeses}
-                type="button"
-                onClick={() => {
-                  setPlazoMeses(opcion.plazoMeses);
-                }}
-                className={`relative rounded-2xl border-2 p-3 text-left transition-all ${
-                  plazoSeleccionado === opcion.plazoMeses
-                    ? "border-primary bg-surface-blue"
-                    : opcion.viable
-                      ? "border-border bg-white hover:border-primary/40"
-                      : "border-border bg-surface opacity-55"
-                }`}
-              >
-                {opcion.recomendado ? (
-                  <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold text-white">
-                    Recomendado
-                  </span>
-                ) : null}
-
-                <p className="text-xl font-extrabold text-ink">
-                  {opcion.plazoMeses}
-                </p>
-
-                <p className="text-xs text-muted">meses</p>
-
-                <p className="mt-2 text-sm font-bold text-primary-dark">
-                  {formatBs(opcion.cuotaMensual)}
-                </p>
-
-                <p className="text-[11px] text-muted">
-                  Total {formatBs(opcion.totalPagar)}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
+          <div className="mt-6 flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
             <div>
               <p className="text-xs font-medium text-muted">
                 Tasa mensual
@@ -488,154 +357,53 @@ export function SimulacionForm() {
               {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}
             </p>
           </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/15 pt-4 text-sm">
+                    <div className="mt-5 border-t border-white/15 pt-4">
             <div>
-              <p className="text-xs text-white/60">Monto solicitado</p>
-              <p className="font-bold">{formatBs(resultado.monto)}</p>
-            </div>
+              <h3 className="text-sm font-extrabold text-white">
+                Desglose de la primera cuota
+              </h3>
 
-            <div>
-              <p className="text-xs text-white/60">Total a pagar</p>
-              <p className="font-bold">
-                {formatBs(resultado.totalPagar)}
+              <p className="mt-1 text-xs leading-5 text-white/60">
+                Valores estimados para que entiendas cómo se compone.
               </p>
             </div>
 
-            <div>
-              <p className="text-xs text-white/60">Interés total</p>
-              <p className="font-bold">
-                {formatBs(resultado.interesTotal)}
-              </p>
-            </div>
+            <dl className="mt-4 space-y-3 text-sm">
+              {[
+                ["Capital", resultado.desglosePrimeraCuota.capital],
+                ["Interés", resultado.desglosePrimeraCuota.interes],
+                [
+                  "Seguro",
+                  resultado.desglosePrimeraCuota.seguroDesgravamen,
+                ],
+                [
+                  "Gastos Administrativos",
+                  resultado.desglosePrimeraCuota.gastosAdministrativos,
+                ],
+                ["Total cuota", resultado.desglosePrimeraCuota.total],
+              ].map(([label, value], index, items) => (
+                <div
+                  key={String(label)}
+                  className={`flex items-center justify-between gap-4 ${
+                    index === items.length - 1
+                      ? "border-t border-white/15 pt-3"
+                      : ""
+                  }`}
+                >
+                  <dt className="text-white/65">{label}</dt>
 
-            <div>
-              <p className="text-xs text-white/60">Seguro total</p>
-              <p className="font-bold">
-                {formatBs(resultado.seguroTotal)}
-              </p>
-            </div>
+                  <dd className="font-bold text-white">
+                    {formatBs(Number(value))}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
       </div>
 
-      {/* Desglose */}
-      <section className="mt-6 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-blue text-primary">
-            <Gauge className="h-5 w-5" />
-          </span>
-
-          <div>
-            <h3 className="text-sm font-extrabold text-ink">
-              Desglose de la primera cuota
-            </h3>
-
-            <p className="text-xs text-muted">
-              Valores estimados para que entiendas cómo se compone.
-            </p>
-          </div>
-        </div>
-
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            [
-              "Capital",
-              resultado.desglosePrimeraCuota.capital,
-            ],
-            [
-              "Interés",
-              resultado.desglosePrimeraCuota.interes,
-            ],
-            [
-              "Seguro",
-              resultado.desglosePrimeraCuota.seguroDesgravamen,
-            ],
-            [
-              "Administración",
-              resultado.desglosePrimeraCuota.gastosAdministrativos,
-            ],
-            [
-              "Total cuota",
-              resultado.desglosePrimeraCuota.total,
-            ],
-          ].map(([label, value]) => (
-            <div
-              key={String(label)}
-              className="rounded-xl bg-surface p-3"
-            >
-              <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                {label}
-              </dt>
-
-              <dd className="mt-1 text-base font-extrabold text-ink-soft">
-                {formatBs(Number(value))}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      {/* Cronograma */}
-      <section className="mt-6 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
-        <h3 className="text-sm font-extrabold text-ink">
-          Primeras cuotas estimadas
-        </h3>
-
-        <p className="mt-1 text-xs text-muted">
-          El capital aumenta y el interés disminuye conforme avanzan los pagos.
-        </p>
-
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-border-soft text-[11px] uppercase tracking-wide text-muted">
-                <th className="px-3 py-2">Cuota</th>
-                <th className="px-3 py-2">Capital</th>
-                <th className="px-3 py-2">Interés</th>
-                <th className="px-3 py-2">Seguro</th>
-                <th className="px-3 py-2">Total</th>
-                <th className="px-3 py-2">Saldo</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {cronogramaVisible.map((cuota) => (
-                <tr
-                  key={cuota.numero}
-                  className="border-b border-border-soft last:border-0"
-                >
-                  <td className="px-3 py-3 font-bold text-ink">
-                    {cuota.numero}
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {formatBs(cuota.capital)}
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {formatBs(cuota.interes)}
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {formatBs(cuota.seguroDesgravamen)}
-                  </td>
-
-                  <td className="px-3 py-3 font-bold text-ink-soft">
-                    {formatBs(cuota.cuotaTotal)}
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {formatBs(cuota.saldoCapital)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Veredicto */}
+      
+            {/* Veredicto */}
       <AnimatePresence mode="wait" initial={false}>
         {sinCapacidad ? (
           <motion.div
@@ -693,7 +461,7 @@ export function SimulacionForm() {
                 La cuota de {formatBs(resultado.cuotaMensual)} está por encima
                 de tu máximo de{" "}
                 {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}.
-                Ajusta el monto o el plazo.
+                Reduce el monto para encontrar una opción compatible.
               </DangerNotice>
 
               {alternativa ? (
@@ -720,8 +488,7 @@ export function SimulacionForm() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-4">
+            <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-4">
         <input
           type="checkbox"
           checked={confirmo}

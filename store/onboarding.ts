@@ -37,12 +37,6 @@ export interface DatosPersonales {
   /** Personas que dependen económicamente del solicitante. */
   numeroDependientes: number;
 
-  /** Día habitual en el que recibe sus ingresos. */
-  diaPago: number;
-
-  /** Medio preferido para el contacto de Kivo. */
-  canalContacto: "WHATSAPP" | "LLAMADA";
-
   /** Rubro de la empresa o actividad económica independiente. */
   rubroLaboral: string;
 
@@ -53,9 +47,12 @@ export interface DatosPersonales {
 export interface DeudaFinanciera {
   entidadFinanciera: string;
   cuotaMensual: number;
-  capitalPendiente?: number;
-  estaEnUltimaCuota: boolean;
-  montoUltimaCuota?: number;
+}
+
+export interface DeudaCuatro {
+  entidadFinanciera: string;
+  cuotaMensual: number;
+  capitalPendiente: number;
 }
 
 export interface DatosFinancieros {
@@ -74,8 +71,6 @@ export interface DatosFinancieros {
    */
   segundoIngresoRespaldado: boolean;
 
-  antiguedadMeses: number;
-
   numeroDeudas: number;
   deudas: DeudaFinanciera[];
   totalCuotasMensuales: number;
@@ -88,6 +83,15 @@ export interface DatosFinancieros {
    */
   excepcionMasDeTres: {
     tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";
+
+    /**
+     * Cuarta deuda especial cuando una deuda está en su última cuota.
+     */
+    deudaCuatro?: DeudaCuatro;
+
+    /**
+     * Datos de compra de una de las tres deudas registradas.
+     */
     deudaIndice?: number;
     capitalCompra?: number;
   } | null;

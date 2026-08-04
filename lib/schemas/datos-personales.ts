@@ -18,11 +18,6 @@ export const CIUDADES = [
   { value: "OTRA", label: "Otra localidad", cubierta: false },
 ] as const;
 
-export const CANALES_CONTACTO = [
-  { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "LLAMADA", label: "Llamada telefónica" },
-] as const;
-
 export type CiudadValue = (typeof CIUDADES)[number]["value"];
 
 export function ciudadTieneCobertura(value: string): boolean {
@@ -50,7 +45,7 @@ export function calcularEdad(fechaNacimiento: string): number {
 }
 
 export const EDAD_MINIMA = 18;
-export const EDAD_MAXIMA = 75;
+export const EDAD_MAXIMA = 65;
 
 /** Nombre completo: al menos dos palabras. */
 export const NOMBRE_COMPLETO_REGEX = /^\s*\S+(\s+\S+)+\s*$/;
@@ -96,16 +91,6 @@ export const datosPersonalesSchema = z.object({
     .int("Ingresa un número entero.")
     .min(0, "El número de dependientes no puede ser negativo.")
     .max(20, "Revisa el número de dependientes."),
-
-  diaPago: z
-    .number({ message: "Selecciona tu día habitual de pago." })
-    .int("Selecciona un día válido.")
-    .min(1, "Selecciona un día entre 1 y 31.")
-    .max(31, "Selecciona un día entre 1 y 31."),
-
-  canalContacto: z.enum(["WHATSAPP", "LLAMADA"], {
-    message: "Selecciona tu canal preferido de contacto.",
-  }),
 
   rubroLaboral: z
     .string()

@@ -8,7 +8,6 @@ import { useOnboardingStore } from "@/store/onboarding";
 import { calcularCapacidadPago } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import {
-  CANALES_CONTACTO,
   CIUDADES,
   calcularEdad,
 } from "@/lib/schemas/datos-personales";
@@ -139,11 +138,6 @@ export function ResumenForm() {
 
   const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
 
-  const canalContacto = buscarLabel(
-    CANALES_CONTACTO,
-    datosPersonales.canalContacto,
-  );
-
   const vivienda = buscarLabel(
     HOUSING_TYPES,
     datosComplementarios.vivienda,
@@ -247,15 +241,6 @@ export function ResumenForm() {
             valor={datosPersonales.numeroDependientes}
           />
 
-          <Dato
-            label="Día habitual de pago"
-            valor={`Día ${datosPersonales.diaPago}`}
-          />
-
-          <Dato
-            label="Canal de contacto"
-            valor={canalContacto}
-          />
         </SummarySection>
 
         <SummarySection
@@ -267,10 +252,6 @@ export function ResumenForm() {
             valor={formatBs(datosFinancieros.ingresoNeto)}
           />
 
-          <Dato
-            label="Antigüedad"
-            valor={`${datosFinancieros.antiguedadMeses} meses`}
-          />
 
           <Dato
             label="Deudas activas"

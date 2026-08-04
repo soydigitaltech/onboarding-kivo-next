@@ -22,12 +22,9 @@ import {
   MAX_DEUDAS,
   datosFinancierosSchema,
   formatBs,
-  mensajeAntiguedadMinima,
-  obtenerAntiguedadMinima,
   type DatosFinancierosValues,
 } from "@/lib/schemas/datos-financieros";
 import { calcularCapacidadPago } from "@/lib/simulacion";
-import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
 import {
   DangerNotice,
@@ -35,7 +32,6 @@ import {
   PrefixedInputShell,
   RadioPill,
   SelectChevron,
-  SuffixedInputShell,
   prefixedInputClassName,
   selectClassName,
 } from "@/components/ui/fields";
@@ -54,14 +50,12 @@ const dineroInputProps = {
 type Paso =
   | "ingresoNeto"
   | "segundoIngreso"
-  | "antiguedadMeses"
   | "deudas"
   | "centralRiesgos";
 
 const PASOS: Paso[] = [
   "ingresoNeto",
   "segundoIngreso",
-  "antiguedadMeses",
   "deudas",
   "centralRiesgos",
 ];
@@ -88,16 +82,13 @@ export function DatosFinancierosForm() {
           tieneSegundoIngreso: guardados.tieneSegundoIngreso,
           segundoIngresoMonto: guardados.segundoIngresoMonto,
           segundoIngresoRespaldado: guardados.segundoIngresoRespaldado,
-          antiguedadMeses: guardados.antiguedadMeses,
           deudas: guardados.deudas.map((deuda) => ({
             entidadFinanciera: deuda.entidadFinanciera,
             cuotaMensual: deuda.cuotaMensual,
-            capitalPendiente: deuda.capitalPendiente,
-            estaEnUltimaCuota: deuda.estaEnUltimaCuota,
-            montoUltimaCuota: deuda.montoUltimaCuota,
           })),
           masDeTresDeudas: guardados.excepcionMasDeTres !== null,
           excepcionTipo: guardados.excepcionMasDeTres?.tipo,
+          deudaCuatro: guardados.excepcionMasDeTres?.deudaCuatro,
           compraIndice: guardados.excepcionMasDeTres?.deudaIndice,
           capitalCompra: guardados.excepcionMasDeTres?.capitalCompra,
           deudaMoraOVencida: guardados.sinDeudaMoraOVencida ? "NO" : "SI",
@@ -120,10 +111,8 @@ export function DatosFinancierosForm() {
 
   const deudas = values.deudas ?? [];
   const tieneMoraOVencida = values.deudaMoraOVencida === "SI";
-
   const perfilLaboral = datosPersonales?.perfilLaboral;
-  const edad = calcularEdad(datosPersonales?.fechaNacimiento ?? "");
-  const antiguedadMinima = obtenerAntiguedadMinima(edad);
+
 
   const tieneSegundoIngreso = values.tieneSegundoIngreso === true;
   const segundoIngresoValido =
@@ -137,10 +126,6 @@ export function DatosFinancierosForm() {
       ? values.segundoIngresoMonto ?? 0
       : 0);
 
-  const antiguedadInsuficiente =
-    values.antiguedadMeses !== undefined &&
-    !Number.isNaN(values.antiguedadMeses) &&
-    values.antiguedadMeses < antiguedadMinima;
 
   // El panel de excepciones aparece apenas se registran las 3 deudas.
   const enLimiteDeudas = fields.length >= MAX_DEUDAS;
@@ -157,6 +142,7 @@ export function DatosFinancierosForm() {
     if (fields.length < MAX_DEUDAS && values.excepcionTipo !== undefined) {
       setValue("masDeTresDeudas", false);
       setValue("excepcionTipo", undefined);
+      setValue("deudaCuatro", undefined);
       setValue("compraIndice", undefined);
       setValue("capitalCompra", undefined);
     }
@@ -210,7 +196,6 @@ export function DatosFinancierosForm() {
     bloqueoPorDeudas ||
     tieneMoraOVencida ||
     sinCapacidad ||
-    antiguedadInsuficiente ||
     !segundoIngresoValido;
 
   // ---- Bloqueo secuencial -------------------------------------
@@ -222,25 +207,25 @@ export function DatosFinancierosForm() {
       case "segundoIngreso":
         return segundoIngresoValido;
 
-      case "antiguedadMeses":
-        return (
-          values.antiguedadMeses !== undefined &&
-          !Number.isNaN(values.antiguedadMeses) &&
-          values.antiguedadMeses >= antiguedadMinima
+      case "deudas": {
+        const deudasPrincipalesValidas = deudas.every(
+          (deuda) =>
+            (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
+            (deuda?.cuotaMensual ?? 0) > 0,
         );
-      case "deudas":
-        // Sin deudas también cuenta como completo; con deudas,
-        // todas necesitan su cuota; si eligió compra, su cuota también.
+
+        const deudaCuatroValida =
+          values.excepcionTipo !== "ULTIMA_CUOTA" ||
+          ((values.deudaCuatro?.entidadFinanciera ?? "").trim().length >= 2 &&
+            (values.deudaCuatro?.cuotaMensual ?? 0) > 0 &&
+            (values.deudaCuatro?.capitalPendiente ?? 0) > 0);
+
         return (
           !bloqueoPorDeudas &&
-          deudas.every(
-            (deuda) =>
-              (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
-              (deuda?.cuotaMensual ?? 0) > 0 &&
-              (!deuda?.estaEnUltimaCuota ||
-                (deuda?.montoUltimaCuota ?? 0) > 0),
-          )
+          deudasPrincipalesValidas &&
+          deudaCuatroValida
         );
+      }
       case "centralRiesgos":
         return values.deudaMoraOVencida !== undefined;
     }
@@ -266,15 +251,13 @@ export function DatosFinancierosForm() {
     append({
       entidadFinanciera: "",
       cuotaMensual: undefined as unknown as number,
-      capitalPendiente: undefined,
-      estaEnUltimaCuota: false,
-      montoUltimaCuota: undefined,
     });
   };
 
   const limpiarExcepcion = () => {
     setValue("masDeTresDeudas", false);
     setValue("excepcionTipo", undefined);
+    setValue("deudaCuatro", undefined);
     setValue("compraIndice", undefined);
     setValue("capitalCompra", undefined);
   };
@@ -289,7 +272,6 @@ export function DatosFinancierosForm() {
 
     if (
       formValues.deudaMoraOVencida === "SI" ||
-      formValues.antiguedadMeses < antiguedadMinima ||
       (formValues.tieneSegundoIngreso &&
         (!formValues.segundoIngresoRespaldado ||
           (formValues.segundoIngresoMonto ?? 0) <= 0)) ||
@@ -303,11 +285,6 @@ export function DatosFinancierosForm() {
     const deudasNormalizadas = formValues.deudas.map((deuda) => ({
       entidadFinanciera: deuda.entidadFinanciera.trim(),
       cuotaMensual: deuda.cuotaMensual,
-      capitalPendiente: deuda.capitalPendiente,
-      estaEnUltimaCuota: deuda.estaEnUltimaCuota,
-      montoUltimaCuota: deuda.estaEnUltimaCuota
-        ? deuda.montoUltimaCuota
-        : undefined,
     }));
 
     setDatosFinancieros({
@@ -319,7 +296,6 @@ export function DatosFinancierosForm() {
       segundoIngresoRespaldado: formValues.tieneSegundoIngreso
         ? formValues.segundoIngresoRespaldado
         : false,
-      antiguedadMeses: formValues.antiguedadMeses,
       numeroDeudas: deudasNormalizadas.length,
       deudas: deudasNormalizadas,
       totalCuotasMensuales: deudasNormalizadas.reduce(
@@ -331,6 +307,17 @@ export function DatosFinancierosForm() {
         formValues.excepcionTipo
           ? {
               tipo: formValues.excepcionTipo,
+              deudaCuatro:
+                formValues.excepcionTipo === "ULTIMA_CUOTA" &&
+                formValues.deudaCuatro
+                  ? {
+                      entidadFinanciera:
+                        formValues.deudaCuatro.entidadFinanciera.trim(),
+                      cuotaMensual: formValues.deudaCuatro.cuotaMensual,
+                      capitalPendiente:
+                        formValues.deudaCuatro.capitalPendiente,
+                    }
+                  : undefined,
               deudaIndice:
                 formValues.excepcionTipo === "COMPRA_DEUDA"
                   ? formValues.compraIndice
@@ -530,93 +517,6 @@ export function DatosFinancierosForm() {
         </AnimatePresence>
       </fieldset>
 
-      {/* Antigüedad */}
-      <div
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "antiguedadMeses",
-        )}`}
-        aria-disabled={bloqueado("antiguedadMeses")}
-      >
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
-          <Field
-            label={
-              perfilLaboral === "INDEPENDIENTE"
-                ? "Antigüedad en tu actividad"
-                : "Antigüedad laboral"
-            }
-            htmlFor="antiguedadMeses"
-            error={errors.antiguedadMeses?.message}
-          >
-            <Controller
-              name="antiguedadMeses"
-              control={control}
-              render={({ field }) => (
-                <SuffixedInputShell suffix="meses">
-                  <NumericFormat
-                    id="antiguedadMeses"
-                    getInputRef={field.ref}
-                    value={field.value ?? ""}
-                    onValueChange={(value) => {
-                      field.onChange(value.floatValue);
-                    }}
-                    onBlur={field.onBlur}
-                    allowNegative={false}
-                    decimalScale={0}
-                    inputMode="numeric"
-                    placeholder={`Mínimo ${antiguedadMinima}`}
-                    className={prefixedInputClassName}
-                    tabIndex={lockTab("antiguedadMeses")}
-                  />
-                </SuffixedInputShell>
-              )}
-            />
-          </Field>
-
-          <div
-            className={`rounded-xl border p-4 ${
-              antiguedadInsuficiente
-                ? "border-error/30 bg-error/5"
-                : "border-primary/15 bg-surface-blue"
-            }`}
-          >
-            <p className="text-[11px] font-extrabold uppercase tracking-wide text-muted">
-              Antigüedad mínima requerida
-            </p>
-
-            <p
-              className={`mt-1 text-2xl font-extrabold ${
-                antiguedadInsuficiente ? "text-error" : "text-primary-dark"
-              }`}
-            >
-              {antiguedadMinima} meses
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-body">
-              {mensajeAntiguedadMinima(edad)}
-            </p>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {antiguedadInsuficiente ? (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={REVEAL}
-              className="overflow-hidden"
-            >
-              <div className="pt-4">
-                <DangerNotice title="La antigüedad no alcanza el mínimo">
-                  Para continuar necesitas acreditar al menos{" "}
-                  <strong>{antiguedadMinima} meses</strong> de antigüedad.
-                </DangerNotice>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </div>
-
       {/* Requisitos de extractos */}
       <div className="mt-6 rounded-2xl border border-primary/20 bg-surface-blue p-4 sm:p-5">
         <div className="flex items-start gap-3">
@@ -734,120 +634,7 @@ export function DatosFinancierosForm() {
                         )}
                       />
                     </Field>
-
-                    <Field
-                      label="Capital pendiente (opcional)"
-                      htmlFor={`deuda-capital-${index}`}
-                      error={errors.deudas?.[index]?.capitalPendiente?.message}
-                    >
-                      <Controller
-                        name={`deudas.${index}.capitalPendiente` as const}
-                        control={control}
-                        render={({ field }) => (
-                          <PrefixedInputShell prefix="Bs">
-                            <NumericFormat
-                              id={`deuda-capital-${index}`}
-                              getInputRef={field.ref}
-                              value={field.value ?? ""}
-                              onValueChange={(value) =>
-                                field.onChange(value.floatValue)
-                              }
-                              onBlur={field.onBlur}
-                              placeholder="Ej. 12.000"
-                              className={prefixedInputClassName}
-                              tabIndex={lockTab("deudas")}
-                              {...dineroInputProps}
-                            />
-                          </PrefixedInputShell>
-                        )}
-                      />
-                    </Field>
-
-                    <div>
-                      <p className="text-sm font-bold text-ink">
-                        ¿Está en su última cuota?
-                      </p>
-
-                      <div className="mt-2 grid grid-cols-2 gap-3">
-                        <label className="cursor-pointer rounded-xl border-2 border-border px-3 py-2.5 text-center text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-surface-blue">
-                          <input
-                            type="radio"
-                            value="false"
-                            className="sr-only"
-                            checked={deuda?.estaEnUltimaCuota === false}
-                            onChange={() =>
-                              setValue(
-                                `deudas.${index}.estaEnUltimaCuota`,
-                                false,
-                                { shouldValidate: true },
-                              )
-                            }
-                          />
-                          No
-                        </label>
-
-                        <label className="cursor-pointer rounded-xl border-2 border-border px-3 py-2.5 text-center text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-surface-blue">
-                          <input
-                            type="radio"
-                            value="true"
-                            className="sr-only"
-                            checked={deuda?.estaEnUltimaCuota === true}
-                            onChange={() =>
-                              setValue(
-                                `deudas.${index}.estaEnUltimaCuota`,
-                                true,
-                                { shouldValidate: true },
-                              )
-                            }
-                          />
-                          Sí
-                        </label>
-                      </div>
-                    </div>
                   </div>
-
-                  <AnimatePresence initial={false}>
-                    {deuda?.estaEnUltimaCuota ? (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={REVEAL}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-4 max-w-sm">
-                          <Field
-                            label="Monto de la última cuota"
-                            htmlFor={`deuda-ultima-${index}`}
-                            error={
-                              errors.deudas?.[index]?.montoUltimaCuota?.message
-                            }
-                          >
-                            <Controller
-                              name={`deudas.${index}.montoUltimaCuota` as const}
-                              control={control}
-                              render={({ field }) => (
-                                <PrefixedInputShell prefix="Bs">
-                                  <NumericFormat
-                                    id={`deuda-ultima-${index}`}
-                                    getInputRef={field.ref}
-                                    value={field.value ?? ""}
-                                    onValueChange={(value) =>
-                                      field.onChange(value.floatValue)
-                                    }
-                                    onBlur={field.onBlur}
-                                    placeholder="Ej. 800"
-                                    className={prefixedInputClassName}
-                                    {...dineroInputProps}
-                                  />
-                                </PrefixedInputShell>
-                              )}
-                            />
-                          </Field>
-                        </div>
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
                 </div>
               </motion.div>
             );
@@ -910,17 +697,101 @@ export function DatosFinancierosForm() {
 
                 <AnimatePresence initial={false} mode="wait">
                   {values.excepcionTipo === "ULTIMA_CUOTA" ? (
-                    <motion.p
-                      key="nota-ultima"
+                    <motion.div
+                      key="deuda-cuatro"
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={REVEAL}
-                      className="overflow-hidden pt-3 text-[13px] leading-5 text-body"
+                      className="overflow-hidden"
                     >
-                      Perfecto: como esa deuda está por terminar, no la
-                      contaremos en tu evaluación. Puedes continuar.
-                    </motion.p>
+                      <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
+                        <p className="text-sm font-extrabold text-ink">
+                          Deuda 4
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-body">
+                          Registra la deuda que se encuentra en su última cuota.
+                          En este caso, el capital pendiente es obligatorio.
+                        </p>
+
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <Field
+                            label="Entidad financiera"
+                            htmlFor="deuda-cuatro-entidad"
+                            error={
+                              errors.deudaCuatro?.entidadFinanciera?.message
+                            }
+                          >
+                            <input
+                              id="deuda-cuatro-entidad"
+                              type="text"
+                              placeholder="Ej. Banco Unión"
+                              className={selectClassName}
+                              {...register("deudaCuatro.entidadFinanciera")}
+                            />
+                          </Field>
+
+                          <Field
+                            label="Cuota mensual"
+                            htmlFor="deuda-cuatro-cuota"
+                            error={errors.deudaCuatro?.cuotaMensual?.message}
+                          >
+                            <Controller
+                              name="deudaCuatro.cuotaMensual"
+                              control={control}
+                              render={({ field }) => (
+                                <PrefixedInputShell prefix="Bs">
+                                  <NumericFormat
+                                    id="deuda-cuatro-cuota"
+                                    getInputRef={field.ref}
+                                    value={field.value ?? ""}
+                                    onValueChange={(value) =>
+                                      field.onChange(value.floatValue)
+                                    }
+                                    onBlur={field.onBlur}
+                                    placeholder="Ej. 800"
+                                    className={prefixedInputClassName}
+                                    {...dineroInputProps}
+                                  />
+                                </PrefixedInputShell>
+                              )}
+                            />
+                          </Field>
+
+                          <div className="sm:col-span-2">
+                            <Field
+                              label="Capital pendiente"
+                              htmlFor="deuda-cuatro-capital"
+                              error={
+                                errors.deudaCuatro?.capitalPendiente?.message
+                              }
+                            >
+                              <Controller
+                                name="deudaCuatro.capitalPendiente"
+                                control={control}
+                                render={({ field }) => (
+                                  <PrefixedInputShell prefix="Bs">
+                                    <NumericFormat
+                                      id="deuda-cuatro-capital"
+                                      getInputRef={field.ref}
+                                      value={field.value ?? ""}
+                                      onValueChange={(value) =>
+                                        field.onChange(value.floatValue)
+                                      }
+                                      onBlur={field.onBlur}
+                                      placeholder="Ej. 12.000"
+                                      className={prefixedInputClassName}
+                                      {...dineroInputProps}
+                                    />
+                                  </PrefixedInputShell>
+                                )}
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
                   ) : null}
 
                   {values.excepcionTipo === "COMPRA_DEUDA" ? (

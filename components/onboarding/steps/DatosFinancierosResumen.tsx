@@ -7,7 +7,6 @@ interface DatosFinancierosResumenProps {
 export function DatosFinancierosResumen({ datos }: DatosFinancierosResumenProps) {
   const items = [
     { label: "Ingreso neto mensual", value: formatBs(datos.ingresoNeto) },
-    { label: "Antigüedad laboral", value: `${datos.antiguedadMeses} meses` },
     {
       label: "Deudas vigentes",
       value:

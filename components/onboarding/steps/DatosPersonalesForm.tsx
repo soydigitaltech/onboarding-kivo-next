@@ -6,15 +6,14 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
   BriefcaseBusiness,
-  Building2,
   CalendarDays,
-  Phone,
+  MapPin,
   Store,
+  UserRoundCheck,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
 import {
-  CANALES_CONTACTO,
   CIUDADES,
   EDAD_MAXIMA,
   EDAD_MINIMA,
@@ -43,8 +42,6 @@ const EMPTY_VALUES: DatosPersonalesValues = {
   celular: "",
   ciudad: "",
   numeroDependientes: 0,
-  diaPago: undefined as unknown as number,
-  canalContacto: undefined as unknown as "WHATSAPP" | "LLAMADA",
   rubroLaboral: "",
   direccionTrabajo: "",
 };
@@ -57,8 +54,6 @@ type Campo =
   | "celular"
   | "ciudad"
   | "numeroDependientes"
-  | "diaPago"
-  | "canalContacto"
   | "rubroLaboral"
   | "direccionTrabajo";
 
@@ -70,8 +65,6 @@ const FIELD_ORDER: Campo[] = [
   "celular",
   "ciudad",
   "numeroDependientes",
-  "diaPago",
-  "canalContacto",
   "rubroLaboral",
   "direccionTrabajo",
 ];
@@ -101,14 +94,6 @@ function campoCompleto(
         Number.isInteger(values.numeroDependientes) &&
         values.numeroDependientes >= 0
       );
-    case "diaPago":
-      return (
-        values.diaPago !== undefined &&
-        values.diaPago >= 1 &&
-        values.diaPago <= 31
-      );
-    case "canalContacto":
-      return values.canalContacto !== undefined;
     case "rubroLaboral":
       return (values.rubroLaboral ?? "").trim().length >= 3;
     case "direccionTrabajo":
@@ -179,7 +164,7 @@ export function DatosPersonalesForm() {
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label
-            className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+            className={`relative min-h-[148px] cursor-pointer rounded-[24px] border-2 p-5 transition-all sm:min-h-[170px] sm:p-6 ${
               values.perfilLaboral === "ASALARIADO"
                 ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
                 : "border-border bg-white hover:border-primary/40"
@@ -193,13 +178,13 @@ export function DatosPersonalesForm() {
               {...register("perfilLaboral")}
             />
 
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Building2 className="h-5 w-5" />
+            <div className="flex h-full items-start gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:h-16 sm:w-16">
+                <UserRoundCheck className="h-7 w-7 sm:h-8 sm:w-8" />
               </span>
               <div>
-                <p className="font-extrabold text-ink">Asalariado</p>
-                <p className="mt-1 text-xs leading-5 text-muted">
+                <p className="text-lg font-extrabold text-ink">Asalariado</p>
+                <p className="mt-1.5 text-sm leading-6 text-muted">
                   Recibes un sueldo de una empresa o institución.
                 </p>
               </div>
@@ -207,7 +192,7 @@ export function DatosPersonalesForm() {
           </label>
 
           <label
-            className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+            className={`relative min-h-[148px] cursor-pointer rounded-[24px] border-2 p-5 transition-all sm:min-h-[170px] sm:p-6 ${
               values.perfilLaboral === "INDEPENDIENTE"
                 ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
                 : "border-border bg-white hover:border-primary/40"
@@ -221,13 +206,13 @@ export function DatosPersonalesForm() {
               {...register("perfilLaboral")}
             />
 
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                <Store className="h-5 w-5" />
+            <div className="flex h-full items-start gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent sm:h-16 sm:w-16">
+                <Store className="h-7 w-7 sm:h-8 sm:w-8" />
               </span>
               <div>
-                <p className="font-extrabold text-ink">Independiente</p>
-                <p className="mt-1 text-xs leading-5 text-muted">
+                <p className="text-lg font-extrabold text-ink">Independiente</p>
+                <p className="mt-1.5 text-sm leading-6 text-muted">
                   Generas ingresos por tu negocio, profesión u oficio.
                 </p>
               </div>
@@ -378,78 +363,8 @@ export function DatosPersonalesForm() {
           </Field>
         </div>
 
-        <div className={lockCls("diaPago")}>
-          <Field
-            label="Día habitual de pago"
-            htmlFor="diaPago"
-            error={errors.diaPago?.message}
-          >
-            <div className="relative">
-              <select
-                id="diaPago"
-                className={selectClassName}
-                tabIndex={lockTab("diaPago")}
-                {...register("diaPago", {
-                  setValueAs: (value) =>
-                    value === "" ? undefined : Number(value),
-                })}
-              >
-                <option value="">Selecciona un día</option>
-                {Array.from({ length: 31 }, (_, index) => index + 1).map(
-                  (dia) => (
-                    <option key={dia} value={dia}>
-                      Día {dia}
-                    </option>
-                  ),
-                )}
-              </select>
-              <SelectChevron />
-            </div>
-          </Field>
-        </div>
       </div>
 
-      <fieldset
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "canalContacto",
-        )}`}
-      >
-        <legend className="text-sm font-bold text-ink">
-          ¿Cómo prefieres que Kivo se comunique contigo?
-        </legend>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {CANALES_CONTACTO.map((canal) => (
-            <label
-              key={canal.value}
-              className={`cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors ${
-                values.canalContacto === canal.value
-                  ? "border-primary bg-surface-blue"
-                  : "border-border hover:border-primary/40"
-              }`}
-            >
-              <input
-                type="radio"
-                value={canal.value}
-                className="sr-only"
-                tabIndex={lockTab("canalContacto")}
-                {...register("canalContacto")}
-              />
-
-              <span className="flex items-center gap-2.5 text-sm font-bold text-ink-soft">
-                <Phone className="h-4 w-4 text-primary" />
-                {canal.label}
-              </span>
-            </label>
-          ))}
-        </div>
-
-        {errors.canalContacto ? (
-          <p className="mt-2 text-xs font-semibold text-error" role="alert">
-            {errors.canalContacto.message}
-          </p>
-        ) : null}
-      </fieldset>
 
       <div className="mt-6 grid gap-5 border-t border-border-soft pt-6">
         <div className={lockCls("rubroLaboral")}>
@@ -499,6 +414,33 @@ export function DatosPersonalesForm() {
               />
             </div>
           </Field>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-border-soft bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-white px-4 py-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <p className="text-sm font-bold text-ink-soft">
+                  Ubicación referencial
+                </p>
+              </div>
+
+              <span className="rounded-full bg-surface-blue px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-primary-dark">
+                Mapa demo
+              </span>
+            </div>
+
+            <iframe
+              title="Mapa referencial del lugar de trabajo"
+              src="https://www.openstreetmap.org/export/embed.html?bbox=-68.1288%2C-16.5445%2C-68.0970%2C-16.5170&layer=mapnik&marker=-16.5305%2C-68.1126"
+              loading="lazy"
+              className="h-[230px] w-full border-0 sm:h-[280px]"
+            />
+
+            <p className="px-4 py-3 text-xs leading-5 text-muted">
+              Esta ubicación es solo una demostración. La dirección registrada
+              será validada durante la evaluación.
+            </p>
+          </div>
         </div>
       </div>
 
