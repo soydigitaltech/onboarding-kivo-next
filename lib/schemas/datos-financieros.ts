@@ -47,6 +47,12 @@ export const datosFinancierosSchema = z
 
     tieneSegundoIngreso: z.boolean(),
 
+    segundoIngresoOrigen: z
+      .string()
+      .trim()
+      .min(3, "Cuéntanos de dónde proviene tu segundo ingreso.")
+      .optional(),
+
     segundoIngresoMonto: z.number().optional(),
 
     segundoIngresoRespaldado: z.boolean(),
@@ -77,6 +83,14 @@ export const datosFinancierosSchema = z
   })
   .superRefine((values, context) => {
     if (values.tieneSegundoIngreso) {
+      if (!values.segundoIngresoOrigen) {
+        context.addIssue({
+          code: "custom",
+          path: ["segundoIngresoOrigen"],
+          message: "Selecciona de dónde proviene tu segundo ingreso.",
+        });
+      }
+
       if (
         values.segundoIngresoMonto === undefined ||
         values.segundoIngresoMonto <= 0

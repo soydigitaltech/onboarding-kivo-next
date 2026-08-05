@@ -22,6 +22,7 @@ import {
   informacionComplementariaSchema,
   type InformacionComplementariaValues,
 } from "@/lib/schemas/informacion-complementaria";
+import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
 import {
   BusinessNotice,
@@ -59,6 +60,7 @@ type Paso =
 
 function calcularPasosVisibles(
   values: Partial<InformacionComplementariaValues>,
+  edad: number,
 ): Paso[] {
   const pasos: Paso[] = ["vivienda", "estadoCivil"];
 
@@ -69,10 +71,18 @@ function calcularPasosVisibles(
     pasos.push("conyugeNombre", "conyugeCelular");
   }
 
-  if (
-    values.vivienda &&
-    (VIVIENDAS_CON_GARANTE as readonly string[]).includes(values.vivienda)
-  ) {
+  const esJoven = edad >= 18 && edad <= 24;
+
+  const requiereGarantePorVivienda =
+    values.vivienda !== undefined &&
+    (
+      (VIVIENDAS_CON_GARANTE as readonly string[]).includes(
+        values.vivienda,
+      ) ||
+      (esJoven && values.vivienda === "FAMILIAR")
+    );
+
+  if (requiereGarantePorVivienda) {
     pasos.push("tieneGarante");
   }
 
@@ -117,9 +127,15 @@ export function InformacionComplementariaForm() {
     return state.datosComplementarios;
   });
 
-  const perfilLaboral = useOnboardingStore((state) => {
-    return state.datosPersonales?.perfilLaboral;
+  const datosPersonales = useOnboardingStore((state) => {
+    return state.datosPersonales;
   });
+
+  const perfilLaboral = datosPersonales?.perfilLaboral;
+
+  const edad = datosPersonales?.fechaNacimiento
+    ? calcularEdad(datosPersonales.fechaNacimiento)
+    : 0;
 
   const setDatosComplementarios = useOnboardingStore((state) => {
     return state.setDatosComplementarios;
@@ -152,7 +168,7 @@ export function InformacionComplementariaForm() {
 
   const values = watch();
 
-  const pasosVisibles = calcularPasosVisibles(values);
+  const pasosVisibles = calcularPasosVisibles(values, edad);
 
   const primerIncompleto = pasosVisibles.findIndex((paso) => {
     return !pasoCompleto(paso, values);
@@ -336,8 +352,11 @@ export function InformacionComplementariaForm() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-muted">
-                Esta condición aplica porque declaraste que vives en alquiler
-                o anticrético.
+                {edad >= 18 &&
+                edad <= 24 &&
+                values.vivienda === "FAMILIAR"
+                  ? "Por tu edad y porque vives en una vivienda familiar, necesitamos que cuentes con un garante con vivienda propia."
+                  : "Esta condición aplica porque declaraste que vives en alquiler o anticrético."}
               </p>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -411,15 +430,8 @@ export function InformacionComplementariaForm() {
           Selecciona la opción que mejor describe cómo usarás el dinero.
         </p>
 
-        <div
-          className={`mt-3 grid gap-3 ${
-            perfilLaboral === "INDEPENDIENTE"
-              ? "sm:grid-cols-2"
-              : "max-w-md"
-          }`}
-        >
-          {perfilLaboral === "INDEPENDIENTE" ? (
-            <label
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label
               className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
                 values.destinoPrestamo === "CAPITAL_TRABAJO"
                   ? "border-primary bg-surface-blue"
@@ -451,7 +463,6 @@ export function InformacionComplementariaForm() {
                 </div>
               </div>
             </label>
-          ) : null}
 
           <label
             className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${

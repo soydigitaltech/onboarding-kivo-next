@@ -79,6 +79,7 @@ export function DatosFinancierosForm() {
       ? {
           ingresoNeto: guardados.ingresoNeto,
           tieneSegundoIngreso: guardados.tieneSegundoIngreso,
+          segundoIngresoOrigen: guardados.segundoIngresoOrigen,
           segundoIngresoMonto: guardados.segundoIngresoMonto,
           segundoIngresoRespaldado: guardados.segundoIngresoRespaldado,
           deudas: guardados.deudas.map((deuda) => ({
@@ -95,6 +96,7 @@ export function DatosFinancierosForm() {
           deudas: [],
           masDeTresDeudas: false,
           tieneSegundoIngreso: false,
+          segundoIngresoOrigen: undefined,
           segundoIngresoRespaldado: false,
           deudaMoraOVencida: undefined,
         },
@@ -115,7 +117,8 @@ export function DatosFinancierosForm() {
   const tieneSegundoIngreso = values.tieneSegundoIngreso === true;
   const segundoIngresoValido =
     !tieneSegundoIngreso ||
-    ((values.segundoIngresoMonto ?? 0) > 0 &&
+    ((values.segundoIngresoOrigen ?? "").trim().length >= 3 &&
+      (values.segundoIngresoMonto ?? 0) > 0 &&
       values.segundoIngresoRespaldado === true);
 
   const ingresoTotalEvaluable =
@@ -149,6 +152,7 @@ export function DatosFinancierosForm() {
   // eliminamos cualquier monto o respaldo que hubiese seleccionado.
   useEffect(() => {
     if (!values.tieneSegundoIngreso) {
+      setValue("segundoIngresoOrigen", undefined);
       setValue("segundoIngresoMonto", undefined);
       setValue("segundoIngresoRespaldado", false);
     }
@@ -266,6 +270,9 @@ export function DatosFinancierosForm() {
     setDatosFinancieros({
       ingresoNeto: formValues.ingresoNeto,
       tieneSegundoIngreso: formValues.tieneSegundoIngreso,
+      segundoIngresoOrigen: formValues.tieneSegundoIngreso
+        ? formValues.segundoIngresoOrigen
+        : undefined,
       segundoIngresoMonto: formValues.tieneSegundoIngreso
         ? formValues.segundoIngresoMonto
         : undefined,
@@ -421,10 +428,37 @@ export function DatosFinancierosForm() {
               transition={REVEAL}
               className="overflow-hidden"
             >
-              <div className="mt-5 grid gap-4">
-                <div className="max-w-sm">
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-primary/20 bg-surface-blue p-4 sm:col-span-2">
+                  <p className="text-sm font-bold text-ink-soft">
+                    Importante
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-body">
+                    Declara el monto que realmente te queda cada mes después
+                    de pagar los gastos relacionados con este ingreso.
+                  </p>
+                </div>
+
+                <div>
                   <Field
-                    label="Monto neto del segundo ingreso"
+                    label="¿De dónde proviene tu segundo ingreso?"
+                    htmlFor="segundoIngresoOrigen"
+                    error={errors.segundoIngresoOrigen?.message}
+                  >
+                    <input
+                      id="segundoIngresoOrigen"
+                      type="text"
+                      placeholder="Ej. Alquiler, ventas u otro trabajo"
+                      className={selectClassName}
+                      {...register("segundoIngresoOrigen")}
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <Field
+                    label="¿Cuánto te queda al mes por este ingreso?"
                     htmlFor="segundoIngresoMonto"
                     error={errors.segundoIngresoMonto?.message}
                   >
@@ -451,7 +485,7 @@ export function DatosFinancierosForm() {
                   </Field>
                 </div>
 
-                <div className="rounded-2xl border-2 border-warning-border bg-warning-bg p-4 sm:p-5">
+                <div className="rounded-2xl border-2 border-warning-border bg-warning-bg p-4 sm:col-span-2 sm:p-5">
                   <div className="flex items-start gap-3">
                     <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
 

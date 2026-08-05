@@ -24,6 +24,7 @@ import {
   simular,
 } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
+import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
 import {
   DangerNotice,
@@ -63,6 +64,10 @@ function etiquetaCapacidad(
 }
 
 export function SimulacionForm() {
+  const datosPersonales = useOnboardingStore((state) => {
+    return state.datosPersonales;
+  });
+
   const datosFinancieros = useOnboardingStore((state) => {
     return state.datosFinancieros;
   });
@@ -79,6 +84,18 @@ export function SimulacionForm() {
     return state.completeAndAdvance;
   });
 
+  const edad = datosPersonales?.fechaNacimiento
+    ? calcularEdad(datosPersonales.fechaNacimiento)
+    : 0;
+
+  const aplicaLimiteJoven = edad >= 18 && edad <= 24;
+
+  const montoMaximoPermitido: number = aplicaLimiteJoven
+    ? 20000
+    : REGLAS_SIMULACION.montoMaximo;
+
+  const plazoMaximoPermitido = aplicaLimiteJoven ? 24 : 36;
+
   const ingresoPrincipal = datosFinancieros?.ingresoNeto ?? 0;
 
   const segundoIngreso =
@@ -90,8 +107,9 @@ export function SimulacionForm() {
   const ingresoNeto = ingresoPrincipal + segundoIngreso;
   const totalDeudas = datosFinancieros?.totalCuotasMensuales ?? 0;
 
-  const montoInicial = normalizarMonto(
-    simulacionGuardada?.monto ?? 15000,
+  const montoInicial = Math.min(
+    montoMaximoPermitido,
+    normalizarMonto(simulacionGuardada?.monto ?? 15000),
   );
 
   const plazoInicial = simulacionGuardada?.plazoMeses ?? 12;
@@ -108,6 +126,10 @@ export function SimulacionForm() {
 
   const plazosDisponibles = useMemo(() => {
     return REGLAS_SIMULACION.plazosMeses.filter((plazo) => {
+      if (plazo > plazoMaximoPermitido) {
+        return false;
+      }
+
       if (monto <= 15000) {
         return plazo <= 24;
       }
@@ -118,12 +140,17 @@ export function SimulacionForm() {
 
       return plazo >= 12;
     });
-  }, [monto]);
+  }, [monto, plazoMaximoPermitido]);
+
+  const plazoSeleccionadoPermitido = Math.min(
+    plazoSeleccionado,
+    plazoMaximoPermitido,
+  );
 
   const plazoActivo = (
     plazosDisponibles as readonly number[]
-  ).includes(plazoSeleccionado)
-    ? plazoSeleccionado
+  ).includes(plazoSeleccionadoPermitido)
+    ? plazoSeleccionadoPermitido
     : (plazosDisponibles[0] ?? 12);
 
   const indicePlazoActivo = Math.max(
@@ -174,14 +201,17 @@ export function SimulacionForm() {
   );
 
   const ajustarMonto = (valor: number) => {
-    setMonto(normalizarMonto(valor));
+    const montoNormalizado = normalizarMonto(valor);
+    setMonto(Math.min(montoMaximoPermitido, montoNormalizado));
   };
 
   const usarAlternativa = () => {
     if (!alternativa) return;
 
-    setMonto(alternativa.monto);
-    setPlazoSeleccionado(alternativa.plazoMeses);
+    setMonto(Math.min(alternativa.monto, montoMaximoPermitido));
+    setPlazoSeleccionado(
+      Math.min(alternativa.plazoMeses, plazoMaximoPermitido),
+    );
   };
 
   const confirmar = () => {
@@ -275,13 +305,13 @@ export function SimulacionForm() {
           <p className="mt-1.5 text-xs text-muted">
             Puedes elegir montos de Bs 1.000 en Bs 1.000, desde{" "}
             {formatBs(REGLAS_SIMULACION.montoMinimo)} hasta{" "}
-            {formatBs(REGLAS_SIMULACION.montoMaximo)}.
+            {formatBs(montoMaximoPermitido)}.
           </p>
 
           <input
             type="range"
             min={REGLAS_SIMULACION.montoMinimo}
-            max={REGLAS_SIMULACION.montoMaximo}
+            max={montoMaximoPermitido}
             step={REGLAS_SIMULACION.pasoMonto}
             value={normalizarMonto(monto)}
             onChange={(event) => {
@@ -294,7 +324,7 @@ export function SimulacionForm() {
           <div className="mt-1 flex justify-between text-xs font-semibold text-muted">
             <span>{formatBs(REGLAS_SIMULACION.montoMinimo)}</span>
 
-            <span>{formatBs(REGLAS_SIMULACION.montoMaximo)}</span>
+            <span>{formatBs(montoMaximoPermitido)}</span>
           </div>
 
           {/* Selección de plazo */}

@@ -62,6 +62,9 @@ export interface DatosFinancieros {
   /** Indica si declara una fuente adicional de ingresos. */
   tieneSegundoIngreso: boolean;
 
+  /** Origen declarado de la segunda fuente de ingresos. */
+  segundoIngresoOrigen?: string;
+
   /** Monto neto mensual de la segunda fuente de ingresos. */
   segundoIngresoMonto?: number;
 
@@ -81,7 +84,7 @@ export interface DatosFinancieros {
   /**
    * Excepción para solicitudes con más de tres deudas.
    */
-    excepcionMasDeTres: {
+  excepcionMasDeTres: {
     tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";
 
     /**

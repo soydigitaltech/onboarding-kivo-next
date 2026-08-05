@@ -10,35 +10,66 @@ import { DocumentoSlot, documentoEstaSubido, type DocConfig } from "./DocumentoS
 const DOCUMENTOS_CONFIG: DocConfig[] = [
   {
     key: "autorizacionBic",
-    titulo: "Autorízanos a revisar tu historial crediticio",
+    titulo: "Autoriza la consulta de tu historial crediticio",
     descripcion:
-      "Necesitamos tu autorización para revisar tu historial crediticio en el Buró de Información Crediticia y verificar que no tengas deudas vencidas, préstamos en mora o deudas castigadas.",
+      "Con este documento nos autorizas a revisar tu historial crediticio y continuar con la evaluación de tu solicitud.",
     destacado: true,
     pasos: [
       "Descarga el documento",
-      "Fírmalo a mano",
-      "Sube la foto o PDF aquí",
+      "Fírmalo con tu puño y letra",
+      "Sube una foto o el PDF firmado",
+    ],
+    ejemploUrl: "/documents/examples/autorizacion-firmada.webp",
+    ejemploAlt: "Ejemplo de autorización firmada",
+    recomendaciones: [
+      "La firma debe verse claramente.",
+      "El documento debe estar completo.",
+      "No subas el documento sin firmar.",
     ],
     accept: ".pdf,.jpg,.jpeg,.png",
     descargaUrl: "/documents/autorizacion-bic-kivo.pdf",
   },
   {
     key: "ciAnverso",
-    titulo: "Carnet de identidad (Anverso)",
-    descripcion: "Foto de la parte frontal de tu carnet.",
+    titulo: "Carnet de identidad — parte frontal",
+    descripcion:
+      "Sube una foto clara de la parte donde aparecen tu fotografía y tus datos personales.",
+    ejemploUrl: "/documents/examples/carnet-anverso.webp",
+    ejemploAlt: "Ejemplo de la parte frontal del carnet",
+    recomendaciones: [
+      "Fotografía el carnet completo.",
+      "Evita reflejos y sombras.",
+      "Todos los datos deben poder leerse.",
+    ],
     accept: ".jpg,.jpeg,.png",
   },
   {
     key: "ciReverso",
-    titulo: "Carnet de identidad (Reverso)",
-    descripcion: "Foto de la parte trasera de tu carnet.",
+    titulo: "Carnet de identidad — parte posterior",
+    descripcion:
+      "Sube una foto clara de la parte posterior de tu carnet de identidad.",
+    ejemploUrl: "/documents/examples/carnet-reverso.webp",
+    ejemploAlt: "Ejemplo de la parte posterior del carnet",
+    recomendaciones: [
+      "No cortes los bordes del carnet.",
+      "Evita cubrir los datos con los dedos.",
+      "La imagen debe estar enfocada.",
+    ],
     accept: ".jpg,.jpeg,.png",
   },
   {
     key: "selfie",
-    titulo: "Selfie",
+    titulo: "Tómate una selfie sosteniendo tu carnet",
     descripcion:
-      "Foto tuya sosteniendo tu carnet de identidad, con el rostro claramente visible.",
+      "Tu rostro y tu carnet deben aparecer claramente en la misma fotografía.",
+    ejemploUrl: "/documents/examples/selfie-carnet.webp",
+    ejemploAlt: "Ejemplo de una selfie sosteniendo el carnet",
+    recomendaciones: [
+      "Mira directamente a la cámara.",
+      "No uses gorra, lentes oscuros ni barbijo.",
+      "Sostén el carnet sin cubrir tu rostro.",
+      "Busca un lugar con buena iluminación.",
+    ],
     accept: ".jpg,.jpeg,.png",
   },
 ];
