@@ -31,7 +31,6 @@ import {
   Field,
   PrefixedInputShell,
   RadioPill,
-  SelectChevron,
   prefixedInputClassName,
   selectClassName,
 } from "@/components/ui/fields";
@@ -89,8 +88,7 @@ export function DatosFinancierosForm() {
           masDeTresDeudas: guardados.excepcionMasDeTres !== null,
           excepcionTipo: guardados.excepcionMasDeTres?.tipo,
           deudaCuatro: guardados.excepcionMasDeTres?.deudaCuatro,
-          compraIndice: guardados.excepcionMasDeTres?.deudaIndice,
-          capitalCompra: guardados.excepcionMasDeTres?.capitalCompra,
+          deudaCompra: guardados.excepcionMasDeTres?.deudaCompra,
           deudaMoraOVencida: guardados.sinDeudaMoraOVencida ? "NO" : "SI",
         }
       : {
@@ -143,8 +141,7 @@ export function DatosFinancierosForm() {
       setValue("masDeTresDeudas", false);
       setValue("excepcionTipo", undefined);
       setValue("deudaCuatro", undefined);
-      setValue("compraIndice", undefined);
-      setValue("capitalCompra", undefined);
+      setValue("deudaCompra", undefined);
     }
   }, [fields.length, values.excepcionTipo, setValue]);
 
@@ -157,26 +154,13 @@ export function DatosFinancierosForm() {
     }
   }, [values.tieneSegundoIngreso, setValue]);
 
-  // Si la deuda seleccionada para compra ya no existe, limpiar la selección.
-  useEffect(() => {
-    if (
-      values.compraIndice !== undefined &&
-      values.compraIndice >= fields.length
-    ) {
-      setValue("compraIndice", undefined);
-      setValue("capitalCompra", undefined);
-    }
-  }, [fields.length, values.compraIndice, setValue]);
+  const deudaCompraValida =
+    values.excepcionTipo !== "COMPRA_DEUDA" ||
+    ((values.deudaCompra?.entidadFinanciera ?? "").trim().length >= 2 &&
+      (values.deudaCompra?.cuotaMensual ?? 0) > 0 &&
+      (values.deudaCompra?.capitalPendiente ?? 0) > 0);
 
-  // Elegir excepción es opcional (sin selección = no tiene más deudas).
-  // Solo bloquea si eligió compra de deuda y aún no eligió cuál.
-  const compraSeleccionada =
-    values.compraIndice !== undefined &&
-    !Number.isNaN(values.compraIndice) &&
-    (deudas[values.compraIndice]?.cuotaMensual ?? 0) > 0;
-
-  const bloqueoPorDeudas =
-    values.excepcionTipo === "COMPRA_DEUDA" && !compraSeleccionada;
+  const bloqueoPorDeudas = !deudaCompraValida;
 
   // Modelo de capacidad Kivo aplicado desde este paso:
   // al ingreso se le "quema" el 40% de gastos personales, se restan
@@ -223,7 +207,8 @@ export function DatosFinancierosForm() {
         return (
           !bloqueoPorDeudas &&
           deudasPrincipalesValidas &&
-          deudaCuatroValida
+          deudaCuatroValida &&
+          deudaCompraValida
         );
       }
       case "centralRiesgos":
@@ -258,26 +243,17 @@ export function DatosFinancierosForm() {
     setValue("masDeTresDeudas", false);
     setValue("excepcionTipo", undefined);
     setValue("deudaCuatro", undefined);
-    setValue("compraIndice", undefined);
-    setValue("capitalCompra", undefined);
+    setValue("deudaCompra", undefined);
   };
 
   const excepcionElegida = values.excepcionTipo !== undefined;
 
   const onSubmit = (formValues: DatosFinancierosValues) => {
-    const deudaCompraElegida =
-      formValues.compraIndice !== undefined
-        ? formValues.deudas[formValues.compraIndice]
-        : undefined;
-
     if (
       formValues.deudaMoraOVencida === "SI" ||
       (formValues.tieneSegundoIngreso &&
         (!formValues.segundoIngresoRespaldado ||
-          (formValues.segundoIngresoMonto ?? 0) <= 0)) ||
-      (formValues.excepcionTipo === "COMPRA_DEUDA" &&
-        (!deudaCompraElegida ||
-          (formValues.capitalCompra ?? 0) <= 0))
+          (formValues.segundoIngresoMonto ?? 0) <= 0))
     ) {
       return;
     }
@@ -318,13 +294,16 @@ export function DatosFinancierosForm() {
                         formValues.deudaCuatro.capitalPendiente,
                     }
                   : undefined,
-              deudaIndice:
-                formValues.excepcionTipo === "COMPRA_DEUDA"
-                  ? formValues.compraIndice
-                  : undefined,
-              capitalCompra:
-                formValues.excepcionTipo === "COMPRA_DEUDA"
-                  ? formValues.capitalCompra
+              deudaCompra:
+                formValues.excepcionTipo === "COMPRA_DEUDA" &&
+                formValues.deudaCompra
+                  ? {
+                      entidadFinanciera:
+                        formValues.deudaCompra.entidadFinanciera.trim(),
+                      cuotaMensual: formValues.deudaCompra.cuotaMensual,
+                      capitalPendiente:
+                        formValues.deudaCompra.capitalPendiente,
+                    }
                   : undefined,
             }
           : null,
@@ -796,47 +775,98 @@ export function DatosFinancierosForm() {
 
                   {values.excepcionTipo === "COMPRA_DEUDA" ? (
                     <motion.div
-                      key="cuota-compra"
+                      key="deuda-compra"
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={REVEAL}
                       className="overflow-hidden"
                     >
-                      <div className="max-w-sm pt-4">
-                        <Field
-                          label="¿Cuál de tus deudas quieres que compremos?"
-                          htmlFor="compraIndice"
-                        >
-                          <div className="relative">
-                            <select
-                              id="compraIndice"
-                              className={selectClassName}
-                              {...register("compraIndice", {
-                                setValueAs: (v) =>
-                                  v === "" ? undefined : Number(v),
-                              })}
-                            >
-                              <option value="">Selecciona una deuda</option>
-                              {deudas.map((deuda, index) => (
-                                <option
-                                  key={index}
-                                  value={index}
-                                  disabled={(deuda?.cuotaMensual ?? 0) <= 0}
-                                >
-                                  {`Deuda ${index + 1} · ${formatBs(
-                                    deuda?.cuotaMensual ?? 0,
-                                  )} por mes`}
-                                </option>
-                              ))}
-                            </select>
-                            <SelectChevron />
-                          </div>
-                        </Field>
-                        <p className="mt-2 text-[13px] leading-5 text-body">
-                          La incluiremos en tu propuesta para evaluar la
-                          compra de esa deuda.
+                      <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
+                        <p className="text-sm font-extrabold text-ink">
+                          Deuda que Kivo evaluará comprar
                         </p>
+
+                        <p className="mt-1 text-xs leading-5 text-body">
+                          Registra los datos de la deuda que quieres incluir
+                          en la evaluación de compra.
+                        </p>
+
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <Field
+                            label="Entidad financiera"
+                            htmlFor="deuda-compra-entidad"
+                            error={
+                              errors.deudaCompra?.entidadFinanciera?.message
+                            }
+                          >
+                            <input
+                              id="deuda-compra-entidad"
+                              type="text"
+                              placeholder="Ej. Banco Unión"
+                              className={selectClassName}
+                              {...register("deudaCompra.entidadFinanciera")}
+                            />
+                          </Field>
+
+                          <Field
+                            label="Cuota mensual"
+                            htmlFor="deuda-compra-cuota"
+                            error={errors.deudaCompra?.cuotaMensual?.message}
+                          >
+                            <Controller
+                              name="deudaCompra.cuotaMensual"
+                              control={control}
+                              render={({ field }) => (
+                                <PrefixedInputShell prefix="Bs">
+                                  <NumericFormat
+                                    id="deuda-compra-cuota"
+                                    getInputRef={field.ref}
+                                    value={field.value ?? ""}
+                                    onValueChange={(value) =>
+                                      field.onChange(value.floatValue)
+                                    }
+                                    onBlur={field.onBlur}
+                                    placeholder="Ej. 800"
+                                    className={prefixedInputClassName}
+                                    {...dineroInputProps}
+                                  />
+                                </PrefixedInputShell>
+                              )}
+                            />
+                          </Field>
+
+                          <div className="sm:col-span-2">
+                            <Field
+                              label="Capital pendiente"
+                              htmlFor="deuda-compra-capital"
+                              error={
+                                errors.deudaCompra?.capitalPendiente?.message
+                              }
+                            >
+                              <Controller
+                                name="deudaCompra.capitalPendiente"
+                                control={control}
+                                render={({ field }) => (
+                                  <PrefixedInputShell prefix="Bs">
+                                    <NumericFormat
+                                      id="deuda-compra-capital"
+                                      getInputRef={field.ref}
+                                      value={field.value ?? ""}
+                                      onValueChange={(value) =>
+                                        field.onChange(value.floatValue)
+                                      }
+                                      onBlur={field.onBlur}
+                                      placeholder="Ej. 12.000"
+                                      className={prefixedInputClassName}
+                                      {...dineroInputProps}
+                                    />
+                                  </PrefixedInputShell>
+                                )}
+                              />
+                            </Field>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ) : null}

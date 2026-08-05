@@ -49,7 +49,7 @@ export interface DeudaFinanciera {
   cuotaMensual: number;
 }
 
-export interface DeudaCuatro {
+export interface DeudaEspecial {
   entidadFinanciera: string;
   cuotaMensual: number;
   capitalPendiente: number;
@@ -81,19 +81,18 @@ export interface DatosFinancieros {
   /**
    * Excepción para solicitudes con más de tres deudas.
    */
-  excepcionMasDeTres: {
+    excepcionMasDeTres: {
     tipo: "ULTIMA_CUOTA" | "COMPRA_DEUDA";
 
     /**
-     * Cuarta deuda especial cuando una deuda está en su última cuota.
+     * Cuarta deuda que está en su última cuota.
      */
-    deudaCuatro?: DeudaCuatro;
+    deudaCuatro?: DeudaEspecial;
 
     /**
-     * Datos de compra de una de las tres deudas registradas.
+     * Deuda que Kivo evaluará comprar.
      */
-    deudaIndice?: number;
-    capitalCompra?: number;
+    deudaCompra?: DeudaEspecial;
   } | null;
 }
 

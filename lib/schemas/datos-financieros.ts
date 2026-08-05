@@ -18,26 +18,23 @@ export const deudaSchema = z.object({
 });
 
 /**
- * Cuarta deuda especial.
- *
- * Solo aparece cuando el usuario ya registró tres deudas y selecciona:
- * “Una de mis deudas está en su última cuota”.
- *
- * En este caso el capital pendiente es obligatorio.
+ * Deuda especial para:
+ * - una deuda que está en su última cuota;
+ * - una deuda que Kivo evaluará comprar.
  */
-export const deudaCuatroSchema = z.object({
+export const deudaEspecialSchema = z.object({
   entidadFinanciera: z
     .string()
     .trim()
-    .min(2, "Ingresa la entidad financiera de la cuarta deuda."),
+    .min(2, "Ingresa la entidad financiera."),
 
   cuotaMensual: z
-    .number({ message: "Ingresa la cuota mensual de la cuarta deuda." })
+    .number({ message: "Ingresa la cuota mensual." })
     .min(1, "Ingresa una cuota mayor a cero."),
 
   capitalPendiente: z
     .number({
-      message: "Ingresa el capital pendiente de la cuarta deuda.",
+      message: "Ingresa el capital pendiente.",
     })
     .min(1, "Ingresa un capital pendiente mayor a cero."),
 });
@@ -65,17 +62,14 @@ export const datosFinancierosSchema = z
       .optional(),
 
     /**
-     * Cuarta deuda especial.
-     * Solo será obligatoria cuando excepcionTipo sea ULTIMA_CUOTA.
+     * Cuarta deuda que está en su última cuota.
      */
-    deudaCuatro: deudaCuatroSchema.optional(),
+    deudaCuatro: deudaEspecialSchema.optional(),
 
     /**
-     * Compra de una de las tres deudas registradas.
+     * Deuda que Kivo evaluará comprar.
      */
-    compraIndice: z.number().optional(),
-
-    capitalCompra: z.number().optional(),
+    deudaCompra: deudaEspecialSchema.optional(),
 
     deudaMoraOVencida: z.enum(["SI", "NO"], {
       message: "Indica si tienes alguna deuda en mora o vencida.",
@@ -104,35 +98,20 @@ export const datosFinancierosSchema = z
       }
     }
 
-    if (values.excepcionTipo === "ULTIMA_CUOTA") {
-      if (!values.deudaCuatro) {
-        context.addIssue({
-          code: "custom",
-          path: ["deudaCuatro"],
-          message: "Completa los datos de la cuarta deuda.",
-        });
-      }
+    if (values.excepcionTipo === "ULTIMA_CUOTA" && !values.deudaCuatro) {
+      context.addIssue({
+        code: "custom",
+        path: ["deudaCuatro"],
+        message: "Completa los datos de la cuarta deuda.",
+      });
     }
 
-    if (values.excepcionTipo === "COMPRA_DEUDA") {
-      if (values.compraIndice === undefined) {
-        context.addIssue({
-          code: "custom",
-          path: ["compraIndice"],
-          message: "Selecciona la deuda que Kivo evaluará comprar.",
-        });
-      }
-
-      if (
-        values.capitalCompra === undefined ||
-        values.capitalCompra <= 0
-      ) {
-        context.addIssue({
-          code: "custom",
-          path: ["capitalCompra"],
-          message: "Ingresa el capital pendiente de la deuda.",
-        });
-      }
+    if (values.excepcionTipo === "COMPRA_DEUDA" && !values.deudaCompra) {
+      context.addIssue({
+        code: "custom",
+        path: ["deudaCompra"],
+        message: "Completa los datos de la deuda que Kivo evaluará comprar.",
+      });
     }
   });
 
