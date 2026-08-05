@@ -58,6 +58,7 @@ function etiquetaCapacidad(
 ): string {
   if (nivel === "COMODA") return "Cómoda";
   if (nivel === "AJUSTADA") return "Ajustada";
+
   return "Al límite";
 }
 
@@ -93,53 +94,57 @@ export function SimulacionForm() {
     simulacionGuardada?.monto ?? 15000,
   );
 
+  const plazoInicial = simulacionGuardada?.plazoMeses ?? 12;
+
   const [monto, setMonto] = useState<number>(montoInicial);
+
+  const [plazoSeleccionado, setPlazoSeleccionado] =
+    useState<number>(plazoInicial);
+
   const [confirmo, setConfirmo] = useState(false);
 
-  // Flujo Asalariado:
-  // El destino se asigna automáticamente.
+  // En el flujo de asalariados, el destino se asigna automáticamente.
   const destinoPrestamo = "USO_PERSONAL" as const;
 
-  // El plazo se calcula automáticamente.
-  const plazoSeleccionado = useMemo(() => {
-    const plazos = REGLAS_SIMULACION.plazosMeses.filter((plazo) => {
-      if (monto <= 15000) return plazo <= 24;
-      if (monto <= 25000) return plazo >= 9 && plazo <= 30;
+  const plazosDisponibles = useMemo(() => {
+    return REGLAS_SIMULACION.plazosMeses.filter((plazo) => {
+      if (monto <= 15000) {
+        return plazo <= 24;
+      }
+
+      if (monto <= 25000) {
+        return plazo >= 9 && plazo <= 30;
+      }
+
       return plazo >= 12;
     });
+  }, [monto]);
 
-    const resultados = plazos.map((plazoMeses) =>
-      simular({
-        monto,
-        plazoMeses,
-        ingresoNeto,
-        totalDeudas,
-        destinoPrestamo,
-      }),
-    );
+  const plazoActivo = (
+    plazosDisponibles as readonly number[]
+  ).includes(plazoSeleccionado)
+    ? plazoSeleccionado
+    : (plazosDisponibles[0] ?? 12);
 
-    const viables = resultados.filter((r) => r.viable);
-
-    if (viables.length > 0) {
-      return viables[Math.floor(viables.length / 2)].plazoMeses;
-    }
-
-    return plazos.at(-1) ?? 12;
-  }, [monto, ingresoNeto, totalDeudas]);
+  const indicePlazoActivo = Math.max(
+    0,
+    (plazosDisponibles as readonly number[]).indexOf(plazoActivo),
+  );
 
   const resultado = useMemo(() => {
     return simular({
       monto,
-      plazoMeses: plazoSeleccionado,
+      plazoMeses: plazoActivo,
       ingresoNeto,
       totalDeudas,
       destinoPrestamo,
     });
   }, [
     monto,
-    plazoSeleccionado,
+    plazoActivo,
     ingresoNeto,
     totalDeudas,
+    destinoPrestamo,
   ]);
 
   const alternativa = useMemo(() => {
@@ -147,7 +152,7 @@ export function SimulacionForm() {
 
     return buscarAlternativa({
       monto,
-      plazoMeses: plazoSeleccionado,
+      plazoMeses: plazoActivo,
       ingresoNeto,
       totalDeudas,
       destinoPrestamo,
@@ -155,14 +160,13 @@ export function SimulacionForm() {
   }, [
     resultado.viable,
     monto,
-    plazoSeleccionado,
+    plazoActivo,
     ingresoNeto,
     totalDeudas,
+    destinoPrestamo,
   ]);
 
   const sinCapacidad = resultado.capacidad.cuotaMaxima <= 0;
-
-  const cronogramaVisible = resultado.cronograma.slice(0, 3);
 
   const porcentajeVisual = Math.min(
     100,
@@ -177,9 +181,10 @@ export function SimulacionForm() {
     if (!alternativa) return;
 
     setMonto(alternativa.monto);
+    setPlazoSeleccionado(alternativa.plazoMeses);
   };
 
-    const confirmar = () => {
+  const confirmar = () => {
     if (!resultado.viable || !confirmo) return;
 
     setSimulacion({
@@ -205,6 +210,7 @@ export function SimulacionForm() {
       totalPagar: resultado.totalPagar,
       interesTotal: resultado.interesTotal,
       seguroTotal: resultado.seguroTotal,
+
       gastosAdministrativosTotal:
         resultado.gastosAdministrativosTotal,
 
@@ -231,8 +237,8 @@ export function SimulacionForm() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Elige el monto que necesitas. Kivo calculará automáticamente el
-        plazo recomendado y una cuota compatible con tu capacidad de pago.
+        Elige el monto que necesitas y en cuántos meses quieres pagarlo.
+        Kivo calculará una cuota compatible con tu capacidad de pago.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.95fr]">
@@ -287,9 +293,56 @@ export function SimulacionForm() {
 
           <div className="mt-1 flex justify-between text-xs font-semibold text-muted">
             <span>{formatBs(REGLAS_SIMULACION.montoMinimo)}</span>
+
             <span>{formatBs(REGLAS_SIMULACION.montoMaximo)}</span>
           </div>
 
+          {/* Selección de plazo */}
+          <div className="mt-7">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-bold text-ink">
+                ¿En cuántos meses quieres pagar?
+              </p>
+
+              <span className="shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-extrabold text-primary">
+                {plazoActivo} meses
+              </span>
+            </div>
+
+            <input
+              type="range"
+              min={0}
+              max={Math.max(0, plazosDisponibles.length - 1)}
+              step={1}
+              value={indicePlazoActivo}
+              onChange={(event) => {
+                const indice = Number(event.target.value);
+                const nuevoPlazo = plazosDisponibles[indice];
+
+                if (nuevoPlazo !== undefined) {
+                  setPlazoSeleccionado(nuevoPlazo);
+                }
+              }}
+              aria-label="Seleccionar plazo del préstamo"
+              aria-valuetext={`${plazoActivo} meses`}
+              className="mt-5 w-full accent-primary"
+            />
+
+            <div className="mt-1 flex justify-between text-xs font-semibold text-muted">
+              <span>
+                {plazosDisponibles[0] ?? plazoActivo} meses
+              </span>
+
+              <span>
+                {plazosDisponibles[
+                  plazosDisponibles.length - 1
+                ] ?? plazoActivo}{" "}
+                meses
+              </span>
+            </div>
+          </div>
+
+          {/* Tasa */}
           <div className="mt-6 flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
             <div>
               <p className="text-xs font-medium text-muted">
@@ -323,7 +376,7 @@ export function SimulacionForm() {
           </p>
 
           <p className="mt-1 text-sm text-white/70">
-            durante {plazoSeleccionado} meses
+            durante {plazoActivo} meses
           </p>
 
           <div className="mt-5 border-t border-white/15 pt-4">
@@ -348,16 +401,21 @@ export function SimulacionForm() {
             <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15">
               <div
                 className="h-full rounded-full bg-white transition-[width]"
-                style={{ width: `${porcentajeVisual}%` }}
+                style={{
+                  width: `${porcentajeVisual}%`,
+                }}
               />
             </div>
 
             <p className="mt-2 text-xs text-white/65">
               Cuota máxima estimada:{" "}
-              {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}
+              {formatBs(
+                Math.max(0, resultado.capacidad.cuotaMaxima),
+              )}
             </p>
           </div>
-                    <div className="mt-5 border-t border-white/15 pt-4">
+
+          <div className="mt-5 border-t border-white/15 pt-4">
             <div>
               <h3 className="text-sm font-extrabold text-white">
                 Desglose de la primera cuota
@@ -370,17 +428,28 @@ export function SimulacionForm() {
 
             <dl className="mt-4 space-y-3 text-sm">
               {[
-                ["Capital", resultado.desglosePrimeraCuota.capital],
-                ["Interés", resultado.desglosePrimeraCuota.interes],
+                [
+                  "Capital",
+                  resultado.desglosePrimeraCuota.capital,
+                ],
+                [
+                  "Interés",
+                  resultado.desglosePrimeraCuota.interes,
+                ],
                 [
                   "Seguro",
-                  resultado.desglosePrimeraCuota.seguroDesgravamen,
+                  resultado.desglosePrimeraCuota
+                    .seguroDesgravamen,
                 ],
                 [
                   "Gastos Administrativos",
-                  resultado.desglosePrimeraCuota.gastosAdministrativos,
+                  resultado.desglosePrimeraCuota
+                    .gastosAdministrativos,
                 ],
-                ["Total cuota", resultado.desglosePrimeraCuota.total],
+                [
+                  "Total cuota",
+                  resultado.desglosePrimeraCuota.total,
+                ],
               ].map(([label, value], index, items) => (
                 <div
                   key={String(label)}
@@ -390,7 +459,9 @@ export function SimulacionForm() {
                       : ""
                   }`}
                 >
-                  <dt className="text-white/65">{label}</dt>
+                  <dt className="text-white/65">
+                    {label}
+                  </dt>
 
                   <dd className="font-bold text-white">
                     {formatBs(Number(value))}
@@ -402,31 +473,49 @@ export function SimulacionForm() {
         </div>
       </div>
 
-      
-            {/* Veredicto */}
+      {/* Veredicto */}
       <AnimatePresence mode="wait" initial={false}>
         {sinCapacidad ? (
           <motion.div
             key="sin-capacidad"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{
+              height: 0,
+              opacity: 0,
+            }}
+            animate={{
+              height: "auto",
+              opacity: 1,
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+            }}
             transition={REVEAL}
             className="overflow-hidden"
           >
             <div className="pt-5">
               <DangerNotice title="Por ahora no podemos continuar">
-                Tus compromisos actuales no dejan espacio para una nueva
-                cuota. Puedes volver a intentarlo cuando reduzcas tus deudas.
+                Tus compromisos actuales no dejan espacio para una
+                nueva cuota. Puedes volver a intentarlo cuando
+                reduzcas tus deudas.
               </DangerNotice>
             </div>
           </motion.div>
         ) : resultado.viable ? (
           <motion.div
             key="viable"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{
+              height: 0,
+              opacity: 0,
+            }}
+            animate={{
+              height: "auto",
+              opacity: 1,
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+            }}
             transition={REVEAL}
             className="overflow-hidden"
           >
@@ -441,8 +530,8 @@ export function SimulacionForm() {
                 </p>
 
                 <p className="mt-0.5 text-[13px] leading-5 text-body">
-                  La cuota está dentro de tu capacidad estimada y puede pasar
-                  a la siguiente etapa de evaluación.
+                  La cuota está dentro de tu capacidad estimada y
+                  puede pasar a la siguiente etapa de evaluación.
                 </p>
               </div>
             </div>
@@ -450,18 +539,30 @@ export function SimulacionForm() {
         ) : (
           <motion.div
             key="no-viable"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{
+              height: 0,
+              opacity: 0,
+            }}
+            animate={{
+              height: "auto",
+              opacity: 1,
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+            }}
             transition={REVEAL}
             className="overflow-hidden"
           >
             <div className="pt-5">
               <DangerNotice title="Esta combinación supera tu capacidad">
-                La cuota de {formatBs(resultado.cuotaMensual)} está por encima
-                de tu máximo de{" "}
-                {formatBs(Math.max(0, resultado.capacidad.cuotaMaxima))}.
-                Reduce el monto para encontrar una opción compatible.
+                La cuota de {formatBs(resultado.cuotaMensual)} está
+                por encima de tu máximo de{" "}
+                {formatBs(
+                  Math.max(0, resultado.capacidad.cuotaMaxima),
+                )}
+                . Reduce el monto o aumenta el plazo para encontrar
+                una opción compatible.
               </DangerNotice>
 
               {alternativa ? (
@@ -488,7 +589,8 @@ export function SimulacionForm() {
           </motion.div>
         )}
       </AnimatePresence>
-            <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-4">
+
+      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-4">
         <input
           type="checkbox"
           checked={confirmo}
@@ -499,8 +601,9 @@ export function SimulacionForm() {
         />
 
         <span className="text-sm leading-6 text-ink-soft">
-          Confirmo que revisé esta simulación y entiendo que los valores son
-          estimados hasta completar la evaluación de Kivo.
+          Confirmo que revisé esta simulación y entiendo que los
+          valores son estimados hasta completar la evaluación de
+          Kivo.
         </span>
       </label>
 
@@ -511,9 +614,17 @@ export function SimulacionForm() {
           disabled={!resultado.viable || !confirmo}
           className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
-          <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2.5} />
+          <ShieldCheck
+            className="h-4.5 w-4.5"
+            strokeWidth={2.5}
+          />
+
           Confirmar simulación
-          <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
+
+          <ArrowRight
+            className="h-4.5 w-4.5"
+            strokeWidth={2.5}
+          />
         </button>
       </div>
     </div>

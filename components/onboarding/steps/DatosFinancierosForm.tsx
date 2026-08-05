@@ -936,9 +936,12 @@ export function DatosFinancierosForm() {
         <legend className="sr-only">Central de riesgos</legend>
 
         <p className="text-sm font-bold text-ink">
-          ¿Actualmente figuras con algún reporte negativo en la central de
-          riesgos del sistema financiero?
-        </p>
+  ¿Actualmente tienes deudas atrasadas o algún reporte negativo?
+</p>
+
+<p className="mt-1 text-xs leading-5 text-muted">
+  Incluye deudas vencidas, créditos en mora o deudas castigadas.
+</p>
 
         <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
           <RadioPill

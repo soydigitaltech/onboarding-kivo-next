@@ -133,7 +133,7 @@ export interface DatosComplementarios {
   /** Dirección actual de residencia. */
   direccion: string;
 
-  destinoPrestamo: string;
+  destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
 
   /** Ubicación aproximada de la residencia. */
   ubicacionLat?: number;

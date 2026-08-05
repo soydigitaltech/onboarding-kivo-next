@@ -54,10 +54,9 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .min(5, "Ingresa tu dirección actual."),
 
-  destinoPrestamo: z
-    .string()
-    .trim()
-    .min(5, "Cuéntanos para qué usarás el préstamo."),
+  destinoPrestamo: z.enum(["CAPITAL_TRABAJO", "USO_PERSONAL"], {
+    message: "Selecciona para qué usarás el préstamo.",
+  }),
 
   /** Ubicación aproximada de la residencia. */
   ubicacionLat: z.number().optional(),

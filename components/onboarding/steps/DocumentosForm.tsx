@@ -10,9 +10,9 @@ import { DocumentoSlot, documentoEstaSubido, type DocConfig } from "./DocumentoS
 const DOCUMENTOS_CONFIG: DocConfig[] = [
   {
     key: "autorizacionBic",
-    titulo: "Autorización BIC firmada",
+    titulo: "Autorízanos a revisar tu historial crediticio",
     descripcion:
-      "Documento firmado que autoriza la consulta de tu información.",
+      "Necesitamos tu autorización para revisar tu historial crediticio en el Buró de Información Crediticia y verificar que no tengas deudas vencidas, préstamos en mora o deudas castigadas.",
     destacado: true,
     pasos: [
       "Descarga el documento",

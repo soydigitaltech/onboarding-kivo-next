@@ -5,7 +5,12 @@ import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import { ArrowRight, MapPin, ReceiptText } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  MapPin,
+  ShoppingBag,
+} from "lucide-react";
 
 import type { Coordenadas } from "./MapaUbicacion";
 
@@ -100,7 +105,7 @@ function pasoCompleto(
       return (values.direccion ?? "").trim().length >= 5;
 
     case "destinoPrestamo":
-      return (values.destinoPrestamo ?? "").trim().length >= 5;
+      return values.destinoPrestamo !== undefined;
 
     case "extractos":
       return values.extractos !== undefined;
@@ -110,6 +115,10 @@ function pasoCompleto(
 export function InformacionComplementariaForm() {
   const guardados = useOnboardingStore((state) => {
     return state.datosComplementarios;
+  });
+
+  const perfilLaboral = useOnboardingStore((state) => {
+    return state.datosPersonales?.perfilLaboral;
   });
 
   const setDatosComplementarios = useOnboardingStore((state) => {
@@ -389,30 +398,100 @@ export function InformacionComplementariaForm() {
       </div>
 
       {/* Destino del préstamo */}
-      <div
+      <fieldset
         className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
           "destinoPrestamo",
         )}`}
       >
-        <Field
-          label="Destino del préstamo"
-          htmlFor="destinoPrestamo"
-          error={errors.destinoPrestamo?.message}
-        >
-          <div className="relative">
-            <ReceiptText className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+        <legend className="text-sm font-bold text-ink">
+          ¿Para qué necesitas el préstamo?
+        </legend>
 
+        <p className="mt-1 text-xs leading-5 text-muted">
+          Selecciona la opción que mejor describe cómo usarás el dinero.
+        </p>
+
+        <div
+          className={`mt-3 grid gap-3 ${
+            perfilLaboral === "INDEPENDIENTE"
+              ? "sm:grid-cols-2"
+              : "max-w-md"
+          }`}
+        >
+          {perfilLaboral === "INDEPENDIENTE" ? (
+            <label
+              className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                values.destinoPrestamo === "CAPITAL_TRABAJO"
+                  ? "border-primary bg-surface-blue"
+                  : "border-border bg-white hover:border-primary/40"
+              }`}
+            >
+              <input
+                type="radio"
+                value="CAPITAL_TRABAJO"
+                className="sr-only"
+                tabIndex={lockTab("destinoPrestamo")}
+                {...register("destinoPrestamo")}
+              />
+
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <BriefcaseBusiness className="h-5 w-5" />
+                </span>
+
+                <div>
+                  <p className="text-sm font-extrabold text-ink">
+                    Capital de trabajo
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    Para mercadería, insumos, herramientas u otros gastos de tu
+                    actividad.
+                  </p>
+                </div>
+              </div>
+            </label>
+          ) : null}
+
+          <label
+            className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+              values.destinoPrestamo === "USO_PERSONAL"
+                ? "border-primary bg-surface-blue"
+                : "border-border bg-white hover:border-primary/40"
+            }`}
+          >
             <input
-              id="destinoPrestamo"
-              type="text"
-              placeholder="Ej. Compra de mercadería para mi negocio"
-              className={`${inputClassName} pl-11`}
+              type="radio"
+              value="USO_PERSONAL"
+              className="sr-only"
               tabIndex={lockTab("destinoPrestamo")}
               {...register("destinoPrestamo")}
             />
-          </div>
-        </Field>
-      </div>
+
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+
+              <div>
+                <p className="text-sm font-extrabold text-ink">
+                  Uso personal
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Para cubrir una necesidad o gasto personal.
+                </p>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {errors.destinoPrestamo ? (
+          <p className="mt-2 text-xs font-semibold text-error" role="alert">
+            {errors.destinoPrestamo.message}
+          </p>
+        ) : null}
+      </fieldset>
 
       {/* Extractos bancarios */}
       <fieldset
