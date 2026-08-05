@@ -380,10 +380,10 @@ export function DatosFinancierosForm() {
             </p>
 
             <p className="mt-1 text-xs leading-5 text-body">
-              {perfilLaboral === "INDEPENDIENTE"
-                ? "Ingresa el monto que realmente te queda cada mes después de pagar mercadería, alquiler, servicios, personal y otros costos de tu actividad."
-                : "Ingresa el monto que recibes cada mes después de descuentos como aportes, impuestos, anticipos, préstamos u otras retenciones."}
-            </p>
+  {perfilLaboral === "INDEPENDIENTE"
+    ? "Ingresa la utilidad que obtienes cada mes después de pagar a tus proveedores, alquiler, servicios, personal y otros costos relacionados con tu actividad."
+    : "Ingresa el monto que recibes cada mes después de los descuentos por aportes y otras retenciones."}
+</p>
           </div>
         </div>
       </div>
