@@ -974,7 +974,7 @@ export function DatosFinancierosForm() {
 </p>
 
 <p className="mt-1 text-xs leading-5 text-muted">
-  Incluye deudas vencidas, créditos en mora o deudas castigadas.
+  Incluye deudas vencidas, préstamos en mora o deudas castigadas.
 </p>
 
         <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">

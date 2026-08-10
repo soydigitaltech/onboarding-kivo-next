@@ -12,7 +12,7 @@ import {
 const STEP_LABELS: Record<StepId, string> = {
   "datos-personales": "Tus datos",
   "datos-financieros": "Finanzas",
-  simulacion: "Simulación",
+  simulacion: "Calcula tu cuota",
   "informacion-complementaria": "Información",
   "carga-documentos": "Documentos",
   resumen: "Resumen",

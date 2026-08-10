@@ -319,7 +319,7 @@ export default function CuotasView() {
                   onClick={() => confirmarPago(destacada.foco.numero)}
                   className="rounded-[13px] border-[1.5px] border-[#DCE7F0] bg-white px-5 py-3 text-sm font-extrabold text-[#43596F] transition hover:border-primary hover:text-primary-dark"
                 >
-                  Simular confirmación
+                  Confirmar pago
                 </button>
               ) : (
                 <button
@@ -529,7 +529,7 @@ export default function CuotasView() {
                       onClick={() => confirmarPago(cuota.numero)}
                       className="w-full rounded-[11px] border-[1.5px] border-[#DCE7F0] px-4 py-2 text-[13px] font-extrabold text-[#43596F] transition hover:border-primary hover:text-primary-dark sm:w-auto"
                     >
-                      Simular confirmación
+                      Confirmar pago
                     </button>
                   ) : (
                     <button className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-primary-dark">

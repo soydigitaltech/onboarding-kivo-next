@@ -271,7 +271,7 @@ export function ResumenForm() {
         </SummarySection>
 
         <SummarySection
-          titulo="Simulación del préstamo"
+          titulo="Cálculo de tu cuota"
           onEdit={() => editStep("simulacion")}
         >
           <Dato

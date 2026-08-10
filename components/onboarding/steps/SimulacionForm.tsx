@@ -54,15 +54,6 @@ function CuotaAnimada({ valor }: { valor: number }) {
   return <motion.span>{texto}</motion.span>;
 }
 
-function etiquetaCapacidad(
-  nivel: "COMODA" | "AJUSTADA" | "AL_LIMITE",
-): string {
-  if (nivel === "COMODA") return "Cómoda";
-  if (nivel === "AJUSTADA") return "Ajustada";
-
-  return "Al límite";
-}
-
 export function SimulacionForm() {
   const datosPersonales = useOnboardingStore((state) => {
     return state.datosPersonales;
@@ -195,14 +186,19 @@ export function SimulacionForm() {
 
   const sinCapacidad = resultado.capacidad.cuotaMaxima <= 0;
 
-  const porcentajeVisual = Math.min(
-    100,
-    Math.max(0, resultado.porcentajeCapacidad),
-  );
-
   const ajustarMonto = (valor: number) => {
     const montoNormalizado = normalizarMonto(valor);
     setMonto(Math.min(montoMaximoPermitido, montoNormalizado));
+  };
+
+  const ajustarPlazo = (valor: number) => {
+    const plazoMasCercano = plazosDisponibles.reduce((anterior, actual) => {
+      return Math.abs(actual - valor) < Math.abs(anterior - valor)
+        ? actual
+        : anterior;
+    }, plazosDisponibles[0] ?? 12);
+
+    setPlazoSeleccionado(plazoMasCercano);
   };
 
   const usarAlternativa = () => {
@@ -259,7 +255,7 @@ export function SimulacionForm() {
   if (!datosFinancieros) {
     return (
       <p className="text-sm leading-6 text-body">
-        Completa primero tus datos financieros para simular tu préstamo.
+        Completa primero tus datos financieros para calcular tu cuota.
       </p>
     );
   }
@@ -329,15 +325,38 @@ export function SimulacionForm() {
 
           {/* Selección de plazo */}
           <div className="mt-7">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-bold text-ink">
-                ¿En cuántos meses quieres pagar?
-              </p>
+            <p className="text-sm font-bold text-ink">
+              ¿En cuántos meses quieres pagar?
+            </p>
 
-              <span className="shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-extrabold text-primary">
-                {plazoActivo} meses
-              </span>
+            <div className="mt-2">
+              <PrefixedInputShell prefix="Meses">
+                <NumericFormat
+                  id="plazoSimulacion"
+                  value={plazoActivo}
+                  onValueChange={(value) => {
+                    if (value.floatValue !== undefined) {
+                      setPlazoSeleccionado(value.floatValue);
+                    }
+                  }}
+                  onBlur={() => {
+                    ajustarPlazo(plazoSeleccionado);
+                  }}
+                  allowNegative={false}
+                  decimalScale={0}
+                  inputMode="numeric"
+                  className={prefixedInputClassName}
+                  aria-label="Plazo del préstamo en meses"
+                />
+              </PrefixedInputShell>
             </div>
+
+            <p className="mt-1.5 text-xs text-muted">
+              Puedes elegir un plazo entre{" "}
+              {plazosDisponibles[0] ?? plazoActivo} y{" "}
+              {plazosDisponibles[plazosDisponibles.length - 1] ?? plazoActivo}{" "}
+              meses.
+            </p>
 
             <input
               type="range"
@@ -355,18 +374,15 @@ export function SimulacionForm() {
               }}
               aria-label="Seleccionar plazo del préstamo"
               aria-valuetext={`${plazoActivo} meses`}
-              className="mt-5 w-full accent-primary"
+              className="mt-4 w-full accent-primary"
             />
 
             <div className="mt-1 flex justify-between text-xs font-semibold text-muted">
-              <span>
-                {plazosDisponibles[0] ?? plazoActivo} meses
-              </span>
+              <span>{plazosDisponibles[0] ?? plazoActivo} meses</span>
 
               <span>
-                {plazosDisponibles[
-                  plazosDisponibles.length - 1
-                ] ?? plazoActivo}{" "}
+                {plazosDisponibles[plazosDisponibles.length - 1] ??
+                  plazoActivo}{" "}
                 meses
               </span>
             </div>
@@ -410,38 +426,13 @@ export function SimulacionForm() {
           </p>
 
           <div className="mt-5 border-t border-white/15 pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-white/60">
-                  Uso de tu capacidad
-                </p>
-
-                <p className="font-bold">
-                  {etiquetaCapacidad(resultado.nivelCapacidad)}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <p className="text-2xl font-extrabold">
-                  {Math.round(resultado.porcentajeCapacidad)}%
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full bg-white transition-[width]"
-                style={{
-                  width: `${porcentajeVisual}%`,
-                }}
-              />
-            </div>
-
-            <p className="mt-2 text-xs text-white/65">
+            <p className="text-sm text-white/70">
               Cuota máxima estimada:{" "}
-              {formatBs(
-                Math.max(0, resultado.capacidad.cuotaMaxima),
-              )}
+              <strong className="font-bold text-white">
+                {formatBs(
+                  Math.max(0, resultado.capacidad.cuotaMaxima),
+                )}
+              </strong>
             </p>
           </div>
 
@@ -631,7 +622,7 @@ export function SimulacionForm() {
         />
 
         <span className="text-sm leading-6 text-ink-soft">
-          Confirmo que revisé esta simulación y entiendo que los
+          Confirmo que revisé el cálculo de mi cuota y entiendo que los
           valores son estimados hasta completar la evaluación de
           Kivo.
         </span>
@@ -649,7 +640,7 @@ export function SimulacionForm() {
             strokeWidth={2.5}
           />
 
-          Confirmar simulación
+          Confirmar
 
           <ArrowRight
             className="h-4.5 w-4.5"
