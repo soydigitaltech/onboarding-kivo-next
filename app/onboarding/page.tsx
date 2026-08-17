@@ -16,12 +16,12 @@ import { ConfirmacionFinal } from "@/components/onboarding/steps/ConfirmacionFin
 
 /** Título visible arriba del formulario del paso activo. */
 const STEP_TITLES: Record<StepId, string> = {
-  "datos-personales": "Datos personales",
-  "datos-financieros": "Datos financieros",
-  simulacion: "Simula tu cuota",
-  "informacion-complementaria": "Información complementaria",
-  "carga-documentos": "Carga tus documentos",
-  resumen: "Resumen de tu solicitud",
+  "datos-personales": "Tus datos",
+  "datos-financieros": "Tus finanzas",
+  simulacion: "Elige tu préstamo",
+  "informacion-complementaria": "Más sobre ti",
+  "carga-documentos": "Tus documentos",
+  resumen: "Resumen",
 };
 
 export default function OnboardingPage() {

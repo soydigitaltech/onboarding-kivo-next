@@ -31,17 +31,19 @@ export interface DatosPersonales {
   celular: string;
   ciudad: string;
 
-  /** Situación laboral elegida al inicio de la solicitud. */
-  perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
+  /** Dirección actual de domicilio del solicitante. */
+  direccion: string;
 
   /** Personas que dependen económicamente del solicitante. */
   numeroDependientes: number;
 
-  /** Rubro de la empresa o actividad económica independiente. */
-  rubroLaboral: string;
-
-  /** Dirección de la empresa, negocio o lugar habitual de trabajo. */
-  direccionTrabajo: string;
+  /**
+   * Compatibilidad temporal mientras estos campos
+   * se redistribuyen en los siguientes pasos.
+   */
+  perfilLaboral?: "ASALARIADO" | "INDEPENDIENTE";
+  rubroLaboral?: string;
+  direccionTrabajo?: string;
 }
 
 export interface DeudaFinanciera {

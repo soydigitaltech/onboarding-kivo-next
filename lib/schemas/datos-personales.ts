@@ -51,10 +51,6 @@ export const EDAD_MAXIMA = 65;
 export const NOMBRE_COMPLETO_REGEX = /^\s*\S+(\s+\S+)+\s*$/;
 
 export const datosPersonalesSchema = z.object({
-  perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"], {
-    message: "Selecciona tu situación laboral.",
-  }),
-
   nombreCompleto: z
     .string()
     .trim()
@@ -84,6 +80,11 @@ export const datosPersonalesSchema = z.object({
 
   ciudad: z.string().min(1, "Selecciona tu ciudad."),
 
+  direccion: z
+    .string()
+    .trim()
+    .min(5, "Ingresa tu dirección de domicilio."),
+
   numeroDependientes: z
     .number({
       message: "Indica cuántas personas dependen económicamente de ti.",
@@ -92,15 +93,14 @@ export const datosPersonalesSchema = z.object({
     .min(0, "El número de dependientes no puede ser negativo.")
     .max(20, "Revisa el número de dependientes."),
 
-  rubroLaboral: z
-    .string()
-    .trim()
-    .min(3, "Ingresa el rubro de tu empresa o actividad."),
-
-  direccionTrabajo: z
-    .string()
-    .trim()
-    .min(5, "Ingresa la dirección de tu lugar de trabajo o negocio."),
+  /**
+   * Campos temporales de compatibilidad.
+   * Se moverán a sus pasos correspondientes durante la
+   * reorganización del onboarding.
+   */
+  perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"]).optional(),
+  rubroLaboral: z.string().optional(),
+  direccionTrabajo: z.string().optional(),
 });
 
 export type DatosPersonalesValues = z.infer<typeof datosPersonalesSchema>;
