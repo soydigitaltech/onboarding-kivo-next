@@ -133,24 +133,28 @@ export interface SimulacionConfirmada {
 }
 
 export interface DatosComplementarios {
+  /** Empresa donde trabaja o nombre de su negocio. */
+  nombreEmpresaNegocio: string;
+
+  /** Rubro de la empresa o actividad económica. */
+  rubro: string;
+
+  /** Cargo, profesión, oficio o actividad principal. */
+  cargoActividad: string;
+
+  /** Dirección de la empresa, negocio o lugar de trabajo. */
+  direccionLaboral: string;
+
   vivienda: "PROPIA" | "FAMILIAR" | "ALQUILER" | "ANTICRETICO";
-  estadoCivil: "SOLTERO" | "CASADO" | "DIVORCIADO" | "VIUDO" | "CONYUGE";
 
-  conyugeNombre?: string;
-  conyugeCelular?: string;
-
-  tieneGarante?: "SI" | "NO";
-
-  /** Dirección actual de residencia. */
-  direccion: string;
+  estadoCivil:
+    | "SOLTERO"
+    | "CASADO"
+    | "DIVORCIADO"
+    | "VIUDO"
+    | "CONYUGE";
 
   destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
-
-  /** Ubicación aproximada de la residencia. */
-  ubicacionLat?: number;
-  ubicacionLng?: number;
-
-  extractos: "SI" | "NO";
 }
 
 /** Metadatos de un archivo cargado (el binario no se persiste). */

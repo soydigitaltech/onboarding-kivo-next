@@ -8,27 +8,7 @@ import { DocumentoSlot, documentoEstaSubido, type DocConfig } from "./DocumentoS
 
 // TODO: confirmar con Kivo la URL definitiva del PDF de autorización BIC.
 const DOCUMENTOS_CONFIG: DocConfig[] = [
-  {
-    key: "autorizacionBic",
-    titulo: "Autoriza la consulta de tu historial crediticio",
-    descripcion:
-      "Con este documento nos autorizas a revisar tu historial crediticio y continuar con la evaluación de tu solicitud.",
-    destacado: true,
-    pasos: [
-      "Descarga el documento",
-      "Fírmalo con tu puño y letra",
-      "Sube una foto o el PDF firmado",
-    ],
-    ejemploUrl: "/documents/examples/autorizacion-firmada.webp",
-    ejemploAlt: "Ejemplo de autorización firmada",
-    recomendaciones: [
-      "La firma debe verse claramente.",
-      "El documento debe estar completo.",
-      "No subas el documento sin firmar.",
-    ],
-    accept: ".pdf,.jpg,.jpeg,.png",
-    descargaUrl: "/documents/autorizacion-bic-kivo.pdf",
-  },
+  // 1. Carnet de identidad
   {
     key: "ciAnverso",
     titulo: "Carnet de identidad — parte frontal",
@@ -57,11 +37,13 @@ const DOCUMENTOS_CONFIG: DocConfig[] = [
     ],
     accept: ".jpg,.jpeg,.png",
   },
+
+  // 2. Fotografía / selfie
   {
     key: "selfie",
-    titulo: "Tómate una selfie sosteniendo tu carnet",
+    titulo: "Fotografía / selfie",
     descripcion:
-      "Tu rostro y tu carnet deben aparecer claramente en la misma fotografía.",
+      "Tómate una selfie sosteniendo tu carnet. Tu rostro y el documento deben verse claramente.",
     ejemploUrl: "/documents/examples/selfie-carnet.webp",
     ejemploAlt: "Ejemplo de una selfie sosteniendo el carnet",
     recomendaciones: [
@@ -71,6 +53,29 @@ const DOCUMENTOS_CONFIG: DocConfig[] = [
       "Busca un lugar con buena iluminación.",
     ],
     accept: ".jpg,.jpeg,.png",
+  },
+
+  // 3. Autorización
+  {
+    key: "autorizacionBic",
+    titulo: "Autorización para consulta y uso de información",
+    descripcion:
+      "Con este documento autorizas a Kivo a consultar la información necesaria para evaluar tu solicitud.",
+    destacado: true,
+    pasos: [
+      "Descarga el documento",
+      "Fírmalo con tu puño y letra",
+      "Sube una foto o el PDF firmado",
+    ],
+    ejemploUrl: "/documents/examples/autorizacion-firmada.webp",
+    ejemploAlt: "Ejemplo de autorización firmada",
+    recomendaciones: [
+      "La firma debe verse claramente.",
+      "El documento debe estar completo.",
+      "No subas el documento sin firmar.",
+    ],
+    accept: ".pdf,.jpg,.jpeg,.png",
+    descargaUrl: "/documents/autorizacion-bic-kivo.pdf",
   },
 ];
 
@@ -149,8 +154,8 @@ export function DocumentosForm() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Sube los 4 archivos requeridos, en orden. Asegúrate de que estén
-        legibles y en los formatos permitidos.
+        Completa los documentos requeridos: tu carnet de identidad, una
+        selfie y la autorización. Asegúrate de que todo sea legible.
       </p>
 
       <div className="flex flex-col gap-4">

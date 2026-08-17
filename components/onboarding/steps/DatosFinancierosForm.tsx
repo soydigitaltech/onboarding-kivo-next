@@ -58,10 +58,6 @@ const PASOS: Paso[] = [
 export function DatosFinancierosForm() {
   const guardados = useOnboardingStore((s) => s.datosFinancieros);
   const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
-  const datosComplementarios = useOnboardingStore(
-    (s) => s.datosComplementarios,
-  );
-
   const setDatosFinancieros = useOnboardingStore(
     (s) => s.setDatosFinancieros,
   );
@@ -100,7 +96,7 @@ export function DatosFinancierosForm() {
           perfilLaboral: datosPersonales?.perfilLaboral,
           deudas: [],
           deudaMoraOVencida: undefined,
-          extractos: datosComplementarios?.extractos,
+          extractos: undefined,
         },
   });
 

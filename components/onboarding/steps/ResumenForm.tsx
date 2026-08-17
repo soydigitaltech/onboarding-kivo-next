@@ -157,10 +157,6 @@ export function ResumenForm() {
 
   const documentosLista = [
     {
-      label: "Autorización BIC",
-      meta: datosDocumentos.autorizacionBic,
-    },
-    {
       label: "Carnet (anverso)",
       meta: datosDocumentos.ciAnverso,
     },
@@ -169,8 +165,12 @@ export function ResumenForm() {
       meta: datosDocumentos.ciReverso,
     },
     {
-      label: "Selfie",
+      label: "Fotografía / selfie",
       meta: datosDocumentos.selfie,
+    },
+    {
+      label: "Autorización",
+      meta: datosDocumentos.autorizacionBic,
     },
   ];
 
@@ -201,7 +201,7 @@ export function ResumenForm() {
 
       <div className="flex flex-col gap-4">
         <SummarySection
-          titulo="Datos personales y laborales"
+          titulo="Tus datos"
           onEdit={() => editStep("datos-personales")}
         >
           <Dato
@@ -209,49 +209,50 @@ export function ResumenForm() {
             valor={datosPersonales.nombreCompleto}
           />
 
-          <Dato label="Carnet" valor={datosPersonales.ci} />
+          <Dato
+            label="Carnet"
+            valor={datosPersonales.ci}
+          />
 
-          <Dato label="Edad" valor={`${edad} años`} />
+          <Dato
+            label="Edad"
+            valor={`${edad} años`}
+          />
 
           <Dato
             label="Celular"
             valor={`+591 ${datosPersonales.celular}`}
           />
 
-          <Dato label="Ciudad" valor={ciudad} />
-
-          <Dato label="Situación laboral" valor={perfilLaboral} />
-
           <Dato
-            label={
-              datosFinancieros.perfilLaboral === "ASALARIADO"
-                ? "Rubro de la empresa"
-                : "Actividad económica o rubro"
-            }
-            valor={datosPersonales.rubroLaboral}
+            label="Ciudad"
+            valor={ciudad}
           />
 
           <Dato
-            label="Dirección de trabajo o negocio"
-            valor={datosPersonales.direccionTrabajo}
+            label="Dirección de domicilio"
+            valor={datosPersonales.direccion}
           />
 
           <Dato
             label="Dependientes"
             valor={datosPersonales.numeroDependientes}
           />
-
         </SummarySection>
 
         <SummarySection
-          titulo="Datos financieros"
+          titulo="Tus finanzas"
           onEdit={() => editStep("datos-financieros")}
         >
           <Dato
-            label="Ingreso neto"
-            valor={formatBs(datosFinancieros.ingresoNeto)}
+            label="Tipo de actividad"
+            valor={perfilLaboral}
           />
 
+          <Dato
+            label="Ingresos mensuales"
+            valor={formatBs(datosFinancieros.ingresoNeto)}
+          />
 
           <Dato
             label="Deudas activas"
@@ -265,13 +266,33 @@ export function ResumenForm() {
           />
 
           <Dato
+            label="Deudas atrasadas"
+            valor={
+              datosFinancieros.sinDeudaMoraOVencida
+                ? "No"
+                : "Sí"
+            }
+          />
+
+          <Dato
+            label="Extractos bancarios"
+            valor={
+              datosFinancieros.extractos === "SI"
+                ? "Sí, cuenta con extractos"
+                : "No cuenta con extractos"
+            }
+          />
+
+          <Dato
             label="Capacidad de pago"
-            valor={formatBs(Math.max(0, capacidad.cuotaMaxima))}
+            valor={formatBs(
+              Math.max(0, capacidad.cuotaMaxima),
+            )}
           />
         </SummarySection>
 
         <SummarySection
-          titulo="Cálculo de tu cuota"
+          titulo="Elige tu préstamo"
           onEdit={() => editStep("simulacion")}
         >
           <Dato
@@ -296,54 +317,50 @@ export function ResumenForm() {
         </SummarySection>
 
         <SummarySection
-          titulo="Información complementaria"
-          onEdit={() => editStep("informacion-complementaria")}
+          titulo="Más sobre ti"
+          onEdit={() =>
+            editStep("informacion-complementaria")
+          }
         >
-          <Dato label="Vivienda" valor={vivienda} />
-
-          <Dato label="Estado civil" valor={estadoCivil} />
-
-          {datosComplementarios.conyugeNombre ? (
-            <Dato
-              label="Cónyuge"
-              valor={datosComplementarios.conyugeNombre}
-            />
-          ) : null}
-
-          {datosComplementarios.conyugeCelular ? (
-            <Dato
-              label="Celular del cónyuge"
-              valor={`+591 ${datosComplementarios.conyugeCelular}`}
-            />
-          ) : null}
-
-          {datosComplementarios.tieneGarante ? (
-            <Dato
-              label="Garante"
-              valor={
-                datosComplementarios.tieneGarante === "SI"
-                  ? "Sí, cuenta con garante"
-                  : "No cuenta con garante"
-              }
-            />
-          ) : null}
+          <Dato
+            label="Empresa / negocio"
+            valor={
+              datosComplementarios.nombreEmpresaNegocio
+            }
+          />
 
           <Dato
-            label="Dirección actual"
-            valor={datosComplementarios.direccion}
+            label="Rubro"
+            valor={datosComplementarios.rubro}
+          />
+
+          <Dato
+            label="Cargo / actividad"
+            valor={datosComplementarios.cargoActividad}
+          />
+
+          <Dato
+            label="Dirección laboral"
+            valor={datosComplementarios.direccionLaboral}
+          />
+
+          <Dato
+            label="Tipo de vivienda"
+            valor={vivienda}
+          />
+
+          <Dato
+            label="Estado civil"
+            valor={estadoCivil}
           />
 
           <Dato
             label="Destino del préstamo"
-            valor={datosComplementarios.destinoPrestamo}
-          />
-
-          <Dato
-            label="Extractos bancarios"
             valor={
-              datosComplementarios.extractos === "SI"
-                ? "Sí, dispone de extractos"
-                : "No dispone de extractos"
+              datosComplementarios.destinoPrestamo ===
+              "CAPITAL_TRABAJO"
+                ? "Capital de trabajo"
+                : "Uso personal"
             }
           />
         </SummarySection>
