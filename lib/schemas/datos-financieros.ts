@@ -2,10 +2,6 @@ import { z } from "zod";
 
 export const MAX_DEUDAS = 3;
 
-/**
- * Deudas normales 1, 2 y 3.
- * Solo registran entidad financiera y cuota mensual.
- */
 export const deudaSchema = z.object({
   entidadFinanciera: z
     .string()
@@ -13,121 +9,35 @@ export const deudaSchema = z.object({
     .min(2, "Ingresa la entidad financiera."),
 
   cuotaMensual: z
-    .number({ message: "Ingresa la cuota mensual de esta deuda." })
-    .min(1, "Ingresa una cuota mayor a cero."),
-});
-
-/**
- * Deuda especial para:
- * - una deuda que está en su última cuota;
- * - una deuda que Kivo evaluará comprar.
- */
-export const deudaEspecialSchema = z.object({
-  entidadFinanciera: z
-    .string()
-    .trim()
-    .min(2, "Ingresa la entidad financiera."),
-
-  cuotaMensual: z
-    .number({ message: "Ingresa la cuota mensual." })
-    .min(1, "Ingresa una cuota mayor a cero."),
-
-  capitalPendiente: z
     .number({
-      message: "Ingresa el capital pendiente.",
+      message: "Ingresa la cuota mensual de esta deuda.",
     })
-    .min(1, "Ingresa un capital pendiente mayor a cero."),
+    .min(1, "Ingresa una cuota mayor a cero."),
 });
 
-export const datosFinancierosSchema = z
-  .object({
-    ingresoNeto: z
-      .number({ message: "Ingresa tu ingreso neto mensual." })
-      .min(1, "Ingresa un ingreso mayor a cero."),
+export const datosFinancierosSchema = z.object({
+  perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"], {
+    message: "Selecciona tu tipo de actividad.",
+  }),
 
-    tieneSegundoIngreso: z.boolean(),
+  ingresoNeto: z
+    .number({
+      message: "Ingresa tus ingresos mensuales.",
+    })
+    .min(1, "Ingresa un monto mayor a cero."),
 
-    segundoIngresoOrigen: z
-      .string()
-      .trim()
-      .min(3, "Cuéntanos de dónde proviene tu segundo ingreso.")
-      .optional(),
+  deudas: z
+    .array(deudaSchema)
+    .max(MAX_DEUDAS, `Máximo ${MAX_DEUDAS} deudas.`),
 
-    segundoIngresoMonto: z.number().optional(),
+  deudaMoraOVencida: z.enum(["SI", "NO"], {
+    message: "Indica si tienes deudas atrasadas.",
+  }),
 
-    segundoIngresoRespaldado: z.boolean(),
-
-    deudas: z
-      .array(deudaSchema)
-      .max(MAX_DEUDAS, `Máximo ${MAX_DEUDAS} deudas.`),
-
-    masDeTresDeudas: z.boolean(),
-
-    excepcionTipo: z
-      .enum(["ULTIMA_CUOTA", "COMPRA_DEUDA"])
-      .optional(),
-
-    /**
-     * Cuarta deuda que está en su última cuota.
-     */
-    deudaCuatro: deudaEspecialSchema.optional(),
-
-    /**
-     * Deuda que Kivo evaluará comprar.
-     */
-    deudaCompra: deudaEspecialSchema.optional(),
-
-    deudaMoraOVencida: z.enum(["SI", "NO"], {
-      message: "Indica si tienes alguna deuda en mora o vencida.",
-    }),
-  })
-  .superRefine((values, context) => {
-    if (values.tieneSegundoIngreso) {
-      if (!values.segundoIngresoOrigen) {
-        context.addIssue({
-          code: "custom",
-          path: ["segundoIngresoOrigen"],
-          message: "Selecciona de dónde proviene tu segundo ingreso.",
-        });
-      }
-
-      if (
-        values.segundoIngresoMonto === undefined ||
-        values.segundoIngresoMonto <= 0
-      ) {
-        context.addIssue({
-          code: "custom",
-          path: ["segundoIngresoMonto"],
-          message: "Ingresa el monto neto de tu segundo ingreso.",
-        });
-      }
-
-      if (!values.segundoIngresoRespaldado) {
-        context.addIssue({
-          code: "custom",
-          path: ["segundoIngresoRespaldado"],
-          message:
-            "El segundo ingreso debe estar respaldado al 100% con extractos bancarios.",
-        });
-      }
-    }
-
-    if (values.excepcionTipo === "ULTIMA_CUOTA" && !values.deudaCuatro) {
-      context.addIssue({
-        code: "custom",
-        path: ["deudaCuatro"],
-        message: "Completa los datos de la cuarta deuda.",
-      });
-    }
-
-    if (values.excepcionTipo === "COMPRA_DEUDA" && !values.deudaCompra) {
-      context.addIssue({
-        code: "custom",
-        path: ["deudaCompra"],
-        message: "Completa los datos de la deuda que Kivo evaluará comprar.",
-      });
-    }
-  });
+  extractos: z.enum(["SI", "NO"], {
+    message: "Indica si cuentas con extractos bancarios.",
+  }),
+});
 
 export type DatosFinancierosValues = z.infer<
   typeof datosFinancierosSchema

@@ -151,7 +151,7 @@ export function ResumenForm() {
   const edad = calcularEdad(datosPersonales.fechaNacimiento);
 
   const perfilLaboral =
-    datosPersonales.perfilLaboral === "ASALARIADO"
+    datosFinancieros.perfilLaboral === "ASALARIADO"
       ? "Asalariado"
       : "Independiente";
 
@@ -224,7 +224,7 @@ export function ResumenForm() {
 
           <Dato
             label={
-              datosPersonales.perfilLaboral === "ASALARIADO"
+              datosFinancieros.perfilLaboral === "ASALARIADO"
                 ? "Rubro de la empresa"
                 : "Actividad económica o rubro"
             }

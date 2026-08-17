@@ -58,6 +58,9 @@ export interface DeudaEspecial {
 }
 
 export interface DatosFinancieros {
+  /** Tipo de actividad declarada por el solicitante. */
+  perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
+
   /** Ingreso mensual después de descuentos o costos operativos. */
   ingresoNeto: number;
 
@@ -82,6 +85,9 @@ export interface DatosFinancieros {
 
   /** Declaró no tener deuda en mora ni vencida. */
   sinDeudaMoraOVencida: boolean;
+
+  /** Indica si dispone de extractos bancarios. */
+  extractos: "SI" | "NO";
 
   /**
    * Excepción para solicitudes con más de tres deudas.
