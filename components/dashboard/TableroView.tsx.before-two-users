@@ -6,9 +6,12 @@ import {
   ArrowRight,
   Bell,
   Check,
+  ChevronRight,
+  FileText,
   QrCode,
   Upload,
   UploadCloud,
+  Wallet,
   X,
 } from "lucide-react";
 
@@ -20,44 +23,6 @@ import {
   type EstadoSolicitud,
   type PasoRuta,
 } from "@/lib/kivo/datos";
-
-const PLAN_PAGOS_MOCK = [
-  {
-    cuota: 1,
-    mes: "Agosto 2026",
-    vencimiento: "15 ago 2026",
-    monto: 1842,
-    estado: "pagado",
-  },
-  {
-    cuota: 2,
-    mes: "Septiembre 2026",
-    vencimiento: "15 sep 2026",
-    monto: 1842,
-    estado: "proximo",
-  },
-  {
-    cuota: 3,
-    mes: "Octubre 2026",
-    vencimiento: "15 oct 2026",
-    monto: 1842,
-    estado: "pendiente",
-  },
-  {
-    cuota: 4,
-    mes: "Noviembre 2026",
-    vencimiento: "15 nov 2026",
-    monto: 1842,
-    estado: "pendiente",
-  },
-  {
-    cuota: 5,
-    mes: "Diciembre 2026",
-    vencimiento: "15 dic 2026",
-    monto: 1842,
-    estado: "pendiente",
-  },
-];
 
 const PRESTAMO_ACTIVO_MOCK = {
   montoDesembolsado: 32500,
@@ -104,13 +69,6 @@ export default function TableroView({
 
   const vista = VISTAS_SOLICITUD[estado];
 
-  const [tipoUsuarioMock, setTipoUsuarioMock] = useState<
-    "solicitado" | "activo"
-  >("solicitado");
-
-  const prestamoActivo = tipoUsuarioMock === "activo";
-
-
   const saldoPendiente = PRESTAMO_ACTIVO_MOCK.saldoCapital;
 
   const [vistaPrestamo, setVistaPrestamo] = useState<
@@ -126,20 +84,20 @@ export default function TableroView({
 
   return (
     <>
-      {/* SELECTOR MOCK DE USUARIO */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+{/* SELECTOR FINANCIERO */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setTipoUsuarioMock("solicitado")}
+          onClick={() => setVistaPrestamo("solicitado")}
           className={`group inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-extrabold transition ${
-            !prestamoActivo
+            vistaPrestamo === "solicitado"
               ? "bg-black text-white"
-              : "bg-white text-[#071A25] ring-1 ring-[#D7E3E9] hover:bg-black hover:text-white"
+              : "bg-white text-[#071A25] ring-1 ring-[#E3E9ED] hover:bg-black hover:text-white"
           }`}
         >
           <span
-            className={`h-2 w-2 rounded-full ${
-              !prestamoActivo
+            className={`h-2 w-2 rounded-full transition ${
+              vistaPrestamo === "solicitado"
                 ? "bg-white"
                 : "bg-black group-hover:bg-white"
             }`}
@@ -149,16 +107,16 @@ export default function TableroView({
 
         <button
           type="button"
-          onClick={() => setTipoUsuarioMock("activo")}
+          onClick={() => setVistaPrestamo("activo")}
           className={`group inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-extrabold transition ${
-            prestamoActivo
+            vistaPrestamo === "activo"
               ? "bg-[#FE9806] text-white"
-              : "bg-white text-[#071A25] ring-1 ring-[#D7E3E9] hover:bg-[#FE9806] hover:text-white"
+              : "bg-white text-[#071A25] ring-1 ring-[#E3E9ED] hover:bg-[#FE9806] hover:text-white"
           }`}
         >
           <span
-            className={`h-2 w-2 rounded-full ${
-              prestamoActivo
+            className={`h-2 w-2 rounded-full transition ${
+              vistaPrestamo === "activo"
                 ? "bg-white"
                 : "bg-[#FE9806] group-hover:bg-white"
             }`}
@@ -166,21 +124,22 @@ export default function TableroView({
           Préstamo activo
         </button>
       </div>
+
       {/* BLOQUE PRINCIPAL */}
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.45fr_0.75fr]">
         {/* PRÉSTAMO */}
         <section
           className={`relative min-h-[355px] overflow-hidden rounded-[30px] p-7 sm:p-8 ${
-            prestamoActivo
-              ? "bg-[#FE9806]"
-              : "bg-black"
+            vistaPrestamo === "solicitado"
+              ? "bg-black"
+              : "bg-[#FE9806]"
           }`}
         >
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/20" />
           <div className="pointer-events-none absolute -bottom-40 right-20 h-80 w-80 rounded-full bg-white/10" />
 
           <div className="relative">
-            {!prestamoActivo ? (
+            {vistaPrestamo === "solicitado" ? (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-5">
                   <div>
@@ -367,9 +326,9 @@ export default function TableroView({
         </section>
       </div>
 
-      {/* CONTEXTO SEGÚN USUARIO */}
-      {!prestamoActivo ? (
-        <section className="mt-5 rounded-[30px] border border-[#E5EEF3] bg-white p-7 sm:p-8">
+      {/* SEGUIMIENTO */}
+      <section className="mt-5 rounded-[30px] border border-[#E5EEF3] bg-white p-7 sm:p-8">
+        <div className="flex flex-col gap-7">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-[720px]">
               <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-primary">
@@ -396,13 +355,20 @@ export default function TableroView({
             </Link>
           </div>
 
-          <div className="mt-9 grid grid-cols-4">
+          {/* TIMELINE */}
+          <div className="grid grid-cols-4 pt-2">
             {PASOS.map((paso, index) => {
-              const completado = vista.pasosHechos.includes(paso.id);
-              const actual = vista.pasoActual === paso.id;
+              const completado =
+                vista.pasosHechos.includes(paso.id);
+
+              const actual =
+                vista.pasoActual === paso.id;
 
               return (
-                <div key={paso.id} className="relative text-center">
+                <div
+                  key={paso.id}
+                  className="relative text-center"
+                >
                   {index < PASOS.length - 1 ? (
                     <span
                       aria-hidden="true"
@@ -424,7 +390,10 @@ export default function TableroView({
                     }`}
                   >
                     {completado ? (
-                      <Check className="h-4 w-4" strokeWidth={3} />
+                      <Check
+                        className="h-4 w-4"
+                        strokeWidth={3}
+                      />
                     ) : (
                       index + 1
                     )}
@@ -451,207 +420,188 @@ export default function TableroView({
               );
             })}
           </div>
-        </section>
-      ) : (
-        <section className="mt-5 rounded-[30px] border border-[#E5EEF3] bg-white p-7 sm:p-8">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-[#FE9806]">
-                  Mi préstamo
-                </p>
 
-                <h2 className="mt-2 text-[24px] font-extrabold tracking-tight text-[#071A25]">
-                  Tu préstamo está activo
-                </h2>
-
-                <p className="mt-2 max-w-[700px] text-sm leading-6 text-[#6B7484]">
-                  Revisa tu próximo vencimiento, consulta tu plan de pagos o
-                  comunícate con tu asesor si necesitas ayuda.
-                </p>
+          {/* ASESOR Y CONTACTO */}
+          <div className="flex flex-col gap-4 border-t border-[#EDF2F5] pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#DDF6FD] text-sm font-extrabold text-[#0B5F83]">
+                MF
               </div>
 
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64808D]">
+                  Asesor asignado
+                </p>
+
+                <p className="mt-1 text-sm font-extrabold text-[#071A25]">
+                  María Fernández
+                </p>
+
+                <p className="mt-0.5 text-xs text-[#6B7484]">
+                  Asesora de préstamos
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/cuotas"
+                href="/mensajes"
                 className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-black px-4 text-sm font-extrabold text-white"
               >
-                Plan de pagos
+                Enviar mensaje a mi asesor
                 <ArrowRight className="h-4 w-4" />
               </Link>
-            </div>
 
-            {/* PLAN DE PAGOS */}
-            <section className="overflow-hidden rounded-[28px] bg-white">
-              <div className="flex flex-col gap-5 bg-[#F3FBFE] px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#03AEFE]">
-                    Plan de pagos
-                  </p>
-
-                  <h3 className="mt-2 text-[24px] font-extrabold tracking-[-0.03em] text-[#071A25]">
-                    Tus próximas cuotas
-                  </h3>
-
-                  <p className="mt-1 max-w-[480px] text-sm leading-6 text-[#6B7484]">
-                    Consulta tus vencimientos y realiza tus pagos desde Kivo.
-                  </p>
-                </div>
-
-                <Link
-                  href="/cuotas"
-                  className="inline-flex cursor-pointer items-center gap-2 text-sm font-extrabold text-[#071A25]"
-                >
-                  Ver plan completo
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <div className="px-4 pb-4 pt-3 sm:px-6 sm:pb-6">
-                <div className="divide-y divide-[#EDF2F5]">
-                  {PLAN_PAGOS_MOCK.map((pago) => {
-                    const pagado = pago.estado === "pagado";
-                    const proximo = pago.estado === "proximo";
-
-                    return (
-                      <div
-                        key={pago.cuota}
-                        className={`flex flex-col gap-4 py-4 sm:flex-row sm:items-center ${
-                          proximo
-                            ? "my-2 rounded-[20px] bg-[#FE9806] px-4 text-white"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-4">
-                          <span
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
-                              proximo
-                                ? "bg-white text-[#FE9806]"
-                                : pagado
-                                  ? "bg-[#DDF6FD] text-[#075578]"
-                                  : "bg-[#F2F5F7] text-[#64808D]"
-                            }`}
-                          >
-                            {pagado ? (
-                              <Check
-                                className="h-4 w-4"
-                                strokeWidth={3}
-                              />
-                            ) : (
-                              pago.cuota
-                            )}
-                          </span>
-
-                          <div className="min-w-0">
-                            <p
-                              className={`truncate text-sm font-extrabold ${
-                                proximo
-                                  ? "text-white"
-                                  : "text-[#071A25]"
-                              }`}
-                            >
-                              {pago.mes}
-                            </p>
-
-                            <p
-                              className={`mt-0.5 text-xs ${
-                                proximo
-                                  ? "text-white/75"
-                                  : "text-[#7A8B96]"
-                              }`}
-                            >
-                              Vence {pago.vencimiento}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 sm:min-w-[330px] sm:justify-end">
-                          <p
-                            className={`text-sm font-extrabold ${
-                              proximo
-                                ? "text-white"
-                                : "text-[#071A25]"
-                            }`}
-                          >
-                            {bs(pago.monto)}
-                          </p>
-
-                          {pagado ? (
-                            <span className="rounded-full bg-[#DDF6FD] px-3 py-1.5 text-[10px] font-extrabold text-[#075578]">
-                              Pagado
-                            </span>
-                          ) : proximo ? (
-                            <>
-                              <span className="rounded-full bg-white/20 px-3 py-1.5 text-[10px] font-extrabold text-white">
-                                Próximo pago
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPagoRealizado(false);
-                                  setPagoModalOpen(true);
-                                }}
-                                className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl bg-black px-4 text-xs font-extrabold text-white"
-                              >
-                                <QrCode className="h-4 w-4" />
-                                Pagar con QR
-                              </button>
-                            </>
-                          ) : (
-                            <span className="rounded-full bg-[#F2F5F7] px-3 py-1.5 text-[10px] font-extrabold text-[#64808D]">
-                              Pendiente
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-
-            {/* ASESOR Y CONTACTO */}
-            <div className="flex flex-col gap-4 border-t border-[#EDF2F5] pt-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#DDF6FD] text-sm font-extrabold text-[#0B5F83]">
-                  MF
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64808D]">
-                    Asesor asignado
-                  </p>
-
-                  <p className="mt-1 text-sm font-extrabold text-[#071A25]">
-                    María Fernández
-                  </p>
-
-                  <p className="mt-0.5 text-xs text-[#6B7484]">
-                    Asesora de préstamos
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href="/mensajes"
-                  className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-black px-4 text-sm font-extrabold text-white"
-                >
-                  Mensaje a mi asesor
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <Link
-                  href="/mensajes"
-                  className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-[#C8E7F1] bg-white px-4 text-sm font-extrabold text-[#071A25]"
-                >
-                  Atención al cliente
-                </Link>
-              </div>
+              <Link
+                href="/mensajes"
+                className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-[#C8E7F1] bg-white px-4 text-sm font-extrabold text-[#071A25]"
+              >
+                Atención al cliente
+              </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* PARTE INFERIOR */}
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        {/* RESUMEN */}
+        <section className="rounded-[30px] border border-[#E5EEF3] bg-white p-7">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#E7F9FE] text-primary">
+              <Wallet className="h-5 w-5" />
+            </span>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+                Tu solicitud
+              </p>
+
+              <h2 className="text-lg font-extrabold text-ink">
+                Resumen
+              </h2>
+            </div>
+          </div>
+
+          <dl className="mt-6 divide-y divide-[#EEF2F5]">
+            {[
+              ["Fecha de solicitud", SOLICITUD.enviadaEl],
+              ["Monto solicitado", bs(SOLICITUD.monto)],
+              [
+                "Monto desembolsado",
+                bs(PRESTAMO_ACTIVO_MOCK.montoDesembolsado),
+              ],
+              ["Saldo pendiente", bs(saldoPendiente)],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-center justify-between gap-4 py-4"
+              >
+                <dt className="text-sm text-muted">
+                  {label}
+                </dt>
+
+                <dd className="text-right text-sm font-extrabold text-ink">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
-      )}
+
+        {/* DOCUMENTOS */}
+        <section
+          className="rounded-[30px] border border-[#E5EEF3] bg-white p-7"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#E7F9FE] text-primary">
+              <FileText className="h-5 w-5" />
+            </span>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+                Requisitos
+              </p>
+
+              <h2 className="text-lg font-extrabold text-ink">
+                Documentos
+              </h2>
+            </div>
+          </div>
+
+          <div className="mt-5 divide-y divide-[#EEF2F5]">
+            {[
+              {
+                nombre: "Carnet de identidad",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Fotografía / selfie",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Autorización",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Boleta de pago",
+                estado: "Pendiente",
+                listo: false,
+              },
+            ].map((documento) => (
+              <Link
+                key={documento.nombre}
+                href="/documentos"
+                className="flex cursor-pointer items-center gap-3 py-3.5"
+              >
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                    documento.listo
+                      ? "bg-[#DDF8FD] text-primary-dark"
+                      : "bg-[#FFF1DA] text-[#B36B00]"
+                  }`}
+                >
+                  {documento.listo ? (
+                    <Check
+                      className="h-3.5 w-3.5"
+                      strokeWidth={3}
+                    />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-[#FE9806]" />
+                  )}
+                </span>
+
+                <span className="text-sm font-semibold text-ink">
+                  {documento.nombre}
+                </span>
+
+                <span
+                  className={`ml-auto text-xs font-bold ${
+                    documento.listo
+                      ? "text-primary-dark"
+                      : "text-[#B36B00]"
+                  }`}
+                >
+                  {documento.estado}
+                </span>
+
+                <ChevronRight className="h-4 w-4 text-[#B4C0C9]" />
+              </Link>
+            ))}
+          </div>
+
+          <Link
+            href="/documentos"
+            className="mt-5 inline-flex cursor-pointer items-center gap-2 text-sm font-extrabold text-primary-dark"
+          >
+            Ver todos mis requisitos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </section>
+      </div>
 
       {pagoModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4">

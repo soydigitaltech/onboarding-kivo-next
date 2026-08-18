@@ -1,7 +1,6 @@
 "use client";
 
-import {
-  useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
@@ -267,8 +266,8 @@ export default function AppShell({
 
       {/* CONTENIDO */}
       <div className="lg:pl-[260px]">
-        <header className="bg-[#DDF6FD]/90 py-5 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1380px] items-center gap-3 px-4 sm:px-8">
+        <header className="sticky top-0 z-30 bg-[#DDF6FD]/90 px-4 py-5 backdrop-blur-xl sm:px-8">
+          <div className="mx-auto flex max-w-[1380px] items-center gap-3">
             <button
               type="button"
               onClick={() => setDrawer(true)}
@@ -289,8 +288,6 @@ export default function AppShell({
             </div>
 
             <div className="ml-auto flex items-center">
-              
-
               <Link
                 href="/mensajes"
                 className="inline-flex min-h-11 items-center gap-3 rounded-[14px] bg-black px-4 pl-5 text-[13px] font-extrabold text-white transition hover:bg-[#1A1A1A]"

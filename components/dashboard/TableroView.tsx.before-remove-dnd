@@ -1,0 +1,822 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import DashboardTour from "@/components/dashboard/DashboardTour";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { move } from "@dnd-kit/helpers";
+import {
+  ArrowRight,
+  Bell,
+  Check,
+  ChevronRight,
+  FileText,
+  QrCode,
+  Upload,
+  UploadCloud,
+  Wallet,
+  X,
+} from "lucide-react";
+
+
+import {
+  SOLICITUD,
+  VISTAS_SOLICITUD,
+  bs,
+  type EstadoSolicitud,
+  type PasoRuta,
+} from "@/lib/kivo/datos";
+
+const PRESTAMO_ACTIVO_MOCK = {
+  montoDesembolsado: 32500,
+  saldoCapital: 30658,
+  cuotaPendiente: 1842,
+  capitalCuota: 1150,
+  interesCuota: 642,
+  otrosCargos: 50,
+  cuotasPagadas: 1,
+  fechaDesembolso: "15 ago 2026",
+  proximoPago: "15 sep 2026",
+};
+
+const PASOS: {
+  id: PasoRuta;
+  titulo: string;
+}[] = [
+  {
+    id: "enviada",
+    titulo: "Enviada",
+  },
+  {
+    id: "revision",
+    titulo: "En revisión",
+  },
+  {
+    id: "aprobada",
+    titulo: "Aprobada",
+  },
+  {
+    id: "desembolso",
+    titulo: "Desembolso",
+  },
+];
+
+type DashboardCardId =
+  | "prestamo"
+  | "notificacion"
+  | "seguimiento"
+  | "resumen"
+  | "documentos";
+
+const DEFAULT_CARD_ORDER: DashboardCardId[] = [
+  "prestamo",
+  "notificacion",
+  "seguimiento",
+  "resumen",
+  "documentos",
+];
+
+const DASHBOARD_ORDER_KEY = "kivo-dashboard-card-order";
+
+const CARD_SPANS: Record<DashboardCardId, string> = {
+  prestamo: "col-span-12 lg:col-span-8",
+  notificacion: "col-span-12 lg:col-span-4",
+  seguimiento: "col-span-12",
+  resumen: "col-span-12 lg:col-span-6",
+  documentos: "col-span-12 lg:col-span-6",
+};
+
+function SortableDashboardCard({
+  id,
+  index,
+  className,
+  children,
+}: {
+  id: DashboardCardId;
+  index: number;
+  className: string;
+  children: ReactNode;
+}) {
+  const {
+    ref,
+    handleRef,
+    isDragging,
+  } = useSortable({
+    id,
+    index,
+    transition: {
+      duration: 180,
+      easing: "ease",
+      idle: true,
+    },
+  });
+
+  return (
+    <div
+      ref={ref}
+      className={`relative pt-3 [&>section]:h-full ${className} ${
+        isDragging ? "z-40 opacity-90" : ""
+      }`}
+    >
+      <button
+        ref={handleRef}
+        type="button"
+        title="Mover tarjeta"
+        aria-label="Mover tarjeta"
+        className="absolute left-1/2 top-3 z-30 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border border-[#C8E7F1] bg-white px-3 py-1 text-[14px] font-black tracking-[-3px] text-[#64808D] transition active:cursor-grabbing active:scale-95"
+      >
+        ⠿
+      </button>
+
+      {children}
+    </div>
+  );
+}
+
+export default function TableroView({
+  estado,
+  onCambiarEstado,
+}: {
+  estado: EstadoSolicitud;
+  onCambiarEstado: (estado: EstadoSolicitud) => void;
+}) {
+  void onCambiarEstado;
+
+  const vista = VISTAS_SOLICITUD[estado];
+
+  const saldoPendiente = PRESTAMO_ACTIVO_MOCK.saldoCapital;
+
+  const [vistaPrestamo, setVistaPrestamo] = useState<
+    "solicitado" | "activo"
+  >("activo");
+
+  const [pagoModalOpen, setPagoModalOpen] = useState(false);
+  const [pagoRealizado, setPagoRealizado] = useState(false);
+
+  const [cardOrder, setCardOrder] =
+    useState<DashboardCardId[]>(DEFAULT_CARD_ORDER);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(
+        DASHBOARD_ORDER_KEY
+      );
+
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored);
+
+      if (!Array.isArray(parsed)) return;
+
+      const valid =
+        parsed.length === DEFAULT_CARD_ORDER.length &&
+        DEFAULT_CARD_ORDER.every((id) =>
+          parsed.includes(id)
+        );
+
+      if (valid) {
+        setCardOrder(parsed as DashboardCardId[]);
+      }
+    } catch {
+      // Si localStorage está corrupto, mantener orden original.
+    }
+  }, []);
+
+
+  const renderDashboardCard = (
+    cardId: DashboardCardId
+  ) => {
+    switch (cardId) {
+      case "prestamo":
+        return (
+<section
+          className={`relative min-h-[355px] overflow-hidden rounded-[30px] p-7 sm:p-8 ${
+            vistaPrestamo === "solicitado"
+              ? "bg-black"
+              : "bg-[#FE9806]"
+          }`}
+        >
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/20" />
+          <div className="pointer-events-none absolute -bottom-40 right-20 h-80 w-80 rounded-full bg-white/10" />
+
+          <div className="relative">
+            {vistaPrestamo === "solicitado" ? (
+              <>
+      <DashboardTour />
+                <div className="flex flex-wrap items-start justify-between gap-5">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/65">
+                      Monto solicitado
+                    </p>
+
+                    <p className="mt-4 text-[46px] font-extrabold leading-none tracking-[-0.05em] text-white sm:text-[56px]">
+                      {bs(SOLICITUD.monto)}
+                    </p>
+
+                    <p className="mt-3 text-sm font-semibold text-white/65">
+                      Solicitud N.º {SOLICITUD.numero}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-white px-4 py-2 text-xs font-extrabold text-black">
+                    En revisión
+                  </span>
+                </div>
+
+                <div className="mt-8 grid max-w-[620px] grid-cols-2 gap-7 border-t border-white/15 pt-6 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Plazo
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {SOLICITUD.plazoMeses} meses
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Cuota estimada
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {bs(SOLICITUD.cuota)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Estado
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      En revisión
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-7">
+                  <Link
+                    href="/seguimiento"
+                    className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-white px-4 text-sm font-extrabold text-black"
+                  >
+                    Ver estado y seguimiento
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-5">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/65">
+                      Saldo capital
+                    </p>
+
+                    <p className="mt-4 text-[46px] font-extrabold leading-none tracking-[-0.05em] text-white sm:text-[56px]">
+                      {bs(PRESTAMO_ACTIVO_MOCK.saldoCapital)}
+                    </p>
+
+                    <p className="mt-3 text-sm font-semibold text-white/70">
+                      Préstamo activo · Solicitud N.º {SOLICITUD.numero}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-white/15 px-4 py-2 text-xs font-extrabold text-white">
+                    Préstamo activo
+                  </span>
+                </div>
+
+                <div className="mt-8 grid gap-6 border-t border-white/15 pt-6 sm:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Monto desembolsado
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {bs(PRESTAMO_ACTIVO_MOCK.montoDesembolsado)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Fecha de desembolso
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {PRESTAMO_ACTIVO_MOCK.fechaDesembolso}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Próximo vencimiento
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {PRESTAMO_ACTIVO_MOCK.proximoPago}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">
+                      Cuota pendiente
+                    </p>
+
+                    <p className="mt-1 text-[17px] font-extrabold text-white">
+                      {bs(PRESTAMO_ACTIVO_MOCK.cuotaPendiente)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-7 flex flex-wrap items-center gap-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPagoRealizado(false);
+                      setPagoModalOpen(true);
+                    }}
+                    className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-white px-5 text-sm font-extrabold text-black"
+                  >
+                    Pagar ahora
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+
+                  <Link
+                    href="/cuotas"
+                    className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-extrabold text-white"
+                  >
+                    Plan de pagos
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+        );
+
+      case "notificacion":
+        return (
+<section className="flex flex-col rounded-[30px] border border-[#E5EEF3] bg-white p-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#03AEFE]">
+                Última notificación
+              </p>
+
+              <h2 className="mt-3 text-[26px] font-extrabold leading-tight tracking-tight text-[#071A25]">
+                Tu préstamo fue desembolsado
+              </h2>
+            </div>
+
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#E7F9FE] text-[#03AEFE]">
+              <Bell className="h-5 w-5" />
+            </span>
+          </div>
+
+          <p className="mt-4 text-sm leading-6 text-[#6B7484]">
+            Ya tienes disponible{" "}
+            <span className="font-extrabold text-[#071A25]">
+              {bs(PRESTAMO_ACTIVO_MOCK.montoDesembolsado)}
+            </span>
+            . Revisa tu plan de pagos y la fecha de tu próxima cuota.
+          </p>
+
+          <div className="mt-auto pt-7">
+            <Link
+              href="/mensajes"
+              className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-[#071A25] px-4 text-sm font-extrabold text-white"
+            >
+              Ver notificaciones
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+        );
+
+      case "seguimiento":
+        return (
+<section className="rounded-[30px] border border-[#E5EEF3] bg-white p-7 sm:p-8"
+          data-tour="tracking">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-primary">
+              Estado de tu solicitud
+            </p>
+
+            <h2 className="mt-2 text-[22px] font-extrabold tracking-tight text-ink">
+              {vista.titulo}
+            </h2>
+
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+              {vista.texto}
+            </p>
+          </div>
+
+          <Link
+            href="/seguimiento"
+            className="inline-flex items-center gap-2 text-sm font-extrabold text-primary-dark cursor-pointer"
+          >
+            Ver detalle
+            <ArrowRight className="h-4 w-4 cursor-pointer" />
+          </Link>
+        </div>
+
+        <div className="mt-9 grid grid-cols-4">
+          {PASOS.map((paso, index) => {
+            const completado =
+              vista.pasosHechos.includes(paso.id);
+
+            const actual =
+              vista.pasoActual === paso.id;
+
+            return (
+              <div
+                key={paso.id}
+                className="relative text-center"
+              >
+                {index < PASOS.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute left-1/2 top-[19px] h-[3px] w-full ${
+                      completado
+                        ? "bg-[#5FDAF8]"
+                        : "bg-[#E7EEF3]"
+                    }`}
+                  />
+                ) : null}
+
+                <span
+                  className={`relative z-10 mx-auto grid h-[38px] w-[38px] place-items-center rounded-full text-xs font-extrabold ${
+                    completado
+                      ? "bg-[#5FDAF8] text-[#075578]"
+                      : actual
+                        ? "bg-primary text-white"
+                        : "bg-[#EDF2F5] text-[#95A5B2]"
+                  }`}
+                >
+                  {completado ? (
+                    <Check
+                      className="h-4 w-4"
+                      strokeWidth={3}
+                    />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+
+                <p
+                  className={`mt-3 text-xs font-extrabold ${
+                    actual
+                      ? "text-primary-dark"
+                      : "text-[#536777]"
+                  }`}
+                >
+                  {paso.titulo}
+                </p>
+
+                <p className="mt-1 text-[11px] text-muted">
+                  {completado
+                    ? "Completado"
+                    : actual
+                      ? "Actual"
+                      : "Pendiente"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+        );
+
+      case "resumen":
+        return (
+<section className="rounded-[30px] border border-[#E5EEF3] bg-white p-7">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#E7F9FE] text-primary">
+              <Wallet className="h-5 w-5" />
+            </span>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+                Tu solicitud
+              </p>
+
+              <h2 className="text-lg font-extrabold text-ink">
+                Resumen
+              </h2>
+            </div>
+          </div>
+
+          <dl className="mt-6 divide-y divide-[#EEF2F5]">
+            {[
+              [
+                "Fecha de solicitud",
+                SOLICITUD.enviadaEl,
+              ],
+              [
+                "Monto solicitado",
+                bs(SOLICITUD.monto),
+              ],
+              [
+                "Monto desembolsado",
+                bs(PRESTAMO_ACTIVO_MOCK.montoDesembolsado),
+              ],
+              [
+                "Saldo pendiente",
+                bs(saldoPendiente),
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-center justify-between gap-4 py-4"
+              >
+                <dt className="text-sm text-muted">
+                  {label}
+                </dt>
+
+                <dd className="text-right text-sm font-extrabold text-ink">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+        );
+
+      case "documentos":
+        return (
+<section className="rounded-[30px] border border-[#E5EEF3] bg-white p-7"
+          data-tour="documents">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#E7F9FE] text-primary">
+              <FileText className="h-5 w-5" />
+            </span>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+                Requisitos
+              </p>
+
+              <h2 className="text-lg font-extrabold text-ink">
+                Documentos
+              </h2>
+            </div>
+          </div>
+
+          <div className="mt-5 divide-y divide-[#EEF2F5]">
+            {[
+              {
+                nombre: "Carnet de identidad",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Fotografía / selfie",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Autorización",
+                estado: "Cargado",
+                listo: true,
+              },
+              {
+                nombre: "Boleta de pago",
+                estado: "Pendiente",
+                listo: false,
+              },
+            ].map((documento) => (
+              <Link
+                key={documento.nombre}
+                href="/documentos"
+                className="flex items-center gap-3 py-3.5 cursor-pointer"
+              >
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                    documento.listo
+                      ? "bg-[#DDF8FD] text-primary-dark"
+                      : "bg-[#FFF1DA] text-[#B36B00]"
+                  }`}
+                >
+                  {documento.listo ? (
+                    <Check
+                      className="h-3.5 w-3.5"
+                      strokeWidth={3}
+                    />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-[#FE9806]" />
+                  )}
+                </span>
+
+                <span className="text-sm font-semibold text-ink">
+                  {documento.nombre}
+                </span>
+
+                <span
+                  className={`ml-auto text-xs font-bold ${
+                    documento.listo
+                      ? "text-primary-dark"
+                      : "text-[#B36B00]"
+                  }`}
+                >
+                  {documento.estado}
+                </span>
+
+                <ChevronRight className="h-4 w-4 text-[#B4C0C9]" />
+              </Link>
+            ))}
+          </div>
+
+          <Link
+            href="/documentos"
+            className="mt-5 inline-flex items-center gap-2 text-sm font-extrabold text-primary-dark cursor-pointer"
+          >
+            Ver todos mis requisitos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </section>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      {/* SELECTOR FINANCIERO */}
+      <div className="flex flex-wrap items-center gap-2"
+        data-tour="loan-selector">
+        <button
+          type="button"
+          onClick={() => setVistaPrestamo("solicitado")}
+          className={`group inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-extrabold transition ${
+            vistaPrestamo === "solicitado"
+              ? "bg-black text-white"
+              : "bg-white text-[#071A25] ring-1 ring-[#E3E9ED] hover:bg-black hover:text-white"
+          }`}
+        >
+          <span
+            className={`h-2 w-2 rounded-full transition ${
+              vistaPrestamo === "solicitado"
+                ? "bg-white"
+                : "bg-black group-hover:bg-white"
+            }`}
+          />
+          Solicitado
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setVistaPrestamo("activo")}
+          className={`group inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-extrabold transition ${
+            vistaPrestamo === "activo"
+              ? "bg-[#FE9806] text-white"
+              : "bg-white text-[#071A25] ring-1 ring-[#E3E9ED] hover:bg-[#FE9806] hover:text-white"
+          }`}
+        >
+          <span
+            className={`h-2 w-2 rounded-full transition ${
+              vistaPrestamo === "activo"
+                ? "bg-white"
+                : "bg-[#FE9806] group-hover:bg-white"
+            }`}
+          />
+          Préstamo activo
+        </button>
+      </div>
+
+      {/* DASHBOARD PERSONALIZABLE */}
+      <DragDropProvider
+        onDragEnd={(event) => {
+          if (event.canceled) return;
+
+          setCardOrder((currentOrder) => {
+            const nextOrder = move(
+              currentOrder,
+              event
+            ) as DashboardCardId[];
+
+            window.localStorage.setItem(
+              DASHBOARD_ORDER_KEY,
+              JSON.stringify(nextOrder)
+            );
+
+            return nextOrder;
+          });
+        }}
+      >
+        <div className="mt-5 grid grid-cols-12 gap-5">
+          {cardOrder.map((cardId, index) => (
+            <SortableDashboardCard
+              key={cardId}
+              id={cardId}
+              index={index}
+              className={CARD_SPANS[cardId]}
+            >
+              {renderDashboardCard(cardId)}
+            </SortableDashboardCard>
+          ))}
+        </div>
+      </DragDropProvider>
+
+      {pagoModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4">
+          <div className="relative w-full max-w-[430px] rounded-[28px] bg-white p-6 sm:p-7">
+            <button
+              type="button"
+              onClick={() => setPagoModalOpen(false)}
+              className="absolute right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-[#F2F5F7] text-[#071A25] cursor-pointer"
+              aria-label="Cerrar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {!pagoRealizado ? (
+              <>
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#03AEFE]">
+                  Próximo pago
+                </p>
+
+                <h2 className="mt-2 text-[28px] font-extrabold tracking-[-0.03em] text-[#071A25]">
+                  {bs(SOLICITUD.cuota)}
+                </h2>
+
+                <p className="mt-1 text-sm font-semibold text-[#6B7484]">
+                  Vence el {PRESTAMO_ACTIVO_MOCK.proximoPago}
+                </p>
+
+                <div className="mx-auto mt-7 flex h-[210px] w-[210px] items-center justify-center rounded-[24px] border border-[#E4EBEF] bg-white">
+                  <QrCode
+                    className="h-[165px] w-[165px] text-black"
+                    strokeWidth={1.6}
+                  />
+                </div>
+
+                <p className="mx-auto mt-5 max-w-[310px] text-center text-sm leading-6 text-[#6B7484]">
+                  Escanea el QR desde tu aplicación bancaria para realizar el pago.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setPagoRealizado(true)}
+                  className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-black px-5 text-sm font-extrabold text-white cursor-pointer"
+                >
+                  Ya realicé el pago
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="grid h-14 w-14 place-items-center rounded-full bg-[#DDF6FD] text-[#03AEFE]">
+                  <Upload className="h-6 w-6" />
+                </div>
+
+                <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.12em] text-[#03AEFE]">
+                  Comprobante de pago
+                </p>
+
+                <h2 className="mt-2 text-[27px] font-extrabold leading-tight tracking-[-0.03em] text-[#071A25]">
+                  Sube tu comprobante
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-[#6B7484]">
+                  Si ya realizaste el pago por QR, adjunta el comprobante para que Kivo pueda validarlo.
+                </p>
+
+                <label className="mt-6 flex min-h-[125px] cursor-pointer flex-col items-center justify-center rounded-[20px] border border-dashed border-[#BFD5DF] bg-[#F8FBFC] px-5 text-center">
+                  <UploadCloud className="h-6 w-6 text-[#03AEFE]" />
+
+                  <span className="mt-3 text-sm font-extrabold text-[#071A25]">
+                    Subir comprobante
+                  </span>
+
+                  <span className="mt-1 text-xs text-[#6B7484]">
+                    JPG, PNG o PDF
+                  </span>
+
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    className="hidden"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setPagoModalOpen(false)}
+                  className="mt-4 min-h-12 w-full rounded-xl bg-black px-5 text-sm font-extrabold text-white cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+    </>
+  );
+}

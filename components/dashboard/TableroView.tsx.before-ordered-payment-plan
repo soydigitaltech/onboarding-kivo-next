@@ -482,6 +482,7 @@ export default function TableroView({
 
             {/* PLAN DE PAGOS */}
             <section className="overflow-hidden rounded-[28px] bg-white">
+              {/* CABECERA */}
               <div className="flex flex-col gap-5 bg-[#F3FBFE] px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#03AEFE]">
@@ -493,7 +494,7 @@ export default function TableroView({
                   </h3>
 
                   <p className="mt-1 max-w-[480px] text-sm leading-6 text-[#6B7484]">
-                    Consulta tus vencimientos y realiza tus pagos desde Kivo.
+                    Consulta tus próximos vencimientos y realiza tus pagos desde Kivo.
                   </p>
                 </div>
 
@@ -506,29 +507,81 @@ export default function TableroView({
                 </Link>
               </div>
 
+              {/* PRÓXIMO PAGO DESTACADO */}
+              {PLAN_PAGOS_MOCK.filter(
+                (pago) => pago.estado === "proximo"
+              ).map((pago) => (
+                <div
+                  key={`proximo-${pago.cuota}`}
+                  className="mx-4 mt-4 rounded-[22px] bg-[#FE9806] px-5 py-5 text-white sm:mx-6"
+                >
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-sm font-extrabold text-[#FE9806]">
+                        {pago.cuota}
+                      </span>
+
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/70">
+                          Próximo pago
+                        </p>
+
+                        <p className="mt-1 text-lg font-extrabold text-white">
+                          {pago.mes}
+                        </p>
+
+                        <p className="mt-0.5 text-xs font-semibold text-white/75">
+                          Vence {pago.vencimiento}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+                      <div className="sm:text-right">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/70">
+                          Cuota
+                        </p>
+
+                        <p className="mt-1 text-[23px] font-extrabold tracking-[-0.03em] text-white">
+                          {bs(pago.monto)}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPagoRealizado(false);
+                          setPagoModalOpen(true);
+                        }}
+                        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-black px-4 text-sm font-extrabold text-white"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        Pagar con QR
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* CUOTAS */}
               <div className="px-4 pb-4 pt-3 sm:px-6 sm:pb-6">
                 <div className="divide-y divide-[#EDF2F5]">
-                  {PLAN_PAGOS_MOCK.map((pago) => {
+                  {PLAN_PAGOS_MOCK.filter(
+                    (pago) => pago.estado !== "proximo"
+                  ).map((pago) => {
                     const pagado = pago.estado === "pagado";
-                    const proximo = pago.estado === "proximo";
 
                     return (
                       <div
                         key={pago.cuota}
-                        className={`flex flex-col gap-4 py-4 sm:flex-row sm:items-center ${
-                          proximo
-                            ? "my-2 rounded-[20px] bg-[#FE9806] px-4 text-white"
-                            : ""
-                        }`}
+                        className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center"
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-4">
                           <span
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
-                              proximo
-                                ? "bg-white text-[#FE9806]"
-                                : pagado
-                                  ? "bg-[#DDF6FD] text-[#075578]"
-                                  : "bg-[#F2F5F7] text-[#64808D]"
+                            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
+                              pagado
+                                ? "bg-[#DDF6FD] text-[#075578]"
+                                : "bg-[#F2F5F7] text-[#64808D]"
                             }`}
                           >
                             {pagado ? (
@@ -542,36 +595,18 @@ export default function TableroView({
                           </span>
 
                           <div className="min-w-0">
-                            <p
-                              className={`truncate text-sm font-extrabold ${
-                                proximo
-                                  ? "text-white"
-                                  : "text-[#071A25]"
-                              }`}
-                            >
+                            <p className="truncate text-sm font-extrabold text-[#071A25]">
                               {pago.mes}
                             </p>
 
-                            <p
-                              className={`mt-0.5 text-xs ${
-                                proximo
-                                  ? "text-white/75"
-                                  : "text-[#7A8B96]"
-                              }`}
-                            >
+                            <p className="mt-0.5 text-xs text-[#7A8B96]">
                               Vence {pago.vencimiento}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3 sm:min-w-[330px] sm:justify-end">
-                          <p
-                            className={`text-sm font-extrabold ${
-                              proximo
-                                ? "text-white"
-                                : "text-[#071A25]"
-                            }`}
-                          >
+                        <div className="flex items-center justify-between gap-5 sm:min-w-[230px] sm:justify-end">
+                          <p className="text-sm font-extrabold text-[#071A25]">
                             {bs(pago.monto)}
                           </p>
 
@@ -579,24 +614,6 @@ export default function TableroView({
                             <span className="rounded-full bg-[#DDF6FD] px-3 py-1.5 text-[10px] font-extrabold text-[#075578]">
                               Pagado
                             </span>
-                          ) : proximo ? (
-                            <>
-                              <span className="rounded-full bg-white/20 px-3 py-1.5 text-[10px] font-extrabold text-white">
-                                Próximo pago
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPagoRealizado(false);
-                                  setPagoModalOpen(true);
-                                }}
-                                className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl bg-black px-4 text-xs font-extrabold text-white"
-                              >
-                                <QrCode className="h-4 w-4" />
-                                Pagar con QR
-                              </button>
-                            </>
                           ) : (
                             <span className="rounded-full bg-[#F2F5F7] px-3 py-1.5 text-[10px] font-extrabold text-[#64808D]">
                               Pendiente
