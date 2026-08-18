@@ -1,616 +1,804 @@
 "use client";
 
+import { useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  ArrowRight,
-  BadgeDollarSign,
-  Plus,
-  Store,
-  Trash2,
-  UserRoundCheck,
-  Wallet,
+ ArrowRight,
+ BadgeDollarSign,
+ Plus,
+ Store,
+ Trash2,
+ UserRoundCheck,
+ Wallet,
 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 
 import {
-  MAX_DEUDAS,
-  datosFinancierosSchema,
-  formatBs,
-  type DatosFinancierosValues,
+ MAX_DEUDAS,
+ datosFinancierosSchema,
+ formatBs,
+ type DatosFinancierosValues,
 } from "@/lib/schemas/datos-financieros";
 import { calcularCapacidadPago } from "@/lib/simulacion";
 import { useOnboardingStore } from "@/store/onboarding";
 import {
-  BusinessNotice,
-  DangerNotice,
-  Field,
-  PrefixedInputShell,
-  RadioPill,
-  inputClassName,
-  prefixedInputClassName,
+ BusinessNotice,
+ DangerNotice,
+ Field,
+ PrefixedInputShell,
+ RadioPill,
+ inputClassName,
+ prefixedInputClassName,
 } from "@/components/ui/fields";
 
 const dineroInputProps = {
-  thousandSeparator: ".",
-  decimalSeparator: ",",
-  allowNegative: false,
-  decimalScale: 0,
-  inputMode: "numeric",
+ thousandSeparator: ".",
+ decimalSeparator: ",",
+ allowNegative: false,
+ decimalScale: 0,
+ inputMode: "numeric",
 } as const;
 
 type Paso =
-  | "perfilLaboral"
-  | "ingresoNeto"
-  | "deudas"
-  | "deudaAtrasada"
-  | "extractos";
+ | "perfilLaboral"
+ | "ingresoNeto"
+ | "deudas"
+ | "deudaAtrasada"
+ | "extractos";
 
 const PASOS: Paso[] = [
-  "perfilLaboral",
-  "ingresoNeto",
-  "deudas",
-  "deudaAtrasada",
-  "extractos",
+ "perfilLaboral",
+ "ingresoNeto",
+ "deudas",
+ "deudaAtrasada",
+ "extractos",
 ];
 
 export function DatosFinancierosForm() {
-  const guardados = useOnboardingStore((s) => s.datosFinancieros);
-  const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
-  const setDatosFinancieros = useOnboardingStore(
-    (s) => s.setDatosFinancieros,
-  );
+ const [tieneSegundoIngreso, setTieneSegundoIngreso] = useState(false);
+ const [segundoIngresoOrigen, setSegundoIngresoOrigen] = useState("");
+ const [segundoIngresoMonto, setSegundoIngresoMonto] = useState<
+ number | undefined
+ >(undefined);
 
-  const completeAndAdvance = useOnboardingStore(
-    (s) => s.completeAndAdvance,
-  );
+ const [
+ aceptaRespaldoSegundoIngreso,
+ setAceptaRespaldoSegundoIngreso,
+ ] = useState(false);
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<DatosFinancierosValues>({
-    resolver: zodResolver(datosFinancierosSchema),
-    mode: "onTouched",
+ const guardados = useOnboardingStore((s) => s.datosFinancieros);
+ const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
+ const setDatosFinancieros = useOnboardingStore(
+ (s) => s.setDatosFinancieros,
+ );
 
-    defaultValues: guardados
-      ? {
-          perfilLaboral: guardados.perfilLaboral,
-          ingresoNeto: guardados.ingresoNeto,
+ const completeAndAdvance = useOnboardingStore(
+ (s) => s.completeAndAdvance,
+ );
 
-          deudas: guardados.deudas.map((deuda) => ({
-            entidadFinanciera: deuda.entidadFinanciera,
-            cuotaMensual: deuda.cuotaMensual,
-          })),
+ const {
+ register,
+ control,
+ handleSubmit,
+ watch,
+ formState: { errors },
+ } = useForm<DatosFinancierosValues>({
+ resolver: zodResolver(datosFinancierosSchema),
+ mode: "onTouched",
 
-          deudaMoraOVencida: guardados.sinDeudaMoraOVencida
-            ? "NO"
-            : "SI",
+ defaultValues: guardados
+ ? {
+ perfilLaboral: guardados.perfilLaboral,
+ ingresoNeto: guardados.ingresoNeto,
 
-          extractos: guardados.extractos,
-        }
-      : {
-          perfilLaboral: datosPersonales?.perfilLaboral,
-          deudas: [],
-          deudaMoraOVencida: undefined,
-          extractos: undefined,
-        },
-  });
+ deudas: guardados.deudas.map((deuda) => ({
+ entidadFinanciera: deuda.entidadFinanciera,
+ cuotaMensual: deuda.cuotaMensual,
+ })),
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "deudas",
-  });
+ deudaMoraOVencida: guardados.sinDeudaMoraOVencida
+ ? "NO"
+ : "SI",
 
-  const values = watch();
+ extractos: guardados.extractos,
+ }
+ : {
+ perfilLaboral: datosPersonales?.perfilLaboral,
+ deudas: [],
+ deudaMoraOVencida: undefined,
+ extractos: undefined,
+ },
+ });
 
-  const deudas = values.deudas ?? [];
+ const { fields, append, remove } = useFieldArray({
+ control,
+ name: "deudas",
+ });
 
-  const totalCuotas = deudas.reduce<number>(
-    (suma, deuda) => suma + (deuda?.cuotaMensual ?? 0),
-    0,
-  );
+ const values = watch();
 
-  const tieneDeudaAtrasada = values.deudaMoraOVencida === "SI";
-  const sinExtractos = values.extractos === "NO";
+ const deudas = values.deudas ?? [];
 
-  const capacidad =
-    (values.ingresoNeto ?? 0) > 0
-      ? calcularCapacidadPago({
-          ingresoNeto: values.ingresoNeto,
-          totalDeudas: totalCuotas,
-        })
-      : null;
+ const totalCuotas = deudas.reduce<number>(
+ (suma, deuda) => suma + (deuda?.cuotaMensual ?? 0),
+ 0,
+ );
 
-  const sinCapacidad =
-    capacidad !== null && capacidad.cuotaMaxima <= 0;
+ const tieneDeudaAtrasada = values.deudaMoraOVencida === "SI";
+ const sinExtractos = values.extractos === "NO";
 
-  function pasoCompleto(paso: Paso): boolean {
-    switch (paso) {
-      case "perfilLaboral":
-        return values.perfilLaboral !== undefined;
+ const ingresoAdicionalConsiderado =
+ values.perfilLaboral === "ASALARIADO" &&
+ tieneSegundoIngreso
+ ? segundoIngresoMonto ?? 0
+ : 0;
 
-      case "ingresoNeto":
-        return (values.ingresoNeto ?? 0) > 0;
+ const ingresoTotalConsiderado =
+ (values.ingresoNeto ?? 0) + ingresoAdicionalConsiderado;
 
-      case "deudas":
-        return deudas.every((deuda) => {
-          return (
-            (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
-            (deuda?.cuotaMensual ?? 0) > 0
-          );
-        });
+ const capacidad =
+ ingresoTotalConsiderado > 0
+ ? calcularCapacidadPago({
+ ingresoNeto: ingresoTotalConsiderado,
+ totalDeudas: totalCuotas,
+ })
+ : null;
 
-      case "deudaAtrasada":
-        return values.deudaMoraOVencida !== undefined;
+ const sinCapacidad =
+ capacidad !== null && capacidad.cuotaMaxima <= 0;
 
-      case "extractos":
-        return values.extractos !== undefined;
-    }
-  }
+ function pasoCompleto(paso: Paso): boolean {
+ switch (paso) {
+ case "perfilLaboral":
+ return values.perfilLaboral !== undefined;
 
-  const primerIncompleto = PASOS.findIndex(
-    (paso) => !pasoCompleto(paso),
-  );
+ case "ingresoNeto":
+ return (values.ingresoNeto ?? 0) > 0;
 
-  const limite =
-    primerIncompleto === -1 ? PASOS.length : primerIncompleto;
+ case "deudas":
+ return deudas.every((deuda) => {
+ return (
+ (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
+ (deuda?.cuotaMensual ?? 0) > 0
+ );
+ });
 
-  const bloqueado = (paso: Paso) => {
-    return PASOS.indexOf(paso) > limite;
-  };
+ case "deudaAtrasada":
+ return values.deudaMoraOVencida !== undefined;
 
-  const lockCls = (paso: Paso) =>
-    bloqueado(paso)
-      ? "pointer-events-none select-none opacity-45 transition-opacity duration-300"
-      : "transition-opacity duration-300";
+ case "extractos":
+ return values.extractos !== undefined;
+ }
+ }
 
-  const lockTab = (paso: Paso) =>
-    bloqueado(paso) ? -1 : undefined;
+ const primerIncompleto = PASOS.findIndex(
+ (paso) => !pasoCompleto(paso),
+ );
 
-  const todoCompleto = primerIncompleto === -1;
+ const limite =
+ primerIncompleto === -1 ? PASOS.length : primerIncompleto;
 
-  const agregarDeuda = () => {
-    if (fields.length >= MAX_DEUDAS) return;
+ const bloqueado = (paso: Paso) => {
+ return PASOS.indexOf(paso) > limite;
+ };
 
-    append({
-      entidadFinanciera: "",
-      cuotaMensual: undefined as unknown as number,
-    });
-  };
+ const lockCls = (paso: Paso) =>
+ bloqueado(paso)
+ ? "pointer-events-none select-none opacity-45 transition-opacity duration-300"
+ : "transition-opacity duration-300";
 
-  const onSubmit = (formValues: DatosFinancierosValues) => {
-    if (formValues.deudaMoraOVencida === "SI") return;
+ const lockTab = (paso: Paso) =>
+ bloqueado(paso) ? -1 : undefined;
 
-    const deudasNormalizadas = formValues.deudas.map((deuda) => ({
-      entidadFinanciera: deuda.entidadFinanciera.trim(),
-      cuotaMensual: deuda.cuotaMensual,
-    }));
+ const todoCompleto = primerIncompleto === -1;
 
-    setDatosFinancieros({
-      perfilLaboral: formValues.perfilLaboral,
-      ingresoNeto: formValues.ingresoNeto,
+ const segundoIngresoCompleto =
+ values.perfilLaboral !== "ASALARIADO" ||
+ !tieneSegundoIngreso ||
+ (
+ segundoIngresoOrigen.trim().length >= 2 &&
+ (segundoIngresoMonto ?? 0) > 0 &&
+ aceptaRespaldoSegundoIngreso
+ );
 
-      /*
-       * Compatibilidad temporal con el cálculo actual del Paso 3.
-       * Estos campos ya no se preguntan en "Tus finanzas".
-       */
-      tieneSegundoIngreso: false,
-      segundoIngresoOrigen: undefined,
-      segundoIngresoMonto: undefined,
-      segundoIngresoRespaldado: false,
+ const agregarDeuda = () => {
+ if (fields.length >= MAX_DEUDAS) return;
 
-      numeroDeudas: deudasNormalizadas.length,
-      deudas: deudasNormalizadas,
+ append({
+ entidadFinanciera: "",
+ cuotaMensual: undefined as unknown as number,
+ });
+ };
 
-      totalCuotasMensuales: deudasNormalizadas.reduce(
-        (suma, deuda) => suma + deuda.cuotaMensual,
-        0,
-      ),
+ const onSubmit = (formValues: DatosFinancierosValues) => {
+ if (formValues.deudaMoraOVencida === "SI") return;
 
-      sinDeudaMoraOVencida:
-        formValues.deudaMoraOVencida === "NO",
+ const deudasNormalizadas = formValues.deudas.map((deuda) => ({
+ entidadFinanciera: deuda.entidadFinanciera.trim(),
+ cuotaMensual: deuda.cuotaMensual,
+ }));
 
-      extractos: formValues.extractos,
+ setDatosFinancieros({
+ perfilLaboral: formValues.perfilLaboral,
+ ingresoNeto: formValues.ingresoNeto,
 
-      /*
-       * Compatibilidad temporal con el modelo anterior.
-       */
-      excepcionMasDeTres: null,
-    });
+ /*
+ * Compatibilidad temporal con el cálculo actual del Paso 3.
+ * Estos campos ya no se preguntan en "Tus finanzas".
+ */
+ tieneSegundoIngreso:
+ formValues.perfilLaboral === "ASALARIADO"
+ ? tieneSegundoIngreso
+ : false,
 
-    completeAndAdvance("datos-financieros");
-  };
+ segundoIngresoOrigen:
+ formValues.perfilLaboral === "ASALARIADO" &&
+ tieneSegundoIngreso
+ ? segundoIngresoOrigen.trim() || undefined
+ : undefined,
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
-        Cuéntanos sobre tus ingresos y compromisos actuales para conocer
-        mejor tu situación financiera.
-      </p>
+ segundoIngresoMonto:
+ formValues.perfilLaboral === "ASALARIADO" &&
+ tieneSegundoIngreso
+ ? segundoIngresoMonto
+ : undefined,
 
-      {/* 1. Tipo de actividad */}
-      <fieldset className={lockCls("perfilLaboral")}>
-        <legend className="text-sm font-bold text-ink">
-          Tipo de actividad
-        </legend>
+ segundoIngresoRespaldado:
+ formValues.perfilLaboral === "ASALARIADO" &&
+ tieneSegundoIngreso,
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label
-            className={`relative min-h-[140px] cursor-pointer rounded-[24px] border-2 p-5 transition-all ${
-              values.perfilLaboral === "ASALARIADO"
-                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
-                : "border-border bg-white hover:border-primary/40"
-            }`}
-          >
-            <input
-              type="radio"
-              value="ASALARIADO"
-              className="sr-only"
-              tabIndex={lockTab("perfilLaboral")}
-              {...register("perfilLaboral")}
-            />
+ numeroDeudas: deudasNormalizadas.length,
+ deudas: deudasNormalizadas,
 
-            <div className="flex h-full items-start gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <UserRoundCheck className="h-7 w-7" />
-              </span>
+ totalCuotasMensuales: deudasNormalizadas.reduce(
+ (suma, deuda) => suma + deuda.cuotaMensual,
+ 0,
+ ),
 
-              <div>
-                <p className="text-lg font-extrabold text-ink">
-                  Asalariado
-                </p>
+ sinDeudaMoraOVencida:
+ formValues.deudaMoraOVencida === "NO",
 
-                <p className="mt-1.5 text-sm leading-6 text-muted">
-                  Recibes un sueldo de una empresa o institución.
-                </p>
-              </div>
-            </div>
-          </label>
+ extractos: formValues.extractos,
 
-          <label
-            className={`relative min-h-[140px] cursor-pointer rounded-[24px] border-2 p-5 transition-all ${
-              values.perfilLaboral === "INDEPENDIENTE"
-                ? "border-primary bg-surface-blue shadow-[0_8px_22px_rgba(3,174,254,0.12)]"
-                : "border-border bg-white hover:border-primary/40"
-            }`}
-          >
-            <input
-              type="radio"
-              value="INDEPENDIENTE"
-              className="sr-only"
-              tabIndex={lockTab("perfilLaboral")}
-              {...register("perfilLaboral")}
-            />
+ /*
+ * Compatibilidad temporal con el modelo anterior.
+ */
+ excepcionMasDeTres: null,
+ });
 
-            <div className="flex h-full items-start gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-                <Store className="h-7 w-7" />
-              </span>
+ completeAndAdvance("datos-financieros");
+ };
 
-              <div>
-                <p className="text-lg font-extrabold text-ink">
-                  Independiente
-                </p>
+ return (
+ <form onSubmit={handleSubmit(onSubmit)} noValidate>
+ <p className="mb-6 max-w-2xl text-sm leading-6 text-body">
+ Cuéntanos sobre tus ingresos y compromisos actuales para conocer
+ mejor tu situación financiera.
+ </p>
 
-                <p className="mt-1.5 text-sm leading-6 text-muted">
-                  Generas ingresos por tu negocio, profesión u oficio.
-                </p>
-              </div>
-            </div>
-          </label>
+ {/* 1. Tipo de actividad */}
+ <fieldset className={lockCls("perfilLaboral")}>
+ <legend className="text-sm font-bold text-ink">
+ Tipo de actividad
+ </legend>
+
+ <div className="mt-3 grid gap-3 sm:grid-cols-2">
+ <label
+ className={`relative min-h-[140px] cursor-pointer rounded-[24px] border-2 p-5 transition-all ${
+ values.perfilLaboral === "ASALARIADO"
+ ? "border-primary bg-surface-blue "
+ : "border-border bg-white hover:border-primary/40"
+ }`}
+ >
+ <input
+ type="radio"
+ value="ASALARIADO"
+ className="sr-only"
+ tabIndex={lockTab("perfilLaboral")}
+ {...register("perfilLaboral")}
+ />
+
+ <div className="flex h-full items-start gap-4">
+ <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+ <UserRoundCheck className="h-7 w-7" />
+ </span>
+
+ <div>
+ <p className="text-lg font-extrabold text-ink">
+ Asalariado
+ </p>
+
+ <p className="mt-1.5 text-sm leading-6 text-muted">
+ Recibes un sueldo de una empresa o institución.
+ </p>
+ </div>
+ </div>
+ </label>
+
+ <label
+ className={`relative min-h-[140px] cursor-pointer rounded-[24px] border-2 p-5 transition-all ${
+ values.perfilLaboral === "INDEPENDIENTE"
+ ? "border-primary bg-surface-blue "
+ : "border-border bg-white hover:border-primary/40"
+ }`}
+ >
+ <input
+ type="radio"
+ value="INDEPENDIENTE"
+ className="sr-only"
+ tabIndex={lockTab("perfilLaboral")}
+ {...register("perfilLaboral")}
+ />
+
+ <div className="flex h-full items-start gap-4">
+ <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+ <Store className="h-7 w-7" />
+ </span>
+
+ <div>
+ <p className="text-lg font-extrabold text-ink">
+ Independiente
+ </p>
+
+ <p className="mt-1.5 text-sm leading-6 text-muted">
+ Generas ingresos por tu negocio, profesión u oficio.
+ </p>
+ </div>
+ </div>
+ </label>
+ </div>
+
+ {errors.perfilLaboral ? (
+ <p className="mt-2 text-xs font-semibold text-error">
+ {errors.perfilLaboral.message}
+ </p>
+ ) : null}
+ </fieldset>
+
+ {/* 2. Ingresos mensuales */}
+ <div
+ className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+ "ingresoNeto",
+ )}`}
+ >
+ <Field
+ label="Ingresos mensuales"
+ htmlFor="ingresoNeto"
+ error={errors.ingresoNeto?.message}
+ >
+ <Controller
+ name="ingresoNeto"
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="ingresoNeto"
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) => {
+ field.onChange(value.floatValue);
+ }}
+ onBlur={field.onBlur}
+ placeholder="Ej. 4.500"
+ className={prefixedInputClassName}
+ tabIndex={lockTab("ingresoNeto")}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+
+ <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted">
+ <BadgeDollarSign className="h-4 w-4 shrink-0 text-primary" />
+
+ {values.perfilLaboral === "INDEPENDIENTE"
+ ? "Ingresa el monto que te queda aproximadamente cada mes después de los gastos de tu actividad."
+ : "Ingresa el monto aproximado que recibes cada mes después de descuentos."}
+ </p>
+ </div>
+
+ {/* INGRESO ADICIONAL - SOLO ASALARIADO */}
+ {values.perfilLaboral === "ASALARIADO" ? (
+ <div className="mt-6 border-t border-border-soft pt-6">
+ <fieldset>
+ <legend className="text-sm font-bold text-ink">
+ ¿Recibes algún ingreso adicional además de tu sueldo?
+ </legend>
+
+ <p className="mt-1 text-xs leading-5 text-muted">
+ Por ejemplo, alquileres, ventas, comisiones u otro trabajo.
+ </p>
+
+ <div className="mt-3 flex flex-wrap gap-3">
+ <button
+ type="button"
+ onClick={() => setTieneSegundoIngreso(true)}
+ className={`min-h-11 cursor-pointer rounded-xl px-5 text-sm font-bold transition ${
+ tieneSegundoIngreso
+ ? "bg-primary text-white"
+ : "bg-surface-blue text-primary-dark"
+ }`}
+ >
+ Sí
+ </button>
+
+ <button
+ type="button"
+ onClick={() => {
+ setTieneSegundoIngreso(false);
+ setSegundoIngresoOrigen("");
+ setSegundoIngresoMonto(undefined);
+ setAceptaRespaldoSegundoIngreso(false);
+ }}
+ className={`min-h-11 cursor-pointer rounded-xl px-5 text-sm font-bold transition ${
+ !tieneSegundoIngreso
+ ? "bg-primary text-white"
+ : "bg-surface-blue text-primary-dark"
+ }`}
+ >
+ No
+ </button>
+ </div>
+ </fieldset>
+
+ <AnimatePresence initial={false}>
+ {tieneSegundoIngreso ? (
+ <motion.div
+ initial={{ opacity: 0, height: 0 }}
+ animate={{ opacity: 1, height: "auto" }}
+ exit={{ opacity: 0, height: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="mt-5 grid gap-5 sm:grid-cols-2">
+ <Field
+ label="¿De dónde proviene este ingreso?"
+ htmlFor="segundoIngresoOrigen"
+ >
+ <input
+ id="segundoIngresoOrigen"
+ type="text"
+ value={segundoIngresoOrigen}
+ onChange={(event) =>
+ setSegundoIngresoOrigen(event.target.value)
+ }
+ placeholder="Ej. alquiler, ventas o comisiones"
+ className={inputClassName}
+ />
+ </Field>
+
+ <Field
+ label="¿Cuánto recibes aproximadamente al mes?"
+ htmlFor="segundoIngresoMonto"
+ >
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="segundoIngresoMonto"
+ value={segundoIngresoMonto ?? ""}
+ onValueChange={(value) =>
+ setSegundoIngresoMonto(value.floatValue)
+ }
+ placeholder="Ej. 1.500"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ </Field>
+ </div>
+
+ <div className="mt-5 overflow-hidden rounded-[22px] bg-[#FFF5E8]">
+ <div className="flex items-start gap-4 p-5">
+ <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#FE9806] text-white">
+ <BadgeDollarSign className="h-5 w-5" />
+ </div>
+
+ <div className="min-w-0">
+ <p className="text-[15px] font-extrabold leading-5 text-[#071A25]">
+ Importante: este ingreso debe contar con respaldo
+ </p>
+
+ <p className="mt-2 text-xs leading-5 text-[#5F7180]">
+ Para que podamos considerarlo en tu capacidad de pago,
+ deberás presentar extractos, recibos o comprobantes que
+ demuestren este ingreso.
+ </p>
+ </div>
+ </div>
+
+ <label className="flex cursor-pointer items-start gap-3 bg-white px-5 py-4">
+ <input
+ type="checkbox"
+ checked={aceptaRespaldoSegundoIngreso}
+ onChange={(event) =>
+ setAceptaRespaldoSegundoIngreso(event.target.checked)
+ }
+ className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#03AEFE]"
+ />
+
+ <span className="text-xs font-bold leading-5 text-[#071A25]">
+ Entiendo y acepto que debo respaldar este ingreso para que
+ Kivo pueda considerarlo en mi capacidad de pago.
+ </span>
+ </label>
+ </div>
+
+
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+ </div>
+ ) : null}
+
+ {/* 3. Deudas actuales */}
+ <div
+ className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+ "deudas",
+ )}`}
+ >
+ <p className="text-sm font-bold text-ink">
+ Deudas actuales
+ </p>
+
+ <p className="mt-1 text-xs leading-5 text-muted">
+ Si tienes préstamos o deudas vigentes, agrégalos con su cuota
+ mensual. Si no tienes deudas, puedes continuar.
+ </p>
+
+ <AnimatePresence initial={false}>
+ {fields.map((item, index) => (
+ <motion.div
+ key={item.id}
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="mt-4 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
+ <div className="flex items-center justify-between gap-3">
+ <p className="text-sm font-extrabold text-ink">
+ Deuda {index + 1}
+ </p>
+
+ <button
+ type="button"
+ onClick={() => remove(index)}
+ aria-label={`Quitar deuda ${index + 1}`}
+ className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted transition-colors hover:border-error/40 hover:text-error"
+ >
+ <Trash2 className="h-4 w-4" />
+ </button>
+ </div>
+
+ <div className="mt-4 grid gap-4 sm:grid-cols-2">
+ <Field
+ label="Entidad financiera"
+ htmlFor={`deuda-entidad-${index}`}
+ error={
+ errors.deudas?.[index]?.entidadFinanciera?.message
+ }
+ >
+ <input
+ id={`deuda-entidad-${index}`}
+ type="text"
+ placeholder="Ej. Banco Unión"
+ className={inputClassName}
+ {...register(
+ `deudas.${index}.entidadFinanciera` as const,
+ )}
+ />
+ </Field>
+
+ <Field
+ label="Cuota mensual"
+ htmlFor={`deuda-cuota-${index}`}
+ error={
+ errors.deudas?.[index]?.cuotaMensual?.message
+ }
+ >
+ <Controller
+ name={`deudas.${index}.cuotaMensual` as const}
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id={`deuda-cuota-${index}`}
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) => {
+ field.onChange(value.floatValue);
+ }}
+ onBlur={field.onBlur}
+ placeholder="Ej. 800"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+ </div>
+ </div>
+ </motion.div>
+ ))}
+ </AnimatePresence>
+
+ {fields.length < MAX_DEUDAS ? (
+ <button
+ type="button"
+ onClick={agregarDeuda}
+ className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 text-sm font-bold text-body transition-colors hover:border-primary hover:text-primary"
+ >
+ <Plus className="h-4 w-4" />
+ {fields.length === 0
+ ? "Agregar deuda"
+ : "Agregar otra deuda"}
+ </button>
+ ) : null}
+
+ {totalCuotas > 0 ? (
+ <p className="mt-4 flex w-fit items-center gap-2 rounded-full bg-surface-blue px-3.5 py-1.5 text-[13px] font-bold text-primary-dark">
+ <Wallet className="h-4 w-4 text-cerulean" />
+ Cuotas mensuales actuales: {formatBs(totalCuotas)}
+ </p>
+ ) : null}
+
+ <AnimatePresence>
+ {sinCapacidad ? (
+ <motion.div
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="pt-4">
+ <DangerNotice title="Por ahora no podemos continuar">
+ Según tus ingresos y compromisos actuales, no queda
+ suficiente capacidad para asumir una nueva cuota.
+ </DangerNotice>
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+ </div>
+
+ {/* 4. Deudas atrasadas */}
+ <fieldset
+ className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+ "deudaAtrasada",
+ )}`}
+ >
+ <legend className="text-sm font-bold text-ink">
+ ¿Actualmente tienes alguna deuda vencida, atrasada o en mora con otra entidad financiera?
+ </legend>
+
+ <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
+ <RadioPill
+ label="No"
+ inputProps={{
+ value: "NO",
+ tabIndex: lockTab("deudaAtrasada"),
+ ...register("deudaMoraOVencida"),
+ }}
+ />
+
+ <RadioPill
+ label="Sí"
+ inputProps={{
+ value: "SI",
+ tabIndex: lockTab("deudaAtrasada"),
+ ...register("deudaMoraOVencida"),
+ }}
+ />
+ </div>
+
+ {errors.deudaMoraOVencida ? (
+ <p className="mt-2 text-xs font-semibold text-error">
+ {errors.deudaMoraOVencida.message}
+ </p>
+ ) : null}
+
+ <AnimatePresence>
+ {tieneDeudaAtrasada ? (
+ <motion.div
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="pt-4">
+ <DangerNotice title="Por ahora no podemos continuar">
+ Mientras tengas deudas atrasadas, Kivo no podrá continuar
+ con la evaluación de la solicitud.
+ </DangerNotice>
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+ </fieldset>
+
+ {/* 5. Extractos bancarios */}
+ <fieldset
+ className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
+ "extractos",
+ )}`}
+ >
+ <legend className="text-sm font-bold text-ink">
+ ¿Cuentas con movimientos bancarios que respalden tus ingresos?
+ </legend>
+
+        <div className="mt-3 rounded-[18px] bg-[#E9F7FF] px-4 py-4">
+          <p className="text-sm font-extrabold leading-5 text-primary-dark">
+            Tus movimientos bancarios nos ayudan a validar tus ingresos y avanzar con tu solicitud.
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Asegúrate de que tus ingresos se vean reflejados en tu cuenta bancaria.
+          </p>
         </div>
 
-        {errors.perfilLaboral ? (
-          <p className="mt-2 text-xs font-semibold text-error">
-            {errors.perfilLaboral.message}
-          </p>
-        ) : null}
-      </fieldset>
+ <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
+ <RadioPill
+ label="Sí"
+ inputProps={{
+ value: "SI",
+ tabIndex: lockTab("extractos"),
+ ...register("extractos"),
+ }}
+ />
 
-      {/* 2. Ingresos mensuales */}
-      <div
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "ingresoNeto",
-        )}`}
-      >
-        <Field
-          label="Ingresos mensuales"
-          htmlFor="ingresoNeto"
-          error={errors.ingresoNeto?.message}
-        >
-          <Controller
-            name="ingresoNeto"
-            control={control}
-            render={({ field }) => (
-              <PrefixedInputShell prefix="Bs">
-                <NumericFormat
-                  id="ingresoNeto"
-                  getInputRef={field.ref}
-                  value={field.value ?? ""}
-                  onValueChange={(value) => {
-                    field.onChange(value.floatValue);
-                  }}
-                  onBlur={field.onBlur}
-                  placeholder="Ej. 4.500"
-                  className={prefixedInputClassName}
-                  tabIndex={lockTab("ingresoNeto")}
-                  {...dineroInputProps}
-                />
-              </PrefixedInputShell>
-            )}
-          />
-        </Field>
+ <RadioPill
+ label="No"
+ inputProps={{
+ value: "NO",
+ tabIndex: lockTab("extractos"),
+ ...register("extractos"),
+ }}
+ />
+ </div>
 
-        <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted">
-          <BadgeDollarSign className="h-4 w-4 shrink-0 text-primary" />
+ {errors.extractos ? (
+ <p className="mt-2 text-xs font-semibold text-error">
+ {errors.extractos.message}
+ </p>
+ ) : null}
 
-          {values.perfilLaboral === "INDEPENDIENTE"
-            ? "Ingresa el monto que te queda aproximadamente cada mes después de los gastos de tu actividad."
-            : "Ingresa el monto aproximado que recibes cada mes después de descuentos."}
-        </p>
-      </div>
+ <AnimatePresence>
+ {sinExtractos ? (
+ <motion.div
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="pt-4">
+ <BusinessNotice>
+ Registramos que actualmente no cuentas con extractos
+ bancarios. Esta información será considerada durante la
+ evaluación.
+ </BusinessNotice>
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+ </fieldset>
 
-      {/* 3. Deudas actuales */}
-      <div
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "deudas",
-        )}`}
-      >
-        <p className="text-sm font-bold text-ink">
-          Deudas actuales
-        </p>
-
-        <p className="mt-1 text-xs leading-5 text-muted">
-          Si tienes préstamos o deudas vigentes, agrégalos con su cuota
-          mensual. Si no tienes deudas, puedes continuar.
-        </p>
-
-        <AnimatePresence initial={false}>
-          {fields.map((item, index) => (
-            <motion.div
-              key={item.id}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 rounded-2xl border border-border-soft bg-white p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-extrabold text-ink">
-                    Deuda {index + 1}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    aria-label={`Quitar deuda ${index + 1}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted transition-colors hover:border-error/40 hover:text-error"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Entidad financiera"
-                    htmlFor={`deuda-entidad-${index}`}
-                    error={
-                      errors.deudas?.[index]?.entidadFinanciera?.message
-                    }
-                  >
-                    <input
-                      id={`deuda-entidad-${index}`}
-                      type="text"
-                      placeholder="Ej. Banco Unión"
-                      className={inputClassName}
-                      {...register(
-                        `deudas.${index}.entidadFinanciera` as const,
-                      )}
-                    />
-                  </Field>
-
-                  <Field
-                    label="Cuota mensual"
-                    htmlFor={`deuda-cuota-${index}`}
-                    error={
-                      errors.deudas?.[index]?.cuotaMensual?.message
-                    }
-                  >
-                    <Controller
-                      name={`deudas.${index}.cuotaMensual` as const}
-                      control={control}
-                      render={({ field }) => (
-                        <PrefixedInputShell prefix="Bs">
-                          <NumericFormat
-                            id={`deuda-cuota-${index}`}
-                            getInputRef={field.ref}
-                            value={field.value ?? ""}
-                            onValueChange={(value) => {
-                              field.onChange(value.floatValue);
-                            }}
-                            onBlur={field.onBlur}
-                            placeholder="Ej. 800"
-                            className={prefixedInputClassName}
-                            {...dineroInputProps}
-                          />
-                        </PrefixedInputShell>
-                      )}
-                    />
-                  </Field>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {fields.length < MAX_DEUDAS ? (
-          <button
-            type="button"
-            onClick={agregarDeuda}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 text-sm font-bold text-body transition-colors hover:border-primary hover:text-primary"
-          >
-            <Plus className="h-4 w-4" />
-            {fields.length === 0
-              ? "Agregar deuda"
-              : "Agregar otra deuda"}
-          </button>
-        ) : null}
-
-        {totalCuotas > 0 ? (
-          <p className="mt-4 flex w-fit items-center gap-2 rounded-full bg-surface-blue px-3.5 py-1.5 text-[13px] font-bold text-primary-dark">
-            <Wallet className="h-4 w-4 text-cerulean" />
-            Cuotas mensuales actuales: {formatBs(totalCuotas)}
-          </p>
-        ) : null}
-
-        <AnimatePresence>
-          {sinCapacidad ? (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-4">
-                <DangerNotice title="Por ahora no podemos continuar">
-                  Según tus ingresos y compromisos actuales, no queda
-                  suficiente capacidad para asumir una nueva cuota.
-                </DangerNotice>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </div>
-
-      {/* 4. Deudas atrasadas */}
-      <fieldset
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "deudaAtrasada",
-        )}`}
-      >
-        <legend className="text-sm font-bold text-ink">
-          ¿Tienes deudas atrasadas?
-        </legend>
-
-        <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
-          <RadioPill
-            label="No"
-            inputProps={{
-              value: "NO",
-              tabIndex: lockTab("deudaAtrasada"),
-              ...register("deudaMoraOVencida"),
-            }}
-          />
-
-          <RadioPill
-            label="Sí"
-            inputProps={{
-              value: "SI",
-              tabIndex: lockTab("deudaAtrasada"),
-              ...register("deudaMoraOVencida"),
-            }}
-          />
-        </div>
-
-        {errors.deudaMoraOVencida ? (
-          <p className="mt-2 text-xs font-semibold text-error">
-            {errors.deudaMoraOVencida.message}
-          </p>
-        ) : null}
-
-        <AnimatePresence>
-          {tieneDeudaAtrasada ? (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-4">
-                <DangerNotice title="Por ahora no podemos continuar">
-                  Mientras tengas deudas atrasadas, Kivo no podrá continuar
-                  con la evaluación de la solicitud.
-                </DangerNotice>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </fieldset>
-
-      {/* 5. Extractos bancarios */}
-      <fieldset
-        className={`mt-6 border-t border-border-soft pt-6 ${lockCls(
-          "extractos",
-        )}`}
-      >
-        <legend className="text-sm font-bold text-ink">
-          ¿Cuentas con extractos bancarios?
-        </legend>
-
-        <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
-          <RadioPill
-            label="Sí"
-            inputProps={{
-              value: "SI",
-              tabIndex: lockTab("extractos"),
-              ...register("extractos"),
-            }}
-          />
-
-          <RadioPill
-            label="No"
-            inputProps={{
-              value: "NO",
-              tabIndex: lockTab("extractos"),
-              ...register("extractos"),
-            }}
-          />
-        </div>
-
-        {errors.extractos ? (
-          <p className="mt-2 text-xs font-semibold text-error">
-            {errors.extractos.message}
-          </p>
-        ) : null}
-
-        <AnimatePresence>
-          {sinExtractos ? (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-4">
-                <BusinessNotice>
-                  Registramos que actualmente no cuentas con extractos
-                  bancarios. Esta información será considerada durante la
-                  evaluación.
-                </BusinessNotice>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </fieldset>
-
-      <div className="mt-6">
-        <button
-          type="submit"
-          disabled={
-            !todoCompleto ||
-            tieneDeudaAtrasada ||
-            sinCapacidad
-          }
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-        >
-          Siguiente paso
-          <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
-        </button>
-      </div>
-    </form>
-  );
+ <div className="mt-6">
+ <button
+ type="submit"
+ disabled={
+ !todoCompleto ||
+ !segundoIngresoCompleto ||
+ tieneDeudaAtrasada ||
+ sinCapacidad
+ }
+ className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+ >
+ Siguiente paso
+ <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
+ </button>
+ </div>
+ </form>
+ );
 }

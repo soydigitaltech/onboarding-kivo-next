@@ -56,6 +56,63 @@ export const informacionComplementariaSchema = z.object({
       message: "Selecciona para qué necesitas el préstamo.",
     },
   ),
+
+  detalleDestinoPrestamo: z
+    .string()
+    .trim()
+    .min(
+      10,
+      "Cuéntanos brevemente para qué utilizarás el préstamo.",
+    )
+    .max(
+      300,
+      "El detalle no puede superar los 300 caracteres.",
+    ),
+
+  tieneGarante: z.enum(["SI", "NO"]).optional(),
+
+  nombreConyuge: z.string().trim().optional(),
+
+  celularConyuge: z.string().trim().optional(),
+}).superRefine((values, ctx) => {
+  const requiereGarante =
+    values.vivienda === "ALQUILER" ||
+    values.vivienda === "ANTICRETICO";
+
+  if (requiereGarante && !values.tieneGarante) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["tieneGarante"],
+      message: "Indica si cuentas con garante.",
+    });
+  }
+
+  const requiereConyuge =
+    values.estadoCivil === "CASADO" ||
+    values.estadoCivil === "CONYUGE";
+
+  if (
+    requiereConyuge &&
+    (!values.nombreConyuge ||
+      values.nombreConyuge.trim().length < 2)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["nombreConyuge"],
+      message: "Ingresa el nombre completo de tu cónyuge.",
+    });
+  }
+
+  if (
+    requiereConyuge &&
+    !/^[67]\d{7}$/.test(values.celularConyuge ?? "")
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["celularConyuge"],
+      message: "Ingresa un número de celular válido.",
+    });
+  }
 });
 
 export type InformacionComplementariaValues = z.infer<

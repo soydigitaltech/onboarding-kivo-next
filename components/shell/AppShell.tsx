@@ -1,323 +1,325 @@
 "use client";
 
 import {
-  useState } from "react";
+ useState,
+ type ReactNode,
+} from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import {
-  Bell,
-  CalendarCheck2,
-  CircleUserRound,
-  FileCheck2,
-  House,
-  LogOut,
-  Menu,
-  MessageCircle,
-  MessageSquareText,
-  Route,
-  X,
-  type LucideIcon,
+ Bell,
+ CalendarCheck2,
+ CircleUserRound,
+ FileCheck2,
+ House,
+ LogOut,
+ Menu,
+ MessageCircle,
+ MessageSquareText,
+ Route,
+ X,
+ type LucideIcon,
 } from "lucide-react";
 
 import { WHATSAPP_KIVO } from "@/lib/kivo/datos";
 
 type ItemNav = {
-  label: string;
-  href: string;
-  icono: LucideIcon;
-  pill?: string;
+ label: string;
+ href: string;
+ icono: LucideIcon;
+ pill?: string;
 };
 
 const GRUPOS: {
-  titulo: string;
-  items: ItemNav[];
+ titulo: string;
+ items: ItemNav[];
 }[] = [
-  {
-    titulo: "MI KIVO",
-    items: [
-      {
-        label: "Inicio",
-        href: "/dashboard",
-        icono: House,
-      },
-      {
-        label: "Mi perfil",
-        href: "/perfil",
-        icono: CircleUserRound,
-      },
-    ],
-  },
-  {
-    titulo: "MI SOLICITUD",
-    items: [
-      {
-        label: "Estado y seguimiento",
-        href: "/seguimiento",
-        icono: Route,
-      },
-      {
-        label: "Requisitos",
-        href: "/documentos",
-        icono: FileCheck2,
-        pill: "2",
-      },
-      {
-        label: "Mensajes",
-        href: "/mensajes",
-        icono: MessageSquareText,
-        pill: "3",
-      },
-    ],
-  },
-  {
-    titulo: "MI PRÉSTAMO",
-    items: [
-      {
-        label: "Plan de pagos",
-        href: "/cuotas",
-        icono: CalendarCheck2,
-      },
-    ],
-  },
+ {
+ titulo: "MI KIVO",
+ items: [
+ {
+ label: "Inicio",
+ href: "/dashboard",
+ icono: House,
+ },
+ {
+ label: "Mi perfil",
+ href: "/perfil",
+ icono: CircleUserRound,
+ },
+ ],
+ },
+ {
+ titulo: "MI SOLICITUD",
+ items: [
+ {
+ label: "Estado y seguimiento",
+ href: "/seguimiento",
+ icono: Route,
+ },
+ {
+ label: "Requisitos",
+ href: "/documentos",
+ icono: FileCheck2,
+ pill: "2",
+ },
+ {
+ label: "Mensajes",
+ href: "/mensajes",
+ icono: MessageSquareText,
+ pill: "3",
+ },
+ ],
+ },
+ {
+ titulo: "MI PRÉSTAMO",
+ items: [
+ {
+ label: "Plan de pagos",
+ href: "/cuotas",
+ icono: CalendarCheck2,
+ },
+ ],
+ },
 ];
 
 export default function AppShell({
-  children,
-  subtitulo,
+ children,
+ subtitulo,
 }: {
-  children: ReactNode;
-  subtitulo: string;
+ children: ReactNode;
+ subtitulo: string;
 }) {
-  const [drawer, setDrawer] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] =
-    useState(false);
+ const [drawer, setDrawer] = useState(false);
+ const [showLogoutModal, setShowLogoutModal] =
+ useState(false);
 
-  const pathname = usePathname();
+ const pathname = usePathname();
 
-  const confirmLogout = () => {
-    setShowLogoutModal(false);
-    window.location.href = "https://www.kivocash.com/";
-  };
+ const confirmLogout = () => {
+ setShowLogoutModal(false);
+ window.location.href = "https://www.kivocash.com/";
+ };
 
-  return (
-    <div className="min-h-screen bg-[#DDF6FD]">
-      {/* Modal salir */}
-      {showLogoutModal ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[28px] bg-white p-6">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#EAF9FE] text-primary">
-              <LogOut className="h-6 w-6" />
-            </div>
+ return (
+ <div className="min-h-screen bg-[#DDF6FD]">
+ {/* Modal salir */}
+ {showLogoutModal ? (
+ <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+ <div className="w-full max-w-sm rounded-[28px] bg-white p-6">
+ <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#EAF9FE] text-primary">
+ <LogOut className="h-6 w-6" />
+ </div>
 
-            <h3 className="mt-4 text-center text-xl font-extrabold text-ink">
-              ¿Cerrar sesión?
-            </h3>
+ <h3 className="mt-4 text-center text-xl font-extrabold text-ink">
+ ¿Cerrar sesión?
+ </h3>
 
-            <p className="mt-2 text-center text-sm leading-6 text-muted">
-              Estás a punto de salir de tu cuenta Kivo.
-            </p>
+ <p className="mt-2 text-center text-sm leading-6 text-muted">
+ Estás a punto de salir de tu cuenta Kivo.
+ </p>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setShowLogoutModal(false)}
-                className="min-h-11 rounded-xl bg-[#F4F7FA] px-4 text-sm font-bold text-body"
-              >
-                Cancelar
-              </button>
+ <div className="mt-6 grid grid-cols-2 gap-3">
+ <button
+ type="button"
+ onClick={() => setShowLogoutModal(false)}
+ className="min-h-11 rounded-xl bg-[#F4F7FA] px-4 text-sm font-bold text-body"
+ >
+ Cancelar
+ </button>
 
-              <button
-                type="button"
-                onClick={confirmLogout}
-                className="min-h-11 rounded-xl bg-black px-4 text-sm font-bold text-white"
-              >
-                Salir
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+ <button
+ type="button"
+ onClick={confirmLogout}
+ className="min-h-11 rounded-xl bg-black px-4 text-sm font-bold text-white"
+ >
+ Salir
+ </button>
+ </div>
+ </div>
+ </div>
+ ) : null}
 
-      {/* Overlay mobile */}
-      {drawer ? (
-        <button
-          type="button"
-          aria-label="Cerrar menú"
-          onClick={() => setDrawer(false)}
-          className="fixed inset-0 z-40 bg-black/35 lg:hidden"
-        />
-      ) : null}
+ {/* Overlay mobile */}
+ {drawer ? (
+ <button
+ type="button"
+ aria-label="Cerrar menú"
+ onClick={() => setDrawer(false)}
+ className="fixed inset-0 z-40 bg-black/35 lg:hidden"
+ />
+ ) : null}
 
-      {/* SIDEBAR */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col overflow-y-auto border-r border-[#EDF2F5] bg-white px-4 pb-5 pt-5 transition-transform duration-200 lg:translate-x-0 ${
-          drawer ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex min-h-14 items-center justify-between px-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/kivo-tablero.svg"
-            alt="Kivo"
-            className="h-9 w-auto"
-          />
+ {/* SIDEBAR */}
+ <aside
+ className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col overflow-y-auto border-r border-[#EDF2F5] bg-white px-4 pb-5 pt-5 transition-transform duration-200 lg:translate-x-0 ${
+ drawer ? "translate-x-0" : "-translate-x-full"
+ }`}
+ >
+ <div className="flex min-h-14 items-center justify-between px-2">
+ {/* eslint-disable-next-line @next/next/no-img-element */}
+ <img
+ src="/kivo-tablero.svg"
+ alt="Kivo"
+ className="h-9 w-auto"
+ />
 
-          <button
-            type="button"
-            aria-label="Cerrar menú"
-            onClick={() => setDrawer(false)}
-            className="grid h-9 w-9 place-items-center rounded-xl bg-[#F4F7FA] text-body lg:hidden"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+ <button
+ type="button"
+ aria-label="Cerrar menú"
+ onClick={() => setDrawer(false)}
+ className="grid h-9 w-9 place-items-center rounded-xl bg-[#F4F7FA] text-body lg:hidden"
+ >
+ <X className="h-4 w-4" />
+ </button>
+ </div>
 
-        {/* Menú */}
-        <nav className="mt-5">
-          {GRUPOS.map((grupo, grupoIndex) => (
-            <div
-              key={grupo.titulo}
-              className={
-                grupoIndex > 0 ? "mt-7" : ""
-              }
-            >
-              <p className="px-3 text-[11px] font-extrabold tracking-[0.08em] text-primary">
-                {grupo.titulo}
-              </p>
+ {/* Menú */}
+ <nav className="mt-5">
+ {GRUPOS.map((grupo, grupoIndex) => (
+ <div
+ key={grupo.titulo}
+ className={
+ grupoIndex > 0 ? "mt-7" : ""
+ }
+ >
+ <p className="px-3 text-[11px] font-extrabold tracking-[0.08em] text-primary">
+ {grupo.titulo}
+ </p>
 
-              <div className="mt-2 space-y-1">
-                {grupo.items.map((item) => {
-                  const activo =
-                    item.href === "/dashboard"
-                      ? pathname === "/dashboard"
-                      : pathname.startsWith(item.href);
+ <div className="mt-2 space-y-1">
+ {grupo.items.map((item) => {
+ const activo =
+ item.href === "/dashboard"
+ ? pathname === "/dashboard"
+ : pathname.startsWith(item.href);
 
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setDrawer(false)}
-                      className={`group flex min-h-11 items-center gap-3 rounded-[14px] px-3.5 text-[14px] font-semibold transition ${
-                        activo
-                          ? "bg-[#DDF6FD] text-[#0B5F83]"
-                          : "text-[#526171] hover:bg-[#F2FAFD] hover:text-primary-dark"
-                      }`}
-                    >
-                      <item.icono
-                        className={`h-[18px] w-[18px] shrink-0 ${
-                          activo
-                            ? "text-primary"
-                            : "text-[#7690A4]"
-                        }`}
-                        strokeWidth={2}
-                      />
+ return (
+ <Link
+ key={item.label}
+ href={item.href}
+ onClick={() => setDrawer(false)}
+ className={`group flex min-h-11 items-center gap-3 rounded-[14px] px-3.5 text-[14px] font-semibold transition ${
+ activo
+ ? "bg-[#DDF6FD] text-[#0B5F83]"
+ : "text-[#526171] hover:bg-[#F2FAFD] hover:text-primary-dark"
+ }`}
+ >
+ <item.icono
+ className={`h-[18px] w-[18px] shrink-0 ${
+ activo
+ ? "text-primary"
+ : "text-[#7690A4]"
+ }`}
+ strokeWidth={2}
+ />
 
-                      <span>{item.label}</span>
+ <span>{item.label}</span>
 
-                      {item.pill ? (
-                        <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#DDF6FD] px-1.5 py-0.5 text-[10px] font-extrabold text-primary-dark">
-                          {item.pill}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+ {item.pill ? (
+ <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#DDF6FD] px-1.5 py-0.5 text-[10px] font-extrabold text-primary-dark">
+ {item.pill}
+ </span>
+ ) : null}
+ </Link>
+ );
+ })}
+ </div>
+ </div>
+ ))}
+ </nav>
 
-        {/* Ayuda */}
-        <div className="mt-auto pt-8">
-          <div className="rounded-[22px] bg-[#EEF9FD] p-4">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-primary">
-              <MessageCircle className="h-5 w-5" />
-            </span>
+ {/* Ayuda */}
+ <div className="mt-auto pt-8">
+ <div className="rounded-[22px] bg-[#EEF9FD] p-4">
+ <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-primary">
+ <MessageCircle className="h-5 w-5" />
+ </span>
 
-            <p className="mt-3 text-sm font-extrabold text-ink">
-              ¿Necesitas ayuda?
-            </p>
+ <p className="mt-3 text-sm font-extrabold text-ink">
+ ¿Necesitas ayuda?
+ </p>
 
-            <p className="mt-1 text-xs leading-5 text-muted">
-              Estamos aquí para ayudarte con tu solicitud.
-            </p>
+ <p className="mt-1 text-xs leading-5 text-muted">
+ Estamos aquí para ayudarte con tu solicitud.
+ </p>
 
-            <a
-              href={WHATSAPP_KIVO}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-extrabold text-white transition hover:bg-primary-dark"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Hablar con Kivo
-            </a>
-          </div>
+ <a
+ href={WHATSAPP_KIVO}
+ target="_blank"
+ rel="noopener noreferrer"
+ className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-extrabold text-white transition hover:bg-primary-dark"
+ >
+ <MessageCircle className="h-4 w-4" />
+ Hablar con Kivo
+ </a>
+ </div>
 
-          <button
-            type="button"
-            onClick={() => setShowLogoutModal(true)}
-            className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-[#F5F7FA] hover:text-ink"
-          >
-            <LogOut className="h-4 w-4" />
-            Cerrar sesión
-          </button>
-        </div>
-      </aside>
+ <button
+ type="button"
+ onClick={() => setShowLogoutModal(true)}
+ className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-[#F5F7FA] hover:text-ink"
+ >
+ <LogOut className="h-4 w-4" />
+ Cerrar sesión
+ </button>
+ </div>
+ </aside>
 
-      {/* CONTENIDO */}
-      <div className="lg:pl-[260px]">
-        <header className="bg-[#DDF6FD]/90 py-5 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1380px] items-center gap-3 px-4 sm:px-8">
-            <button
-              type="button"
-              onClick={() => setDrawer(true)}
-              aria-label="Abrir menú"
-              className="grid h-10 w-10 place-items-center rounded-xl bg-white lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+ {/* CONTENIDO */}
+ <div className="lg:pl-[260px]">
+ <header className="bg-[#DDF6FD]/90 py-5 backdrop-blur-xl">
+ <div className="mx-auto flex max-w-[1380px] items-center gap-3 px-4 sm:px-8">
+ <button
+ type="button"
+ onClick={() => setDrawer(true)}
+ aria-label="Abrir menú"
+ className="grid h-10 w-10 place-items-center rounded-xl bg-white lg:hidden"
+ >
+ <Menu className="h-5 w-5" />
+ </button>
 
-            <div className="min-w-0">
-              <h1 className="truncate text-[23px] font-extrabold tracking-tight text-ink sm:text-[26px]">
-                ¡Hola, cliente Kivo!
-              </h1>
+ <div className="min-w-0">
+ <h1 className="truncate text-[23px] font-extrabold tracking-tight text-ink sm:text-[26px]">
+ ¡Hola, cliente Kivo!
+ </h1>
 
-              <p className="mt-0.5 truncate text-[13px] text-muted">
-                {subtitulo}
-              </p>
-            </div>
+ <p className="mt-0.5 truncate text-[13px] text-muted">
+ {subtitulo}
+ </p>
+ </div>
 
-            <div className="ml-auto flex items-center">
-              
+ <div className="ml-auto flex items-center">
+ 
 
-              <Link
-                href="/mensajes"
-                className="inline-flex min-h-11 items-center gap-3 rounded-[14px] bg-black px-4 pl-5 text-[13px] font-extrabold text-white transition hover:bg-[#1A1A1A]"
-              >
-                <span className="hidden sm:inline">
-                  Tablero de notificaciones
-                </span>
+ <Link
+ href="/mensajes"
+ className="inline-flex min-h-11 items-center gap-3 rounded-[14px] bg-black px-4 pl-5 text-[13px] font-extrabold text-white transition hover:bg-[#1A1A1A]"
+ >
+ <span className="hidden sm:inline">
+ Tablero de notificaciones
+ </span>
 
-                <span className="sm:hidden">
-                  Notificaciones
-                </span>
+ <span className="sm:hidden">
+ Notificaciones
+ </span>
 
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#FC2E08]">
-                  <Bell
-                    className="h-[14px] w-[14px] text-white"
-                    strokeWidth={2.7}
-                  />
-                </span>
-              </Link>
-            </div>
-          </div>
-        </header>
+ <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#FC2E08]">
+ <Bell
+ className="h-[14px] w-[14px] text-white"
+ strokeWidth={2.7}
+ />
+ </span>
+ </Link>
+ </div>
+ </div>
+ </header>
 
-        <main className="mx-auto max-w-[1380px] px-4 pb-20 pt-2 sm:px-8">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+ <main className="mx-auto max-w-[1380px] px-4 pb-20 pt-2 sm:px-8">
+ {children}
+ </main>
+ </div>
+ </div>
+ );
 }

@@ -1,76 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-  /* ============================================
-     Paleta oficial Kivo
-     Principal:      Blanco #FFFFFF · Negro #000000
-                     Azul Cerúleo #44A3DA · Azul Brillante #03AEFE
-     Complementarios: Naranja Vivo #FE9806 · Púrpura Oscuro #9003FD
-                     Azul Real Oscuro #1B5BB6 · Azul Cielo #5FDAF8
-     ============================================ */
+ /* ============================================
+ Paleta oficial Kivo
+ Principal: Blanco #FFFFFF · Negro #000000
+ Azul Cerúleo #44A3DA · Azul Brillante #03AEFE
+ Complementarios: Naranja Vivo #FE9806 · Púrpura Oscuro #9003FD
+ Azul Real Oscuro #1B5BB6 · Azul Cielo #5FDAF8
+ ============================================ */
 
-  /* ---- Marca ---- */
-  --color-primary: #03aefe;        /* Azul Brillante: activo, títulos, foco */
-  --color-primary-dark: #1b5bb6;   /* Azul Real Oscuro: hover, completado */
-  --color-cerulean: #44a3da;       /* Azul Cerúleo: apoyos */
-  --color-sky: #5fdaf8;            /* Azul Cielo: tintes suaves */
-  --color-accent: #fe9806;         /* Naranja Vivo: CTA principal */
-  --color-accent-dark: #e08600;    /* Naranja hover (derivado) */
-  --color-purple: #9003fd;         /* Púrpura: acento reservado */
+ /* ---- Marca ---- */
+ --color-primary: #03aefe; /* Azul Brillante: activo, títulos, foco */
+ --color-primary-dark: #1b5bb6; /* Azul Real Oscuro: hover, completado */
+ --color-cerulean: #44a3da; /* Azul Cerúleo: apoyos */
+ --color-sky: #5fdaf8; /* Azul Cielo: tintes suaves */
+ --color-accent: #fe9806; /* Naranja Vivo: CTA principal */
+ --color-accent-dark: #e08600; /* Naranja hover (derivado) */
+ --color-purple: #9003fd; /* Púrpura: acento reservado */
 
-  /* ---- Texto (negro de paleta + neutros derivados) ---- */
-  --color-ink: #000000;
-  --color-ink-soft: #17181c;
-  --color-body: #4c5566;
-  --color-muted: #6b7484;
-  --color-placeholder: #9aa2b1;
+ /* ---- Texto (negro de paleta + neutros derivados) ---- */
+ --color-ink: #000000;
+ --color-ink-soft: #17181c;
+ --color-body: #4c5566;
+ --color-muted: #6b7484;
+ --color-placeholder: #9aa2b1;
 
-  /* ---- Superficies y bordes ---- */
-  --color-page: #5fdaf8;
-  --color-surface: #f7fafc;
-  --color-surface-blue: #e9f7ff;   /* tinte del Azul Brillante */
-  --color-border: #d9dfe8;
-  --color-border-soft: #e0e5ed;
+ /* ---- Superficies y bordes ---- */
+ --color-page: #5fdaf8;
+ --color-surface: #f7fafc;
+ --color-surface-blue: #e9f7ff; /* tinte del Azul Brillante */
+ --color-border: #d9dfe8;
+ --color-border-soft: #e0e5ed;
 
-  /* ---- Estados semánticos ---- */
-  /* Verde fuera de paleta de marca: solo para aprobaciones. */
-  --color-success: #0bbf7c;
-  --color-error: #e02424;
-  --color-warning: #a56800;
-  --color-warning-bg: #fff9ed;
-  --color-warning-border: #f0c36b;
+ /* ---- Estados semánticos ---- */
+ /* Verde fuera de paleta de marca: solo para aprobaciones. */
+ --color-success: #0bbf7c;
+ --color-error: #e02424;
+ --color-warning: #a56800;
+ --color-warning-bg: #fff9ed;
+ --color-warning-border: #f0c36b;
 }
 
 @theme inline {
-  /* La fuente va en "inline" porque --font-manrope
-     la inyecta next/font en runtime */
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+ /* La fuente va en "inline" porque --font-manrope
+ la inyecta next/font en runtime */
+ --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  @apply bg-page font-sans text-ink antialiased;
+ @apply bg-page font-sans text-ink antialiased;
 }
 
 /* Accesibilidad: si la persona prefiere menos movimiento,
-   las transiciones CSS se reducen a imperceptibles. */
+ las transiciones CSS se reducen a imperceptibles. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+ *,
+ *::before,
+ *::after {
+ animation-duration: 0.01ms !important;
+ animation-iteration-count: 1 !important;
+ transition-duration: 0.01ms !important;
+ }
 }
 
 /* Chrome pinta de celeste los campos autocompletados (autofill);
-   forzamos fondo blanco y texto de marca para mantener el diseño. */
+ forzamos fondo blanco y texto de marca para mantener el diseño. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
-  box-shadow: 0 0 0 1000px #ffffff inset;
-  -webkit-text-fill-color: var(--color-ink);
-  caret-color: var(--color-ink);
-  transition: background-color 9999s ease-in-out 0s;
+ -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+ box-shadow: 0 0 0 1000px #ffffff inset;
+ -webkit-text-fill-color: var(--color-ink);
+ caret-color: var(--color-ink);
+ transition: background-color 9999s ease-in-out 0s;
 }
