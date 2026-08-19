@@ -38,6 +38,7 @@ const EMPTY_VALUES: InformacionComplementariaValues = {
  nombreEmpresaNegocio: "",
  rubro: "",
  cargoActividad: "",
+ antiguedadActividad: undefined as unknown as number,
  direccionLaboral: "",
  vivienda: undefined as unknown as InformacionComplementariaValues["vivienda"],
  estadoCivil:
@@ -54,6 +55,7 @@ type Paso =
  | "nombreEmpresaNegocio"
  | "rubro"
  | "cargoActividad"
+ | "antiguedadActividad"
  | "direccionLaboral"
  | "vivienda"
  | "estadoCivil"
@@ -63,6 +65,7 @@ const PASOS: Paso[] = [
  "nombreEmpresaNegocio",
  "rubro",
  "cargoActividad",
+ "antiguedadActividad",
  "direccionLaboral",
  "vivienda",
  "estadoCivil",
@@ -88,6 +91,9 @@ function pasoCompleto(
 
  case "cargoActividad":
  return (values.cargoActividad ?? "").trim().length >= 2;
+
+ case "antiguedadActividad":
+ return (values.antiguedadActividad ?? 0) > 0;
 
  case "direccionLaboral":
  return (values.direccionLaboral ?? "").trim().length >= 5;
@@ -197,6 +203,9 @@ export function InformacionComplementariaForm() {
  const esAsalariado =
  datosFinancieros?.perfilLaboral === "ASALARIADO";
 
+ const puedeElegirCapitalTrabajo =
+ !esAsalariado || datosFinancieros?.tieneSegundoIngreso === true;
+
  const onSubmit = (
  formValues: InformacionComplementariaValues,
  ) => {
@@ -280,6 +289,48 @@ export function InformacionComplementariaForm() {
  tabIndex={lockTab("cargoActividad")}
  {...register("cargoActividad")}
  />
+ </Field>
+ </div>
+
+ {/* Antigüedad laboral / actividad */}
+ <div className={lockCls("antiguedadActividad")}>
+ <Field
+ label={
+ esAsalariado
+ ? "Antigüedad laboral"
+ : "Antigüedad en la actividad"
+ }
+ htmlFor="antiguedadActividad"
+ error={errors.antiguedadActividad?.message}
+ >
+ <div className="relative">
+ <input
+ id="antiguedadActividad"
+ type="text"
+ inputMode="numeric"
+ pattern="[0-9]*"
+ placeholder="Ej. 34"
+ className={`${inputClassName} pr-24`}
+ tabIndex={lockTab("antiguedadActividad")}
+ {...register("antiguedadActividad", {
+ setValueAs: (value) => {
+ const limpio = String(value ?? "").replace(/\D/g, "");
+ return limpio === "" ? undefined : Number(limpio);
+ },
+ })}
+ />
+
+ <span className="pointer-events-none absolute right-3 top-1/2 inline-flex h-9 -translate-y-1/2 items-center justify-center rounded-xl bg-surface-blue px-4 text-[12px] font-extrabold text-primary-dark">
+ Meses
+ </span>
+ </div>
+
+ <p className="mt-1.5 text-xs leading-5 text-muted">
+ Ingresa la cantidad de meses que llevas{" "}
+ {esAsalariado
+ ? "trabajando en tu empleo actual."
+ : "realizando esta actividad."}
+ </p>
  </Field>
  </div>
 
@@ -535,17 +586,19 @@ export function InformacionComplementariaForm() {
  </legend>
 
  <p className="mt-1 text-xs leading-5 text-muted">
- Selecciona la opción que mejor describe cómo utilizarás el dinero.
+ {esAsalariado
+ ? "Indícanos para qué utilizarás el préstamo."
+ : "Selecciona la opción que mejor describe cómo utilizarás el dinero."}
  </p>
 
  <div
  className={`mt-3 grid gap-3 ${
- esAsalariado
- ? "sm:max-w-md"
- : "sm:grid-cols-2"
+ puedeElegirCapitalTrabajo
+ ? "sm:grid-cols-2"
+ : "sm:max-w-md"
  }`}
  >
- {!esAsalariado ? (
+ {puedeElegirCapitalTrabajo ? (
  <label
  className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
  values.destinoPrestamo === "CAPITAL_TRABAJO"

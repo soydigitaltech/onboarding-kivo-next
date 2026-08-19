@@ -31,6 +31,14 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .min(2, "Ingresa tu cargo o actividad."),
 
+  antiguedadActividad: z
+    .number({
+      message: "Ingresa tu antigüedad en meses.",
+    })
+    .int("La antigüedad debe expresarse en meses completos.")
+    .min(1, "Ingresa al menos 1 mes.")
+    .max(600, "Revisa la antigüedad ingresada."),
+
   direccionLaboral: z
     .string()
     .trim()

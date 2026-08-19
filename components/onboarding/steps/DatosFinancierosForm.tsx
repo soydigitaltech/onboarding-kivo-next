@@ -70,6 +70,17 @@ export function DatosFinancierosForm() {
  ] = useState(false);
 
  const guardados = useOnboardingStore((s) => s.datosFinancieros);
+
+ useEffect(() => {
+ if (!guardados) return;
+
+ setTieneSegundoIngreso(guardados.tieneSegundoIngreso);
+ setSegundoIngresoOrigen(guardados.segundoIngresoOrigen ?? "");
+ setSegundoIngresoMonto(guardados.segundoIngresoMonto);
+ setAceptaRespaldoSegundoIngreso(
+ guardados.segundoIngresoRespaldado,
+ );
+ }, [guardados]);
  const datosPersonales = useOnboardingStore((s) => s.datosPersonales);
  const setDatosFinancieros = useOnboardingStore(
  (s) => s.setDatosFinancieros,
@@ -302,7 +313,8 @@ export function DatosFinancierosForm() {
 
  segundoIngresoRespaldado:
  formValues.perfilLaboral === "ASALARIADO" &&
- tieneSegundoIngreso,
+ tieneSegundoIngreso &&
+ aceptaRespaldoSegundoIngreso,
 
  numeroDeudas: deudasNormalizadas.length,
  deudas: deudasNormalizadas,
@@ -514,6 +526,7 @@ export function DatosFinancierosForm() {
  setTieneSegundoIngreso(false);
  setSegundoIngresoOrigen("");
  setSegundoIngresoMonto(undefined);
+ setDestinoSegundaActividad(undefined);
  setAceptaRespaldoSegundoIngreso(false);
  }}
  className={`min-h-11 cursor-pointer rounded-xl px-5 text-sm font-bold transition ${
@@ -571,41 +584,60 @@ export function DatosFinancierosForm() {
  </Field>
  </div>
 
- <div className="mt-5 overflow-hidden rounded-[22px] bg-[#FFF5E8]">
- <div className="flex items-start gap-4 p-5">
+ <div className="mt-5 rounded-[22px] border border-[#F6D8A8] bg-[#FFF9F0] p-5">
+ <div className="flex items-start gap-4">
  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#FE9806] text-white">
  <BadgeDollarSign className="h-5 w-5" />
  </div>
 
  <div className="min-w-0">
  <p className="text-[15px] font-extrabold leading-5 text-[#071A25]">
- Importante: este ingreso debe contar con respaldo
+ Importante: debes respaldar los ingresos de tu segunda actividad
  </p>
 
  <p className="mt-2 text-xs leading-5 text-[#5F7180]">
- Para que podamos considerarlo en tu capacidad de pago,
- deberás presentar extractos, recibos o comprobantes que
- demuestren este ingreso.
+ Si declaras ingresos adicionales provenientes de una segunda actividad,{" "}
+ <strong className="font-extrabold text-[#E08600]">
+ deberás respaldar el 100% de ese ingreso con extractos bancarios
+ </strong>{" "}
+ para que Kivo pueda considerarlo dentro de tu capacidad de pago.
  </p>
  </div>
  </div>
+ </div>
 
- <label className="flex cursor-pointer items-start gap-3 bg-white px-5 py-4">
+ <label
+ className={`mt-3 flex cursor-pointer items-center justify-between gap-4 rounded-[18px] border px-5 py-4 transition-colors ${
+ aceptaRespaldoSegundoIngreso
+ ? "border-primary bg-surface-blue"
+ : "border-border-soft bg-white hover:border-primary/40"
+ }`}
+ >
+ <div className="flex min-w-0 items-center gap-3">
  <input
  type="checkbox"
  checked={aceptaRespaldoSegundoIngreso}
  onChange={(event) =>
  setAceptaRespaldoSegundoIngreso(event.target.checked)
  }
- className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#03AEFE]"
+ className="h-5 w-5 shrink-0 cursor-pointer accent-[#03AEFE]"
  />
 
  <span className="text-xs font-bold leading-5 text-[#071A25]">
- Entiendo y acepto que debo respaldar este ingreso para que
- Kivo pueda considerarlo en mi capacidad de pago.
+ Entiendo y acepto esta condición.
+ </span>
+ </div>
+
+ <span
+ className={`shrink-0 text-[11px] font-extrabold ${
+ aceptaRespaldoSegundoIngreso
+ ? "text-primary"
+ : "text-muted"
+ }`}
+ >
+ {aceptaRespaldoSegundoIngreso ? "Aceptado" : "Confirmar"}
  </span>
  </label>
- </div>
 
 
  </motion.div>

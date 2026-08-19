@@ -142,6 +142,9 @@ export interface DatosComplementarios {
   /** Cargo, profesión, oficio o actividad principal. */
   cargoActividad: string;
 
+  /** Antigüedad laboral o en la actividad económica, expresada en meses. */
+  antiguedadActividad: number;
+
   /** Dirección de la empresa, negocio o lugar de trabajo. */
   direccionLaboral: string;
 

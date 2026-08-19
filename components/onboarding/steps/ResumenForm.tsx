@@ -87,6 +87,10 @@ export function ResumenForm() {
  return state.datosPersonales;
  });
 
+ const cuenta = useOnboardingStore((state) => {
+ return state.cuenta;
+ });
+
  const datosFinancieros = useOnboardingStore((state) => {
  return state.datosFinancieros;
  });
@@ -222,6 +226,11 @@ export function ResumenForm() {
  <Dato
  label="Celular"
  valor={`+591 ${datosPersonales.celular}`}
+ />
+
+ <Dato
+ label="Correo"
+ valor="usuario@correo.com"
  />
 
  <Dato
