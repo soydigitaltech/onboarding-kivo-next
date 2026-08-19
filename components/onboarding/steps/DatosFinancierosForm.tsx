@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "motion/react";
 import {
  ArrowRight,
  BadgeDollarSign,
+ HandCoins,
  Plus,
  Store,
  Trash2,
@@ -83,6 +84,7 @@ export function DatosFinancierosForm() {
  control,
  handleSubmit,
  watch,
+ setValue,
  formState: { errors },
  } = useForm<DatosFinancierosValues>({
  resolver: zodResolver(datosFinancierosSchema),
@@ -98,6 +100,11 @@ export function DatosFinancierosForm() {
  cuotaMensual: deuda.cuotaMensual,
  })),
 
+ masDeTresDeudas: guardados.excepcionMasDeTres !== null,
+ excepcionTipo: guardados.excepcionMasDeTres?.tipo,
+ deudaCuatro: guardados.excepcionMasDeTres?.deudaCuatro,
+ deudaCompra: guardados.excepcionMasDeTres?.deudaCompra,
+
  deudaMoraOVencida: guardados.sinDeudaMoraOVencida
  ? "NO"
  : "SI",
@@ -107,6 +114,10 @@ export function DatosFinancierosForm() {
  : {
  perfilLaboral: datosPersonales?.perfilLaboral,
  deudas: [],
+ masDeTresDeudas: false,
+ excepcionTipo: undefined,
+ deudaCuatro: undefined,
+ deudaCompra: undefined,
  deudaMoraOVencida: undefined,
  extractos: undefined,
  },
@@ -125,6 +136,34 @@ export function DatosFinancierosForm() {
  (suma, deuda) => suma + (deuda?.cuotaMensual ?? 0),
  0,
  );
+
+ const enLimiteDeudas = fields.length >= MAX_DEUDAS;
+
+ /*
+  * La cuarta deuda es una excepción.
+  * Si se elimina alguna de las tres deudas principales,
+  * limpiamos automáticamente la excepción.
+  */
+ useEffect(() => {
+ if (fields.length < MAX_DEUDAS && values.excepcionTipo !== undefined) {
+ setValue("masDeTresDeudas", false);
+ setValue("excepcionTipo", undefined);
+ setValue("deudaCuatro", undefined);
+ setValue("deudaCompra", undefined);
+ }
+ }, [fields.length, values.excepcionTipo, setValue]);
+
+ const deudaCuatroValida =
+ values.excepcionTipo !== "ULTIMA_CUOTA" ||
+ ((values.deudaCuatro?.entidadFinanciera ?? "").trim().length >= 2 &&
+ (values.deudaCuatro?.cuotaMensual ?? 0) > 0 &&
+ (values.deudaCuatro?.capitalPendiente ?? 0) > 0);
+
+ const deudaCompraValida =
+ values.excepcionTipo !== "COMPRA_DEUDA" ||
+ ((values.deudaCompra?.entidadFinanciera ?? "").trim().length >= 2 &&
+ (values.deudaCompra?.cuotaMensual ?? 0) > 0 &&
+ (values.deudaCompra?.capitalPendiente ?? 0) > 0);
 
  const tieneDeudaAtrasada = values.deudaMoraOVencida === "SI";
  const sinExtractos = values.extractos === "NO";
@@ -157,13 +196,20 @@ export function DatosFinancierosForm() {
  case "ingresoNeto":
  return (values.ingresoNeto ?? 0) > 0;
 
- case "deudas":
- return deudas.every((deuda) => {
+ case "deudas": {
+ const deudasPrincipalesValidas = deudas.every((deuda) => {
  return (
  (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
  (deuda?.cuotaMensual ?? 0) > 0
  );
  });
+
+ return (
+ deudasPrincipalesValidas &&
+ deudaCuatroValida &&
+ deudaCompraValida
+ );
+ }
 
  case "deudaAtrasada":
  return values.deudaMoraOVencida !== undefined;
@@ -211,6 +257,15 @@ export function DatosFinancierosForm() {
  cuotaMensual: undefined as unknown as number,
  });
  };
+
+ const limpiarExcepcion = () => {
+ setValue("masDeTresDeudas", false);
+ setValue("excepcionTipo", undefined);
+ setValue("deudaCuatro", undefined);
+ setValue("deudaCompra", undefined);
+ };
+
+ const excepcionElegida = values.excepcionTipo !== undefined;
 
  const onSubmit = (formValues: DatosFinancierosValues) => {
  if (formValues.deudaMoraOVencida === "SI") return;
@@ -262,10 +317,38 @@ export function DatosFinancierosForm() {
 
  extractos: formValues.extractos,
 
- /*
- * Compatibilidad temporal con el modelo anterior.
- */
- excepcionMasDeTres: null,
+ excepcionMasDeTres:
+ formValues.excepcionTipo
+ ? {
+ tipo: formValues.excepcionTipo,
+
+ deudaCuatro:
+ formValues.excepcionTipo === "ULTIMA_CUOTA" &&
+ formValues.deudaCuatro
+ ? {
+ entidadFinanciera:
+ formValues.deudaCuatro.entidadFinanciera.trim(),
+ cuotaMensual:
+ formValues.deudaCuatro.cuotaMensual,
+ capitalPendiente:
+ formValues.deudaCuatro.capitalPendiente,
+ }
+ : undefined,
+
+ deudaCompra:
+ formValues.excepcionTipo === "COMPRA_DEUDA" &&
+ formValues.deudaCompra
+ ? {
+ entidadFinanciera:
+ formValues.deudaCompra.entidadFinanciera.trim(),
+ cuotaMensual:
+ formValues.deudaCompra.cuotaMensual,
+ capitalPendiente:
+ formValues.deudaCompra.capitalPendiente,
+ }
+ : undefined,
+ }
+ : null,
  });
 
  completeAndAdvance("datos-financieros");
@@ -635,6 +718,242 @@ export function DatosFinancierosForm() {
  ? "Agregar deuda"
  : "Agregar otra deuda"}
  </button>
+ ) : null}
+
+ {enLimiteDeudas ? (
+ <div className="mt-5 rounded-2xl border border-warning-border bg-warning-bg p-4 sm:p-5">
+ <div className="flex items-start gap-3">
+ <HandCoins className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+
+ <div>
+ <p className="text-sm font-bold text-ink-soft">
+ Ya registraste 3 deudas
+ </p>
+
+ <p className="mt-1 text-xs leading-5 text-body">
+ Si tienes alguna deuda más, solo podemos continuar en uno de estos dos casos. ¿Alguno es el tuyo?
+ </p>
+ </div>
+ </div>
+
+ <div className="mt-4 grid gap-3 sm:grid-cols-2">
+ <RadioPill
+ label="Una de mis deudas está en su última cuota"
+ inputProps={{
+ value: "ULTIMA_CUOTA",
+ ...register("excepcionTipo"),
+ }}
+ />
+
+ <RadioPill
+ label="Quiero que Kivo compre una de mis deudas"
+ inputProps={{
+ value: "COMPRA_DEUDA",
+ ...register("excepcionTipo"),
+ }}
+ />
+ </div>
+
+ <AnimatePresence initial={false} mode="wait">
+ {values.excepcionTipo === "ULTIMA_CUOTA" ? (
+ <motion.div
+ key="deuda-cuatro"
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
+ <p className="text-sm font-extrabold text-ink">
+ Deuda 4
+ </p>
+
+ <p className="mt-1 text-xs leading-5 text-body">
+ Registra la deuda que se encuentra en su última cuota. En este caso, el capital pendiente es obligatorio.
+ </p>
+
+ <div className="mt-4 grid gap-4 sm:grid-cols-2">
+ <Field
+ label="Entidad financiera"
+ htmlFor="deuda-cuatro-entidad"
+ error={errors.deudaCuatro?.entidadFinanciera?.message}
+ >
+ <input
+ id="deuda-cuatro-entidad"
+ type="text"
+ placeholder="Ej. Banco Unión"
+ className={inputClassName}
+ {...register("deudaCuatro.entidadFinanciera")}
+ />
+ </Field>
+
+ <Field
+ label="Cuota mensual"
+ htmlFor="deuda-cuatro-cuota"
+ error={errors.deudaCuatro?.cuotaMensual?.message}
+ >
+ <Controller
+ name="deudaCuatro.cuotaMensual"
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="deuda-cuatro-cuota"
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) =>
+ field.onChange(value.floatValue)
+ }
+ onBlur={field.onBlur}
+ placeholder="Ej. 800"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+
+ <div className="sm:col-span-2">
+ <Field
+ label="Capital pendiente"
+ htmlFor="deuda-cuatro-capital"
+ error={errors.deudaCuatro?.capitalPendiente?.message}
+ >
+ <Controller
+ name="deudaCuatro.capitalPendiente"
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="deuda-cuatro-capital"
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) =>
+ field.onChange(value.floatValue)
+ }
+ onBlur={field.onBlur}
+ placeholder="Ej. 12.000"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+ </div>
+ </div>
+ </div>
+ </motion.div>
+ ) : null}
+
+ {values.excepcionTipo === "COMPRA_DEUDA" ? (
+ <motion.div
+ key="deuda-compra"
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
+ <p className="text-sm font-extrabold text-ink">
+ Deuda que Kivo evaluará comprar
+ </p>
+
+ <p className="mt-1 text-xs leading-5 text-body">
+ Registra los datos de la deuda que quieres incluir en la evaluación de compra.
+ </p>
+
+ <div className="mt-4 grid gap-4 sm:grid-cols-2">
+ <Field
+ label="Entidad financiera"
+ htmlFor="deuda-compra-entidad"
+ error={errors.deudaCompra?.entidadFinanciera?.message}
+ >
+ <input
+ id="deuda-compra-entidad"
+ type="text"
+ placeholder="Ej. Banco Unión"
+ className={inputClassName}
+ {...register("deudaCompra.entidadFinanciera")}
+ />
+ </Field>
+
+ <Field
+ label="Cuota mensual"
+ htmlFor="deuda-compra-cuota"
+ error={errors.deudaCompra?.cuotaMensual?.message}
+ >
+ <Controller
+ name="deudaCompra.cuotaMensual"
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="deuda-compra-cuota"
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) =>
+ field.onChange(value.floatValue)
+ }
+ onBlur={field.onBlur}
+ placeholder="Ej. 800"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+
+ <div className="sm:col-span-2">
+ <Field
+ label="Capital pendiente"
+ htmlFor="deuda-compra-capital"
+ error={errors.deudaCompra?.capitalPendiente?.message}
+ >
+ <Controller
+ name="deudaCompra.capitalPendiente"
+ control={control}
+ render={({ field }) => (
+ <PrefixedInputShell prefix="Bs">
+ <NumericFormat
+ id="deuda-compra-capital"
+ getInputRef={field.ref}
+ value={field.value ?? ""}
+ onValueChange={(value) =>
+ field.onChange(value.floatValue)
+ }
+ onBlur={field.onBlur}
+ placeholder="Ej. 12.000"
+ className={prefixedInputClassName}
+ {...dineroInputProps}
+ />
+ </PrefixedInputShell>
+ )}
+ />
+ </Field>
+ </div>
+ </div>
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+
+ {excepcionElegida ? (
+ <button
+ type="button"
+ onClick={limpiarExcepcion}
+ className="mt-3 text-xs font-semibold text-muted underline-offset-2 transition-colors hover:text-primary hover:underline"
+ >
+ No tengo más deudas: quitar selección
+ </button>
+ ) : (
+ <p className="mt-3 text-xs leading-5 text-muted">
+ ¿No tienes más deudas? Continúa normalmente.
+ </p>
+ )}
+ </div>
  ) : null}
 
  {totalCuotas > 0 ? (
