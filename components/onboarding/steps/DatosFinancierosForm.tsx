@@ -526,7 +526,6 @@ export function DatosFinancierosForm() {
  setTieneSegundoIngreso(false);
  setSegundoIngresoOrigen("");
  setSegundoIngresoMonto(undefined);
- setDestinoSegundaActividad(undefined);
  setAceptaRespaldoSegundoIngreso(false);
  }}
  className={`min-h-11 cursor-pointer rounded-xl px-5 text-sm font-bold transition ${
