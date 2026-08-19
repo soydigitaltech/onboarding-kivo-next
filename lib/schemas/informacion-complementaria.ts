@@ -36,7 +36,7 @@ export const informacionComplementariaSchema = z.object({
       message: "Ingresa tu antigüedad en meses.",
     })
     .int("La antigüedad debe expresarse en meses completos.")
-    .min(1, "Ingresa al menos 1 mes.")
+    .min(12, "Debes tener al menos 12 meses de antigüedad.")
     .max(600, "Revisa la antigüedad ingresada."),
 
   direccionLaboral: z
@@ -70,11 +70,7 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .min(
       10,
-      "Cuéntanos brevemente para qué utilizarás el préstamo.",
-    )
-    .max(
-      300,
-      "El detalle no puede superar los 300 caracteres.",
+      "Cuéntanos para qué utilizarás el préstamo.",
     ),
 
   tieneGarante: z.enum(["SI", "NO"]).optional(),

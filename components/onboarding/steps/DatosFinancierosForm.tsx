@@ -111,7 +111,12 @@ export function DatosFinancierosForm() {
  cuotaMensual: deuda.cuotaMensual,
  })),
 
- masDeTresDeudas: guardados.excepcionMasDeTres !== null,
+ masDeTresDeudas:
+ guardados.excepcionMasDeTres !== null
+ ? true
+ : guardados.deudas.length >= MAX_DEUDAS
+ ? false
+ : undefined,
  excepcionTipo: guardados.excepcionMasDeTres?.tipo,
  deudaCuatro: guardados.excepcionMasDeTres?.deudaCuatro,
  deudaCompra: guardados.excepcionMasDeTres?.deudaCompra,
@@ -125,7 +130,7 @@ export function DatosFinancierosForm() {
  : {
  perfilLaboral: datosPersonales?.perfilLaboral,
  deudas: [],
- masDeTresDeudas: false,
+ masDeTresDeudas: undefined,
  excepcionTipo: undefined,
  deudaCuatro: undefined,
  deudaCompra: undefined,
@@ -157,7 +162,7 @@ export function DatosFinancierosForm() {
   */
  useEffect(() => {
  if (fields.length < MAX_DEUDAS && values.excepcionTipo !== undefined) {
- setValue("masDeTresDeudas", false);
+ setValue("masDeTresDeudas", undefined);
  setValue("excepcionTipo", undefined);
  setValue("deudaCuatro", undefined);
  setValue("deudaCompra", undefined);
@@ -215,8 +220,17 @@ export function DatosFinancierosForm() {
  );
  });
 
+ const respondioSobreCuartaDeuda =
+ !enLimiteDeudas || values.masDeTresDeudas !== undefined;
+
+ const seleccionoCasoEspecial =
+ values.masDeTresDeudas !== true ||
+ values.excepcionTipo !== undefined;
+
  return (
  deudasPrincipalesValidas &&
+ respondioSobreCuartaDeuda &&
+ seleccionoCasoEspecial &&
  deudaCuatroValida &&
  deudaCompraValida
  );
@@ -762,10 +776,79 @@ export function DatosFinancierosForm() {
  </p>
 
  <p className="mt-1 text-xs leading-5 text-body">
- Si tienes alguna deuda más, solo podemos continuar en uno de estos dos casos. ¿Alguno es el tuyo?
+ Antes de continuar, necesitamos saber si tienes una deuda adicional.
  </p>
  </div>
  </div>
+
+ <fieldset className="mt-4">
+ <legend className="text-sm font-extrabold text-ink">
+ ¿Tienes una cuarta deuda?
+ </legend>
+
+ <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
+ <button
+ type="button"
+ onClick={() => {
+ setValue("masDeTresDeudas", true, {
+ shouldValidate: true,
+ shouldDirty: true,
+ });
+ }}
+ className={`min-h-11 rounded-xl px-5 text-sm font-bold transition-colors ${
+ values.masDeTresDeudas === true
+ ? "bg-primary text-white"
+ : "bg-white text-primary-dark hover:bg-surface-blue"
+ }`}
+ >
+ Sí
+ </button>
+
+ <button
+ type="button"
+ onClick={() => {
+ setValue("masDeTresDeudas", false, {
+ shouldValidate: true,
+ shouldDirty: true,
+ });
+ setValue("excepcionTipo", undefined);
+ setValue("deudaCuatro", undefined);
+ setValue("deudaCompra", undefined);
+ }}
+ className={`min-h-11 rounded-xl px-5 text-sm font-bold transition-colors ${
+ values.masDeTresDeudas === false
+ ? "bg-primary text-white"
+ : "bg-white text-primary-dark hover:bg-surface-blue"
+ }`}
+ >
+ No
+ </button>
+ </div>
+
+ {values.masDeTresDeudas === undefined ? (
+ <p className="mt-2 text-xs font-semibold text-warning">
+ Selecciona Sí o No para continuar.
+ </p>
+ ) : null}
+ </fieldset>
+
+ <AnimatePresence initial={false}>
+ {values.masDeTresDeudas === true ? (
+ <motion.div
+ key="casos-cuarta-deuda"
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="overflow-hidden"
+ >
+ <div className="mt-5 border-t border-warning-border pt-5">
+ <p className="text-sm font-bold text-ink">
+ ¿Cuál de estas situaciones aplica a tu cuarta deuda?
+ </p>
+
+ <p className="mt-1 text-xs leading-5 text-body">
+ Para continuar con una cuarta deuda, debe cumplir una de estas condiciones.
+ </p>
 
  <div className="mt-4 grid gap-3 sm:grid-cols-2">
  <RadioPill
@@ -970,20 +1053,18 @@ export function DatosFinancierosForm() {
  </motion.div>
  ) : null}
  </AnimatePresence>
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
 
- {excepcionElegida ? (
- <button
- type="button"
- onClick={limpiarExcepcion}
- className="mt-3 text-xs font-semibold text-muted underline-offset-2 transition-colors hover:text-primary hover:underline"
- >
- No tengo más deudas: quitar selección
- </button>
- ) : (
- <p className="mt-3 text-xs leading-5 text-muted">
- ¿No tienes más deudas? Continúa normalmente.
+ {values.masDeTresDeudas === false ? (
+ <div className="mt-4 rounded-xl bg-surface-blue px-4 py-3">
+ <p className="text-[13px] font-bold leading-5 text-primary-dark">
+ No tienes una cuarta deuda. Puedes continuar normalmente.
  </p>
- )}
+ </div>
+ ) : null}
  </div>
  ) : null}
 

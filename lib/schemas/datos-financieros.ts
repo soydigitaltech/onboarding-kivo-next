@@ -55,7 +55,7 @@ export const datosFinancierosSchema = z
       .array(deudaSchema)
       .max(MAX_DEUDAS, `Máximo ${MAX_DEUDAS} deudas.`),
 
-    masDeTresDeudas: z.boolean(),
+    masDeTresDeudas: z.boolean().optional(),
 
     excepcionTipo: z
       .enum(["ULTIMA_CUOTA", "COMPRA_DEUDA"])

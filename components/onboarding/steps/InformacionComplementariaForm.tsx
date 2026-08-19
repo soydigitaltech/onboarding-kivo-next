@@ -93,7 +93,7 @@ function pasoCompleto(
  return (values.cargoActividad ?? "").trim().length >= 2;
 
  case "antiguedadActividad":
- return (values.antiguedadActividad ?? 0) > 0;
+ return (values.antiguedadActividad ?? 0) >= 12;
 
  case "direccionLaboral":
  return (values.direccionLaboral ?? "").trim().length >= 5;
@@ -171,7 +171,7 @@ export function InformacionComplementariaForm() {
  formState: { errors },
  } = useForm<InformacionComplementariaValues>({
  resolver: zodResolver(informacionComplementariaSchema),
- mode: "onTouched",
+ mode: "onChange",
  defaultValues: guardados ?? EMPTY_VALUES,
  });
 
@@ -326,10 +326,10 @@ export function InformacionComplementariaForm() {
  </div>
 
  <p className="mt-1.5 text-xs leading-5 text-muted">
- Ingresa la cantidad de meses que llevas{" "}
+ Debes contar con al menos 12 meses de antigüedad{" "}
  {esAsalariado
- ? "trabajando en tu empleo actual."
- : "realizando esta actividad."}
+ ? "en tu empleo actual."
+ : "en esta actividad."}
  </p>
  </Field>
  </div>
@@ -685,7 +685,6 @@ export function InformacionComplementariaForm() {
  <textarea
  id="detalleDestinoPrestamo"
  rows={4}
- maxLength={300}
  placeholder={
  values.destinoPrestamo === "CAPITAL_TRABAJO"
  ? "Ej. Comprar mercadería para aumentar el stock de mi tienda."
@@ -696,15 +695,9 @@ export function InformacionComplementariaForm() {
  />
  </Field>
 
- <div className="mt-2 flex items-center justify-between gap-4">
- <p className="text-xs leading-5 text-muted">
- Describe brevemente cómo utilizarás el dinero.
+ <p className="mt-2 text-xs leading-5 text-muted">
+ Describe cómo utilizarás el dinero.
  </p>
-
- <span className="shrink-0 text-[11px] font-semibold text-muted">
- {(values.detalleDestinoPrestamo ?? "").length}/300
- </span>
- </div>
  </div>
  ) : null}
  </fieldset>
