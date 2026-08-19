@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const MAX_DEUDAS = 3;
+export const MAX_DEUDAS = 4;
 
 export const deudaSchema = z.object({
   entidadFinanciera: z
