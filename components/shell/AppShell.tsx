@@ -10,14 +10,18 @@ import Link from "next/link";
 import {
  Bell,
  CalendarCheck2,
+ CirclePlus,
  CircleUserRound,
  FileCheck2,
+ FileText,
  House,
  LogOut,
  Menu,
  MessageCircle,
  MessageSquareText,
+ ReceiptText,
  Route,
+ ShieldCheck,
  X,
  type LucideIcon,
 } from "lucide-react";
@@ -54,6 +58,11 @@ const GRUPOS: {
  titulo: "MI SOLICITUD",
  items: [
  {
+ label: "Solicitud de préstamo",
+ href: "/solicitud",
+ icono: CirclePlus,
+ },
+ {
  label: "Estado y seguimiento",
  href: "/seguimiento",
  icono: Route,
@@ -65,9 +74,9 @@ const GRUPOS: {
  pill: "2",
  },
  {
- label: "Mensajes",
- href: "/mensajes",
- icono: MessageSquareText,
+ label: "Notificaciones",
+ href: "/notificaciones",
+ icono: Bell,
  pill: "3",
  },
  ],
@@ -76,9 +85,24 @@ const GRUPOS: {
  titulo: "MI PRÉSTAMO",
  items: [
  {
- label: "Plan de pagos",
+ label: "Cuotas y pagos",
  href: "/cuotas",
  icono: CalendarCheck2,
+ },
+ {
+ label: "Mis contratos",
+ href: "/contratos",
+ icono: FileText,
+ },
+ {
+ label: "Póliza de seguros",
+ href: "/seguros",
+ icono: ShieldCheck,
+ },
+ {
+ label: "Facturación",
+ href: "/facturacion",
+ icono: ReceiptText,
  },
  ],
  },
@@ -103,7 +127,7 @@ export default function AppShell({
  };
 
  return (
- <div className="min-h-screen bg-[#DDF6FD]">
+ <div className="relative min-h-screen bg-[#DDF6FD]">
  {/* Modal salir */}
  {showLogoutModal ? (
  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
@@ -153,7 +177,7 @@ export default function AppShell({
 
  {/* SIDEBAR */}
  <aside
- className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col overflow-y-auto border-r border-[#EDF2F5] bg-white px-4 pb-5 pt-5 transition-transform duration-200 lg:translate-x-0 ${
+ className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-[#EDF2F5] bg-white px-4 pb-5 pt-5 transition-transform duration-200 lg:absolute lg:top-0 lg:bottom-auto lg:h-auto lg:min-h-full lg:translate-x-0 ${
  drawer ? "translate-x-0" : "-translate-x-full"
  }`}
  >
@@ -231,7 +255,7 @@ export default function AppShell({
  </nav>
 
  {/* Ayuda */}
- <div className="mt-auto pt-8">
+ <div className="mt-8 pt-2">
  <div className="rounded-[22px] bg-[#EEF9FD] p-4">
  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-primary">
  <MessageCircle className="h-5 w-5" />
@@ -256,14 +280,26 @@ export default function AppShell({
  </a>
  </div>
 
+ <div className="mt-4 border-t border-[#EDF2F5] pt-4">
  <button
  type="button"
  onClick={() => setShowLogoutModal(true)}
- className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-[#F5F7FA] hover:text-ink"
+ className="group flex w-full items-center gap-3 rounded-[14px] px-3 py-3 text-left transition-colors hover:bg-[#FFF2F1]"
  >
- <LogOut className="h-4 w-4" />
+ <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[#F5F7FA] text-[#6E8193] transition-colors group-hover:bg-[#FFE4E1] group-hover:text-[#D9483D]">
+ <LogOut className="h-4 w-4" strokeWidth={2} />
+ </span>
+
+ <div className="min-w-0">
+ <p className="text-[13px] font-extrabold text-[#53697D] transition-colors group-hover:text-[#C63F35]">
  Cerrar sesión
+ </p>
+ <p className="mt-0.5 text-[10.5px] text-[#97A8B8]">
+ Salir de tu cuenta Kivo
+ </p>
+ </div>
  </button>
+</div>
  </div>
  </aside>
 
@@ -294,7 +330,7 @@ export default function AppShell({
  
 
  <Link
- href="/mensajes"
+ href="/notificaciones"
  className="inline-flex min-h-11 items-center gap-3 rounded-[14px] bg-black px-4 pl-5 text-[13px] font-extrabold text-white transition hover:bg-[#1A1A1A]"
  >
  <span className="hidden sm:inline">
@@ -316,7 +352,7 @@ export default function AppShell({
  </div>
  </header>
 
- <main className="mx-auto max-w-[1380px] px-4 pb-20 pt-2 sm:px-8">
+ <main className="mx-auto w-full max-w-[1380px] px-4 pb-20 pt-2 sm:px-8">
  {children}
  </main>
  </div>

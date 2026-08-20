@@ -325,12 +325,7 @@ export function InformacionComplementariaForm() {
  </span>
  </div>
 
- <p className="mt-1.5 text-xs leading-5 text-muted">
- Debes contar con al menos 12 meses de antigüedad{" "}
- {esAsalariado
- ? "en tu empleo actual."
- : "en esta actividad."}
- </p>
+
  </Field>
  </div>
 

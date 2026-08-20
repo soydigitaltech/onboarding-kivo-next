@@ -11,10 +11,12 @@
   "dependencies": {
     "@dnd-kit/helpers": "^0.5.0",
     "@dnd-kit/react": "^0.5.0",
+    "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.3",
     "@radix-ui/react-select": "^2.3.7",
     "boring-avatars": "^2.0.4",
     "canvas-confetti": "^1.9.4",
+    "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.26.0",
     "motion": "^12.42.2",

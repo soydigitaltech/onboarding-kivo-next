@@ -26,7 +26,7 @@
  --color-placeholder: #9aa2b1;
 
  /* ---- Superficies y bordes ---- */
- --color-page: #5fdaf8;
+ --color-page: #ddf6fd;
  --color-surface: #f7fafc;
  --color-surface-blue: #e9f7ff; /* tinte del Azul Brillante */
  --color-border: #d9dfe8;
@@ -73,4 +73,18 @@ input:-webkit-autofill:focus {
  -webkit-text-fill-color: var(--color-ink);
  caret-color: var(--color-ink);
  transition: background-color 9999s ease-in-out 0s;
+}
+/* ============================================
+   Elementos interactivos
+   ============================================ */
+a[href],
+button:not(:disabled),
+[role="button"],
+[role="link"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }

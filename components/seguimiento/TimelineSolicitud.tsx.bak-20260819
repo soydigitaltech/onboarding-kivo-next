@@ -1,0 +1,508 @@
+"use client";
+
+import { useRef } from "react";
+import {
+  Check,
+  Clock4,
+  FileCheck2,
+  Landmark,
+  UserRound,
+} from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
+
+type EstadoPaso = "completado" | "actual" | "pendiente";
+
+type PasoTimeline = {
+  numero: number;
+  titulo: string;
+  descripcion: string;
+  estado: EstadoPaso;
+  grupo: "usuario" | "kivo";
+  datos?: string[];
+};
+
+const PASOS: PasoTimeline[] = [
+  {
+    numero: 1,
+    titulo: "Tus datos",
+    descripcion: "Completaste tu información personal.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Hugo Soliz Vedia", "CI 1234567", "La Paz"],
+  },
+  {
+    numero: 2,
+    titulo: "Tus finanzas",
+    descripcion: "Registraste tus ingresos, gastos y obligaciones.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Asalariado", "Ingreso Bs 12.500", "3 obligaciones"],
+  },
+  {
+    numero: 3,
+    titulo: "Elige tu préstamo",
+    descripcion: "Definiste las condiciones de tu solicitud.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Bs 15.000", "12 meses", "Uso personal"],
+  },
+  {
+    numero: 4,
+    titulo: "Más sobre ti",
+    descripcion: "Completaste la información complementaria.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["34 meses de antigüedad", "Información confirmada"],
+  },
+  {
+    numero: 5,
+    titulo: "Tus documentos",
+    descripcion: "Completaste la validación documental.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Carnet frontal", "Carnet posterior", "Selfie"],
+  },
+  {
+    numero: 6,
+    titulo: "Resumen",
+    descripcion: "Revisaste la información antes de enviarla.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Datos confirmados", "Documentos confirmados"],
+  },
+  {
+    numero: 7,
+    titulo: "Solicitud enviada",
+    descripcion: "Tu solicitud fue enviada correctamente.",
+    estado: "completado",
+    grupo: "usuario",
+    datos: ["Solicitud KIVO-2026-001", "09:12"],
+  },
+  {
+    numero: 8,
+    titulo: "Solicitud recibida",
+    descripcion: "Kivo recibió y registró tu solicitud.",
+    estado: "completado",
+    grupo: "kivo",
+    datos: ["Recepción confirmada", "09:13"],
+  },
+  {
+    numero: 9,
+    titulo: "Asesor asignado",
+    descripcion: "Un asesor ya está a cargo de tu solicitud.",
+    estado: "completado",
+    grupo: "kivo",
+    datos: ["Asesor Kivo asignado", "09:48"],
+  },
+  {
+    numero: 10,
+    titulo: "En evaluación",
+    descripcion:
+      "Estamos revisando tu información, capacidad de pago y documentación.",
+    estado: "actual",
+    grupo: "kivo",
+    datos: ["Revisión documental", "Análisis financiero"],
+  },
+  {
+    numero: 11,
+    titulo: "Firma de contrato",
+    descripcion:
+      "Cuando tu solicitud sea aprobada podrás continuar con la firma.",
+    estado: "pendiente",
+    grupo: "kivo",
+  },
+  {
+    numero: 12,
+    titulo: "Desembolso",
+    descripcion:
+      "El desembolso se realizará después de completar la firma.",
+    estado: "pendiente",
+    grupo: "kivo",
+  },
+  {
+    numero: 13,
+    titulo: "Entrega de contrato",
+    descripcion:
+      "Recibirás la documentación final correspondiente a tu préstamo.",
+    estado: "pendiente",
+    grupo: "kivo",
+  },
+];
+
+export default function TimelineSolicitud() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        /*
+         * Ruta principal.
+         */
+        gsap.fromTo(
+          ".timeline-progress",
+          {
+            scaleY: 0,
+          },
+          {
+            scaleY: 10 / 13,
+            ease: "none",
+            scrollTrigger: {
+              trigger: containerRef.current,
+              start: "top 75%",
+              end: "bottom 70%",
+              scrub: 0.7,
+            },
+          },
+        );
+
+        /*
+         * Entrada independiente de cada paso.
+         */
+        gsap.utils.toArray<HTMLElement>(".timeline-item").forEach(
+          (item, index) => {
+            const card = item.querySelector(".timeline-card");
+            const node = item.querySelector(".timeline-node");
+            const chips = item.querySelectorAll(".timeline-chip");
+
+            const izquierda = index % 2 === 0;
+
+            const tl = gsap.timeline({
+              scrollTrigger: {
+                trigger: item,
+                start: "top 86%",
+                once: true,
+              },
+            });
+
+            tl.fromTo(
+              card,
+              {
+                opacity: 0,
+                x: izquierda ? -55 : 55,
+                y: 12,
+              },
+              {
+                opacity: 1,
+                x: 0,
+                y: 0,
+                duration: 0.55,
+                ease: "power3.out",
+              },
+            );
+
+            tl.fromTo(
+              node,
+              {
+                opacity: 0,
+                scale: 0.55,
+              },
+              {
+                opacity: 1,
+                scale: 1,
+                duration: 0.35,
+                ease: "back.out(1.8)",
+              },
+              "-=0.35",
+            );
+
+            if (chips.length > 0) {
+              tl.fromTo(
+                chips,
+                {
+                  opacity: 0,
+                  y: 7,
+                },
+                {
+                  opacity: 1,
+                  y: 0,
+                  stagger: 0.055,
+                  duration: 0.28,
+                  ease: "power2.out",
+                },
+                "-=0.12",
+              );
+            }
+          },
+        );
+
+        /*
+         * Check completado.
+         */
+        gsap.utils
+          .toArray<HTMLElement>(".timeline-check")
+          .forEach((check) => {
+            gsap.fromTo(
+              check,
+              {
+                scale: 0,
+                rotation: -20,
+              },
+              {
+                scale: 1,
+                rotation: 0,
+                duration: 0.42,
+                ease: "back.out(2)",
+                scrollTrigger: {
+                  trigger: check,
+                  start: "top 88%",
+                  once: true,
+                },
+              },
+            );
+          });
+
+        /*
+         * Paso actual.
+         */
+        gsap.to(".timeline-current-node", {
+          scale: 1.08,
+          duration: 1.35,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+        });
+
+        gsap.to(".timeline-current-card", {
+          y: -3,
+          duration: 1.8,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+        });
+      });
+
+      return () => mm.revert();
+    },
+    {
+      scope: containerRef,
+    },
+  );
+
+  return (
+    <section
+      ref={containerRef}
+      className="overflow-hidden rounded-[26px] border border-[#E9F0F6] bg-white"
+    >
+      <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+        <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-primary">
+          Tu recorrido
+        </p>
+
+        <div className="mt-1 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+              Así avanza tu solicitud
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6A7F94]">
+              Aquí puedes revisar todo lo que completaste desde el inicio y
+              conocer los próximos pasos de tu solicitud.
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="rounded-full bg-ink px-4 py-2 text-[12px] font-extrabold text-white">
+              10 de 13 etapas
+            </div>
+
+            <div className="rounded-full bg-surface-blue px-4 py-2 text-[12px] font-extrabold text-primary-dark">
+              En evaluación
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 pb-9 pt-9 sm:px-6">
+        <div className="relative">
+          {/* Ruta base */}
+          <span
+            aria-hidden="true"
+            className="absolute bottom-5 left-[19px] top-5 w-[3px] rounded-full bg-border lg:left-1/2 lg:-translate-x-1/2"
+          />
+
+          {/* Ruta recorrida */}
+          <span
+            aria-hidden="true"
+            className="timeline-progress absolute bottom-5 left-[19px] top-5 w-[3px] origin-top rounded-full bg-sky lg:left-1/2 lg:-translate-x-1/2"
+          />
+
+          <ol className="relative flex flex-col gap-7 lg:gap-2">
+            {PASOS.map((paso, index) => {
+              const completado = paso.estado === "completado";
+              const actual = paso.estado === "actual";
+              const izquierda = index % 2 === 0;
+
+              return (
+                <li
+                  key={paso.numero}
+                  className="timeline-item relative grid min-h-[138px] grid-cols-[40px_minmax(0,1fr)] gap-4 lg:grid-cols-[1fr_70px_1fr] lg:gap-0"
+                >
+                  {/* CARD IZQUIERDA */}
+                  <div className="hidden lg:flex lg:items-center lg:justify-end lg:pr-7">
+                    {izquierda ? <PasoCard paso={paso} /> : null}
+                  </div>
+
+                  {/* NODO CENTRAL */}
+                  <div className="relative z-10 flex justify-center lg:col-start-2">
+                    <div className="relative">
+                      {actual ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -inset-2 rounded-full border border-sky/40"
+                        />
+                      ) : null}
+
+                      <span
+                        className={`timeline-node ${
+                          actual ? "timeline-current-node" : ""
+                        } relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${
+                          completado
+                            ? "border-2 border-sky bg-ink text-white"
+                            : actual
+                              ? "border-2 border-sky bg-ink text-white"
+                              : "border-[3px] border-border bg-white text-placeholder"
+                        }`}
+                      >
+                        {completado ? (
+                          <Check
+                            className="timeline-check h-5 w-5"
+                            strokeWidth={2.6}
+                          />
+                        ) : (
+                          paso.numero
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CARD DERECHA / MOBILE */}
+                  <div className="min-w-0 lg:flex lg:items-center lg:pl-7">
+                    <div className="lg:hidden">
+                      <PasoCard paso={paso} />
+                    </div>
+
+                    {!izquierda ? (
+                      <div className="hidden w-full lg:block">
+                        <PasoCard paso={paso} />
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PasoCard({ paso }: { paso: PasoTimeline }) {
+  const completado = paso.estado === "completado";
+  const actual = paso.estado === "actual";
+
+  return (
+    <article
+      className={`timeline-card ${
+        actual ? "timeline-current-card" : ""
+      } w-full max-w-[440px] rounded-[20px] border p-4 sm:p-5 ${
+        actual
+          ? "border-sky bg-surface-blue"
+          : completado
+            ? "border-[#E5EEF3] bg-white"
+            : "border-[#EDF2F5] bg-[#FAFBFC]"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span
+          className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] ${
+            actual
+              ? "text-primary-dark"
+              : completado
+                ? "text-ink-soft"
+                : "text-placeholder"
+          }`}
+        >
+          {paso.grupo === "usuario" ? (
+            <UserRound className="h-3.5 w-3.5" strokeWidth={2.2} />
+          ) : (
+            <Landmark className="h-3.5 w-3.5" strokeWidth={2.2} />
+          )}
+
+          {paso.grupo === "usuario" ? "Completado por ti" : "Proceso Kivo"}
+        </span>
+
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+            actual
+              ? "bg-ink text-white"
+              : completado
+                ? "bg-[#F3F6F8] text-ink-soft"
+                : "bg-white text-placeholder"
+          }`}
+        >
+          {completado ? (
+            <FileCheck2 className="h-3 w-3" strokeWidth={2.4} />
+          ) : actual ? (
+            <Clock4 className="h-3 w-3" strokeWidth={2.4} />
+          ) : null}
+
+          {completado ? "Completado" : actual ? "Actual" : "Pendiente"}
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-baseline gap-2">
+        <span
+          className={`text-[11px] font-extrabold ${
+            actual
+              ? "text-primary-dark"
+              : completado
+                ? "text-muted"
+                : "text-placeholder"
+          }`}
+        >
+          {String(paso.numero).padStart(2, "0")}
+        </span>
+
+        <h3
+          className={`text-[16px] font-extrabold tracking-tight ${
+            paso.estado === "pendiente" ? "text-[#8393A1]" : "text-ink"
+          }`}
+        >
+          {paso.titulo}
+        </h3>
+      </div>
+
+      <p
+        className={`mt-1.5 text-[12.5px] leading-5 ${
+          paso.estado === "pendiente" ? "text-placeholder" : "text-muted"
+        }`}
+      >
+        {paso.descripcion}
+      </p>
+
+      {paso.datos?.length ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {paso.datos.map((dato) => (
+            <span
+              key={dato}
+              className={`timeline-chip rounded-full px-3 py-1.5 text-[10.5px] font-bold ${
+                actual
+                  ? "bg-white text-primary-dark"
+                  : "bg-[#F5F7FA] text-ink-soft"
+              }`}
+            >
+              {dato}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
