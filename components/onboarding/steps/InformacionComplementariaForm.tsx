@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  KivoAffixedInput,
+  KivoButton,
+  KivoInput,
+  KivoSelect,
+  KivoTextarea,
+  kivoAffixedInputClassName,
+} from "@/components/ui/kivo";
+
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Controller, useForm } from "react-hook-form";
@@ -14,8 +23,6 @@ import {
 } from "@/lib/schemas/informacion-complementaria";
 import { useOnboardingStore } from "@/store/onboarding";
 import type { Coordenadas } from "@/components/onboarding/steps/MapaUbicacion";
-import { CustomSelect } from "@/components/ui/CustomSelect";
-
 const MapaUbicacion = dynamic(
   () => import("@/components/onboarding/steps/MapaUbicacion"),
   {
@@ -29,11 +36,6 @@ const MapaUbicacion = dynamic(
     ),
   },
 );
-import {
- Field,
- inputClassName,
-} from "@/components/ui/fields";
-
 const EMPTY_VALUES: InformacionComplementariaValues = {
  nombreEmpresaNegocio: "",
  rubro: "",
@@ -227,106 +229,98 @@ export function InformacionComplementariaForm() {
  "nombreEmpresaNegocio",
  )}`}
  >
- <Field
- label={esAsalariado ? "Nombre de la empresa" : "Nombre del negocio"}
- htmlFor="nombreEmpresaNegocio"
- error={errors.nombreEmpresaNegocio?.message}
- >
- <input
+ <KivoInput
  id="nombreEmpresaNegocio"
+ label={esAsalariado ? "Nombre de la empresa" : "Nombre del negocio"}
  type="text"
  placeholder={
- esAsalariado
- ? "Ej. Banco Nacional de Bolivia"
- : "Ej. Comercial San Martín"
+   esAsalariado
+     ? "Ej. Banco Nacional de Bolivia"
+     : "Ej. Comercial San Martín"
  }
- className={inputClassName}
+ error={errors.nombreEmpresaNegocio?.message}
  tabIndex={lockTab("nombreEmpresaNegocio")}
  {...register("nombreEmpresaNegocio")}
- />
- </Field>
+/>
  </div>
 
  {/* Rubro */}
  <div className={lockCls("rubro")}>
- <Field
- label="Rubro"
- htmlFor="rubro"
- error={errors.rubro?.message}
- >
- <input
+ <KivoInput
  id="rubro"
+ label="Rubro"
  type="text"
  inputMode="text"
  placeholder={
- esAsalariado
- ? "Ej. Servicios financieros"
- : "Ej. Comercio de alimentos"
+   esAsalariado
+     ? "Ej. Servicios financieros"
+     : "Ej. Comercio de alimentos"
  }
- className={inputClassName}
+ error={errors.rubro?.message}
  tabIndex={lockTab("rubro")}
  {...register("rubro")}
- />
- </Field>
+/>
  </div>
 
  {/* Cargo / actividad */}
  <div className={lockCls("cargoActividad")}>
- <Field
- label={esAsalariado ? "Cargo" : "Ocupación"}
- htmlFor="cargoActividad"
- error={errors.cargoActividad?.message}
- >
- <input
+ <KivoInput
  id="cargoActividad"
+ label={esAsalariado ? "Cargo" : "Ocupación"}
  type="text"
  placeholder={
- esAsalariado
- ? "Ej. Analista comercial"
- : "Ej. Comerciante, electricista, transportista"
+   esAsalariado
+     ? "Ej. Analista comercial"
+     : "Ej. Comerciante, electricista, transportista"
  }
- className={inputClassName}
+ error={errors.cargoActividad?.message}
  tabIndex={lockTab("cargoActividad")}
  {...register("cargoActividad")}
- />
- </Field>
+/>
  </div>
 
  {/* Antigüedad laboral / actividad */}
  <div className={lockCls("antiguedadActividad")}>
- <Field
- label={
- esAsalariado
- ? "Antigüedad laboral"
- : "Antigüedad en la actividad"
- }
- htmlFor="antiguedadActividad"
- error={errors.antiguedadActividad?.message}
+ <div>
+ <label
+   htmlFor="antiguedadActividad"
+   className="mb-1.5 block text-sm font-bold text-ink"
  >
- <div className="relative">
- <input
- id="antiguedadActividad"
- type="text"
- inputMode="numeric"
- pattern="[0-9]*"
- placeholder="Ej. 34"
- className={`${inputClassName} pr-24`}
- tabIndex={lockTab("antiguedadActividad")}
- {...register("antiguedadActividad", {
- setValueAs: (value) => {
- const limpio = String(value ?? "").replace(/\D/g, "");
- return limpio === "" ? undefined : Number(limpio);
- },
- })}
- />
+   {esAsalariado
+     ? "Antigüedad laboral"
+     : "Antigüedad en la actividad"}
+ </label>
 
- <span className="pointer-events-none absolute right-3 top-1/2 inline-flex h-9 -translate-y-1/2 items-center justify-center rounded-xl bg-surface-blue px-4 text-[12px] font-extrabold text-primary-dark">
- Meses
- </span>
- </div>
+ <KivoAffixedInput
+   suffix="Meses"
+   error={Boolean(errors.antiguedadActividad)}
+ >
+   <input
+     id="antiguedadActividad"
+     type="text"
+     inputMode="numeric"
+     pattern="[0-9]*"
+     placeholder="Ej. 34"
+     className={kivoAffixedInputClassName}
+     tabIndex={lockTab("antiguedadActividad")}
+     {...register("antiguedadActividad", {
+       setValueAs: (value) => {
+         const limpio = String(value ?? "").replace(/\D/g, "");
+         return limpio === "" ? undefined : Number(limpio);
+       },
+     })}
+   />
+ </KivoAffixedInput>
 
-
- </Field>
+ {errors.antiguedadActividad ? (
+   <p
+     role="alert"
+     className="mt-1.5 text-xs font-semibold text-error"
+   >
+     {errors.antiguedadActividad.message}
+   </p>
+ ) : null}
+</div>
  </div>
 
  {/* Dirección laboral */}
@@ -335,24 +329,19 @@ export function InformacionComplementariaForm() {
  "direccionLaboral",
  )}`}
  >
- <Field
- label="Dirección exacta laboral"
- htmlFor="direccionLaboral"
- error={errors.direccionLaboral?.message}
- >
- <input
+ <KivoInput
  id="direccionLaboral"
+ label="Dirección exacta laboral"
  type="text"
  placeholder={
- esAsalariado
- ? "Ej. Zona Sopocachi, Av. Arce N.º 1234, Edificio ABC"
- : "Ej. Zona Villa Fátima, Av. Las Américas N.º 345"
+   esAsalariado
+     ? "Ej. Zona Sopocachi, Av. Arce N.º 1234, Edificio ABC"
+     : "Ej. Zona Villa Fátima, Av. Las Américas N.º 345"
  }
- className={inputClassName}
+ error={errors.direccionLaboral?.message}
  tabIndex={lockTab("direccionLaboral")}
  {...register("direccionLaboral")}
- />
- </Field>
+/>
 
  {/* MAPA LABORAL - MOCK */}
  <div className="mt-4">
@@ -401,52 +390,44 @@ export function InformacionComplementariaForm() {
 
  {/* Vivienda */}
  <div className={lockCls("vivienda")}>
- <Field
- label="Tipo de vivienda"
- htmlFor="vivienda"
- error={errors.vivienda?.message}
- >
  <Controller
  control={control}
  name="vivienda"
  render={({ field }) => (
-   <CustomSelect
+   <KivoSelect
      id="vivienda"
+     label="Tipo de vivienda"
      value={field.value ?? ""}
      options={HOUSING_TYPES}
      placeholder="Selecciona una opción"
+     error={errors.vivienda?.message}
      tabIndex={lockTab("vivienda")}
      onChange={field.onChange}
      onBlur={field.onBlur}
    />
  )}
- />
- </Field>
+/>
  </div>
 
  {/* Estado civil */}
  <div className={lockCls("estadoCivil")}>
- <Field
- label="Estado civil"
- htmlFor="estadoCivil"
- error={errors.estadoCivil?.message}
- >
  <Controller
  control={control}
  name="estadoCivil"
  render={({ field }) => (
-   <CustomSelect
+   <KivoSelect
      id="estadoCivil"
+     label="Estado civil"
      value={field.value ?? ""}
      options={MARITAL_STATUSES}
      placeholder="Selecciona una opción"
+     error={errors.estadoCivil?.message}
      tabIndex={lockTab("estadoCivil")}
      onChange={field.onChange}
      onBlur={field.onBlur}
    />
  )}
- />
- </Field>
+/>
  </div>
 
  {/* Garante - solo alquiler / anticrético */}
@@ -526,45 +507,35 @@ export function InformacionComplementariaForm() {
  </div>
 
  <div>
- <Field
- label={
- values.estadoCivil === "CASADO"
- ? "Nombre completo de tu esposo(a)"
- : "Nombre completo de tu pareja"
- }
- htmlFor="nombreConyuge"
- error={errors.nombreConyuge?.message}
- >
- <input
+ <KivoInput
  id="nombreConyuge"
+ label={
+   values.estadoCivil === "CASADO"
+     ? "Nombre completo de tu esposo(a)"
+     : "Nombre completo de tu pareja"
+ }
  type="text"
  placeholder="Ej. María Elena Vargas"
- className={inputClassName}
+ error={errors.nombreConyuge?.message}
  {...register("nombreConyuge")}
- />
- </Field>
+/>
  </div>
 
  <div>
- <Field
- label={
- values.estadoCivil === "CASADO"
- ? "Número de celular de tu esposo(a)"
- : "Número de celular de tu pareja"
- }
- htmlFor="celularConyuge"
- error={errors.celularConyuge?.message}
- >
- <input
+ <KivoInput
  id="celularConyuge"
+ label={
+   values.estadoCivil === "CASADO"
+     ? "Número de celular de tu esposo(a)"
+     : "Número de celular de tu pareja"
+ }
  type="tel"
  inputMode="numeric"
  maxLength={8}
  placeholder="Ej. 70000000"
- className={inputClassName}
+ error={errors.celularConyuge?.message}
  {...register("celularConyuge")}
- />
- </Field>
+/>
  </div>
  </>
  ) : null}
@@ -672,23 +643,18 @@ export function InformacionComplementariaForm() {
 
  {values.destinoPrestamo ? (
  <div className="mt-5">
- <Field
- label="Cuéntanos para qué necesitas el préstamo"
- htmlFor="detalleDestinoPrestamo"
- error={errors.detalleDestinoPrestamo?.message}
- >
- <textarea
+ <KivoTextarea
  id="detalleDestinoPrestamo"
+ label="Cuéntanos para qué necesitas el préstamo"
  rows={4}
  placeholder={
- values.destinoPrestamo === "CAPITAL_TRABAJO"
- ? "Ej. Comprar mercadería para aumentar el stock de mi tienda."
- : "Ej. Realizar mejoras en mi vivienda y cubrir algunos gastos familiares."
+   values.destinoPrestamo === "CAPITAL_TRABAJO"
+     ? "Ej. Comprar mercadería para aumentar el stock de mi tienda."
+     : "Ej. Realizar mejoras en mi vivienda y cubrir algunos gastos familiares."
  }
- className={`${inputClassName} min-h-[118px] resize-none py-3`}
+ error={errors.detalleDestinoPrestamo?.message}
  {...register("detalleDestinoPrestamo")}
- />
- </Field>
+/>
 
  <p className="mt-2 text-xs leading-5 text-muted">
  Describe cómo utilizarás el dinero.
@@ -698,18 +664,20 @@ export function InformacionComplementariaForm() {
  </fieldset>
 
  <div className="mt-6">
- <button
+ <KivoButton
  type="submit"
  disabled={!todoCompleto}
- className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
- >
+ fullWidth
+ className="sm:w-auto"
+ iconRight={
+   <ArrowRight
+     className="h-[18px] w-[18px]"
+     strokeWidth={2.5}
+   />
+ }
+>
  Siguiente paso
-
- <ArrowRight
- className="h-4.5 w-4.5"
- strokeWidth={2.5}
- />
- </button>
+</KivoButton>
  </div>
  </form>
  );

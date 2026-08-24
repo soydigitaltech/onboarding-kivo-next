@@ -1,11 +1,16 @@
 "use client";
 
 import {
+  KivoButton,
+  KivoInput,
+  KivoOTPInput,
+  type KivoOTPInputHandle,
+} from "@/components/ui/kivo";
+
+import {
  useEffect,
  useRef,
  useState,
- type ClipboardEvent,
- type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, type Transition } from "motion/react";
@@ -13,8 +18,6 @@ import { ArrowRight, Mail, ShieldCheck } from "lucide-react";
 
 import { emailSchema } from "@/lib/schemas/cuenta";
 import { useOnboardingStore } from "@/store/onboarding";
-import { Field, inputClassName } from "@/components/ui/fields";
-
 const REVEAL: Transition = { duration: 0.3, ease: [0.25, 0.8, 0.25, 1] };
 const REENVIO_COOLDOWN_SEGUNDOS = 45;
 
@@ -35,7 +38,7 @@ export function CrearCuentaForm() {
  const [verificando, setVerificando] = useState(false);
 
  const [cooldown, setCooldown] = useState(0);
- const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+ const otpRef = useRef<KivoOTPInputHandle>(null);
 
  useEffect(() => {
  if (cooldown <= 0) return;
@@ -70,41 +73,12 @@ export function CrearCuentaForm() {
  setDigitos(Array(6).fill(""));
  setErrorOtp(null);
  setCooldown(REENVIO_COOLDOWN_SEGUNDOS);
- setTimeout(() => inputsRef.current[0]?.focus(), 50);
+ setTimeout(() => otpRef.current?.focusFirst(), 50);
  } catch {
  setErrorEmail("No pudimos conectar con el servidor. Intenta de nuevo.");
  } finally {
  setEnviandoEmail(false);
  }
- }
-
- function actualizarDigito(index: number, valor: string) {
- const limpio = valor.replace(/\D/g, "").slice(-1);
- setDigitos((prev) => {
- const copia = [...prev];
- copia[index] = limpio;
- return copia;
- });
-
- if (limpio && index < 5) {
- inputsRef.current[index + 1]?.focus();
- }
- }
-
- function onKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
- if (e.key === "Backspace" && !digitos[index] && index > 0) {
- inputsRef.current[index - 1]?.focus();
- }
- }
-
- function onPaste(e: ClipboardEvent<HTMLInputElement>) {
- const texto = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
- if (!texto) return;
- e.preventDefault();
- const nuevos = Array(6).fill("");
- texto.split("").forEach((d, i) => (nuevos[i] = d));
- setDigitos(nuevos);
- inputsRef.current[Math.min(texto.length, 5)]?.focus();
  }
 
  async function verificarCodigo() {
@@ -155,29 +129,36 @@ export function CrearCuentaForm() {
  exit={{ opacity: 0, x: -10 }}
  transition={REVEAL}
  >
- <Field label="Correo electrónico" htmlFor="email" error={errorEmail ?? undefined}>
- <input
+ <KivoInput
  id="email"
+ label="Correo electrónico"
  type="email"
  autoComplete="email"
  placeholder="tunombre@correo.com"
- className={inputClassName}
  value={email}
+ error={errorEmail ?? undefined}
  onChange={(e) => setEmail(e.target.value)}
- onKeyDown={(e) => e.key === "Enter" && enviarCodigo()}
+ onKeyDown={(e) => {
+   if (e.key === "Enter") {
+     enviarCodigo();
+   }
+ }}
  />
- </Field>
 
  <div className="mt-6">
- <button
+ <KivoButton
  type="button"
  onClick={enviarCodigo}
- disabled={enviandoEmail}
- className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
- >
- <Mail className="h-4.5 w-4.5" />
- {enviandoEmail ? "Enviando..." : "Enviar código"}
- </button>
+ loading={enviandoEmail}
+ iconLeft={
+   <Mail
+     className="h-[18px] w-[18px]"
+     strokeWidth={2.5}
+   />
+ }
+>
+ Enviar código
+</KivoButton>
  </div>
  </motion.div>
  ) : (
@@ -193,65 +174,81 @@ export function CrearCuentaForm() {
  </p>
  <p className="mt-0.5 text-sm text-body">{email}</p>
 
- <div className="mt-4 flex gap-2.5">
- {digitos.map((digito, index) => (
- <input
- key={index}
- ref={(el) => {
- inputsRef.current[index] = el;
+ <KivoOTPInput
+ ref={otpRef}
+ value={digitos.join("")}
+ onChange={(codigo) => {
+   setDigitos(
+     Array.from(
+       { length: 6 },
+       (_, index) =>
+         codigo[index] ?? "",
+     ),
+   );
  }}
- type="text"
- inputMode="numeric"
- maxLength={1}
- value={digito}
- onChange={(e) => actualizarDigito(index, e.target.value)}
- onKeyDown={(e) => onKeyDown(index, e)}
- onPaste={onPaste}
- className="h-14 w-12 rounded-xl border-2 border-border bg-white text-center text-xl font-extrabold text-ink outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
- />
- ))}
- </div>
-
- {errorOtp ? (
- <p className="mt-3 text-xs font-semibold text-error" role="alert">
- {errorOtp}
- </p>
- ) : null}
+ error={errorOtp ?? undefined}
+ className="mt-4"
+/>
 
  <div className="mt-6 flex flex-wrap items-center gap-4">
- <button
+ <KivoButton
  type="button"
  onClick={verificarCodigo}
- disabled={verificando}
- className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50"
- >
- <ShieldCheck className="h-4.5 w-4.5" />
- {verificando ? "Verificando..." : "Verificar"}
- {!verificando ? <ArrowRight className="h-4 w-4" /> : null}
- </button>
+ loading={verificando}
+ iconLeft={
+   <ShieldCheck
+     className="h-[18px] w-[18px]"
+     strokeWidth={2.5}
+   />
+ }
+ iconRight={
+   <ArrowRight
+     className="h-4 w-4"
+     strokeWidth={2.5}
+   />
+ }
+>
+ Verificar
+</KivoButton>
 
- <button
+ <KivoButton
  type="button"
+ variant="ghost"
+ size="sm"
  onClick={enviarCodigo}
- disabled={cooldown > 0 || enviandoEmail}
- className="text-sm font-bold text-primary transition-colors hover:underline disabled:cursor-not-allowed disabled:text-placeholder disabled:no-underline"
- >
+ loading={enviandoEmail}
+ disabled={cooldown > 0}
+ className="
+   px-2
+   hover:bg-transparent
+   hover:underline
+ "
+>
  {cooldown > 0
- ? `Reenviar código (${cooldown}s)`
- : "Reenviar código"}
- </button>
+   ? `Reenviar código (${cooldown}s)`
+   : "Reenviar código"}
+</KivoButton>
  </div>
 
- <button
+ <KivoButton
  type="button"
+ variant="ghost"
+ size="sm"
  onClick={() => {
- setEtapa("email");
- setErrorOtp(null);
+   setEtapa("email");
+   setErrorOtp(null);
  }}
- className="mt-4 text-xs font-semibold text-muted transition-colors hover:text-primary"
- >
+ className="
+   mt-3
+   px-2
+   text-xs
+   text-muted
+   hover:bg-transparent
+   hover:text-primary
+ "
+>
  ¿Correo equivocado? Cambiar
- </button>
+</KivoButton>
  </motion.div>
  )}
  </AnimatePresence>

@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  KivoAffixedInput,
+  KivoBusinessNotice,
+  KivoButton,
+  KivoDangerNotice,
+  KivoField,
+  KivoInput,
+  KivoRadioPill,
+  kivoAffixedInputClassName,
+  kivoInputClassName,
+} from "@/components/ui/kivo";
+
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,16 +36,6 @@ import {
 } from "@/lib/schemas/datos-financieros";
 import { calcularCapacidadPago } from "@/lib/simulacion";
 import { useOnboardingStore } from "@/store/onboarding";
-import {
- BusinessNotice,
- DangerNotice,
- Field,
- PrefixedInputShell,
- RadioPill,
- inputClassName,
- prefixedInputClassName,
-} from "@/components/ui/fields";
-
 const dineroInputProps = {
  thousandSeparator: ".",
  decimalSeparator: ",",
@@ -472,7 +474,7 @@ export function DatosFinancierosForm() {
  "ingresoNeto",
  )}`}
  >
- <Field
+ <KivoField
  label="Ingresos mensuales"
  htmlFor="ingresoNeto"
  error={errors.ingresoNeto?.message}
@@ -481,7 +483,7 @@ export function DatosFinancierosForm() {
  name="ingresoNeto"
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="ingresoNeto"
  getInputRef={field.ref}
@@ -491,14 +493,14 @@ export function DatosFinancierosForm() {
  }}
  onBlur={field.onBlur}
  placeholder="Ej. 4.500"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  tabIndex={lockTab("ingresoNeto")}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
 
  <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted">
  <BadgeDollarSign className="h-4 w-4 shrink-0 text-primary" />
@@ -562,27 +564,22 @@ export function DatosFinancierosForm() {
  className="overflow-hidden"
  >
  <div className="mt-5 grid gap-5 sm:grid-cols-2">
- <Field
- label="¿De dónde proviene este ingreso?"
- htmlFor="segundoIngresoOrigen"
- >
- <input
+ <KivoInput
  id="segundoIngresoOrigen"
+ label="¿De dónde proviene este ingreso?"
  type="text"
  value={segundoIngresoOrigen}
  onChange={(event) =>
- setSegundoIngresoOrigen(event.target.value)
+   setSegundoIngresoOrigen(event.target.value)
  }
  placeholder="Ej. alquiler, ventas o comisiones"
- className={inputClassName}
- />
- </Field>
+/>
 
- <Field
+ <KivoField
  label="¿Cuánto recibes aproximadamente al mes?"
  htmlFor="segundoIngresoMonto"
  >
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="segundoIngresoMonto"
  value={segundoIngresoMonto ?? ""}
@@ -590,11 +587,11 @@ export function DatosFinancierosForm() {
  setSegundoIngresoMonto(value.floatValue)
  }
  placeholder="Ej. 1.500"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
- </Field>
+ </KivoAffixedInput>
+ </KivoField>
  </div>
 
  <div className="mt-5 rounded-[22px] border border-[#F6D8A8] bg-[#FFF9F0] p-5">
@@ -700,25 +697,20 @@ export function DatosFinancierosForm() {
  </div>
 
  <div className="mt-4 grid gap-4 sm:grid-cols-2">
- <Field
- label="Entidad financiera"
- htmlFor={`deuda-entidad-${index}`}
- error={
- errors.deudas?.[index]?.entidadFinanciera?.message
- }
- >
- <input
+ <KivoInput
  id={`deuda-entidad-${index}`}
+ label="Entidad financiera"
  type="text"
  placeholder="Ej. Banco Unión"
- className={inputClassName}
+ error={
+   errors.deudas?.[index]?.entidadFinanciera?.message
+ }
  {...register(
- `deudas.${index}.entidadFinanciera` as const,
+   `deudas.${index}.entidadFinanciera` as const,
  )}
- />
- </Field>
+/>
 
- <Field
+ <KivoField
  label="Cuota mensual"
  htmlFor={`deuda-cuota-${index}`}
  error={
@@ -729,7 +721,7 @@ export function DatosFinancierosForm() {
  name={`deudas.${index}.cuotaMensual` as const}
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id={`deuda-cuota-${index}`}
  getInputRef={field.ref}
@@ -739,13 +731,13 @@ export function DatosFinancierosForm() {
  }}
  onBlur={field.onBlur}
  placeholder="Ej. 800"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
  </div>
  </div>
  </motion.div>
@@ -851,7 +843,7 @@ export function DatosFinancierosForm() {
  </p>
 
  <div className="mt-4 grid gap-3 sm:grid-cols-2">
- <RadioPill
+ <KivoRadioPill
  label="Una de mis deudas está en su última cuota"
  inputProps={{
  value: "ULTIMA_CUOTA",
@@ -859,7 +851,7 @@ export function DatosFinancierosForm() {
  }}
  />
 
- <RadioPill
+ <KivoRadioPill
  label="Quiero que Kivo compre una de mis deudas"
  inputProps={{
  value: "COMPRA_DEUDA",
@@ -887,21 +879,16 @@ export function DatosFinancierosForm() {
  </p>
 
  <div className="mt-4 grid gap-4 sm:grid-cols-2">
- <Field
- label="Entidad financiera"
- htmlFor="deuda-cuatro-entidad"
- error={errors.deudaCuatro?.entidadFinanciera?.message}
- >
- <input
+ <KivoInput
  id="deuda-cuatro-entidad"
+ label="Entidad financiera"
  type="text"
  placeholder="Ej. Banco Unión"
- className={inputClassName}
+ error={errors.deudaCuatro?.entidadFinanciera?.message}
  {...register("deudaCuatro.entidadFinanciera")}
- />
- </Field>
+/>
 
- <Field
+ <KivoField
  label="Cuota mensual"
  htmlFor="deuda-cuatro-cuota"
  error={errors.deudaCuatro?.cuotaMensual?.message}
@@ -910,7 +897,7 @@ export function DatosFinancierosForm() {
  name="deudaCuatro.cuotaMensual"
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="deuda-cuatro-cuota"
  getInputRef={field.ref}
@@ -920,16 +907,16 @@ export function DatosFinancierosForm() {
  }
  onBlur={field.onBlur}
  placeholder="Ej. 800"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
 
  <div className="sm:col-span-2">
- <Field
+ <KivoField
  label="Capital pendiente"
  htmlFor="deuda-cuatro-capital"
  error={errors.deudaCuatro?.capitalPendiente?.message}
@@ -938,7 +925,7 @@ export function DatosFinancierosForm() {
  name="deudaCuatro.capitalPendiente"
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="deuda-cuatro-capital"
  getInputRef={field.ref}
@@ -948,13 +935,13 @@ export function DatosFinancierosForm() {
  }
  onBlur={field.onBlur}
  placeholder="Ej. 12.000"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
  </div>
  </div>
  </div>
@@ -979,21 +966,16 @@ export function DatosFinancierosForm() {
  </p>
 
  <div className="mt-4 grid gap-4 sm:grid-cols-2">
- <Field
- label="Entidad financiera"
- htmlFor="deuda-compra-entidad"
- error={errors.deudaCompra?.entidadFinanciera?.message}
- >
- <input
+ <KivoInput
  id="deuda-compra-entidad"
+ label="Entidad financiera"
  type="text"
  placeholder="Ej. Banco Unión"
- className={inputClassName}
+ error={errors.deudaCompra?.entidadFinanciera?.message}
  {...register("deudaCompra.entidadFinanciera")}
- />
- </Field>
+/>
 
- <Field
+ <KivoField
  label="Cuota mensual"
  htmlFor="deuda-compra-cuota"
  error={errors.deudaCompra?.cuotaMensual?.message}
@@ -1002,7 +984,7 @@ export function DatosFinancierosForm() {
  name="deudaCompra.cuotaMensual"
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="deuda-compra-cuota"
  getInputRef={field.ref}
@@ -1012,16 +994,16 @@ export function DatosFinancierosForm() {
  }
  onBlur={field.onBlur}
  placeholder="Ej. 800"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
 
  <div className="sm:col-span-2">
- <Field
+ <KivoField
  label="Capital pendiente"
  htmlFor="deuda-compra-capital"
  error={errors.deudaCompra?.capitalPendiente?.message}
@@ -1030,7 +1012,7 @@ export function DatosFinancierosForm() {
  name="deudaCompra.capitalPendiente"
  control={control}
  render={({ field }) => (
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="deuda-compra-capital"
  getInputRef={field.ref}
@@ -1040,13 +1022,13 @@ export function DatosFinancierosForm() {
  }
  onBlur={field.onBlur}
  placeholder="Ej. 12.000"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  {...dineroInputProps}
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  )}
  />
- </Field>
+ </KivoField>
  </div>
  </div>
  </div>
@@ -1084,10 +1066,10 @@ export function DatosFinancierosForm() {
  className="overflow-hidden"
  >
  <div className="pt-4">
- <DangerNotice title="Por ahora no podemos continuar">
+ <KivoDangerNotice title="Por ahora no podemos continuar">
  Según tus ingresos y compromisos actuales, no queda
  suficiente capacidad para asumir una nueva cuota.
- </DangerNotice>
+ </KivoDangerNotice>
  </div>
  </motion.div>
  ) : null}
@@ -1105,7 +1087,7 @@ export function DatosFinancierosForm() {
  </legend>
 
  <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
- <RadioPill
+ <KivoRadioPill
  label="No"
  inputProps={{
  value: "NO",
@@ -1114,7 +1096,7 @@ export function DatosFinancierosForm() {
  }}
  />
 
- <RadioPill
+ <KivoRadioPill
  label="Sí"
  inputProps={{
  value: "SI",
@@ -1139,10 +1121,10 @@ export function DatosFinancierosForm() {
  className="overflow-hidden"
  >
  <div className="pt-4">
- <DangerNotice title="Por ahora no podemos continuar">
+ <KivoDangerNotice title="Por ahora no podemos continuar">
  Mientras tengas deudas atrasadas, Kivo no podrá continuar
  con la evaluación de la solicitud.
- </DangerNotice>
+ </KivoDangerNotice>
  </div>
  </motion.div>
  ) : null}
@@ -1170,7 +1152,7 @@ export function DatosFinancierosForm() {
         </div>
 
  <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
- <RadioPill
+ <KivoRadioPill
  label="Sí"
  inputProps={{
  value: "SI",
@@ -1179,7 +1161,7 @@ export function DatosFinancierosForm() {
  }}
  />
 
- <RadioPill
+ <KivoRadioPill
  label="No"
  inputProps={{
  value: "NO",
@@ -1204,11 +1186,11 @@ export function DatosFinancierosForm() {
  className="overflow-hidden"
  >
  <div className="pt-4">
- <BusinessNotice>
+ <KivoBusinessNotice>
  Registramos que actualmente no cuentas con extractos
  bancarios. Esta información será considerada durante la
  evaluación.
- </BusinessNotice>
+ </KivoBusinessNotice>
  </div>
  </motion.div>
  ) : null}
@@ -1216,19 +1198,25 @@ export function DatosFinancierosForm() {
  </fieldset>
 
  <div className="mt-6">
- <button
+ <KivoButton
  type="submit"
  disabled={
- !todoCompleto ||
- !segundoIngresoCompleto ||
- tieneDeudaAtrasada ||
- sinCapacidad
+   !todoCompleto ||
+   !segundoIngresoCompleto ||
+   tieneDeudaAtrasada ||
+   sinCapacidad
  }
- className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-accent px-6 text-[15px] font-bold text-white transition-colors hover:bg-accent-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/35 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
- >
+ fullWidth
+ className="sm:w-auto"
+ iconRight={
+   <ArrowRight
+     className="h-[18px] w-[18px]"
+     strokeWidth={2.5}
+   />
+ }
+>
  Siguiente paso
- <ArrowRight className="h-4.5 w-4.5" strokeWidth={2.5} />
- </button>
+</KivoButton>
  </div>
  </form>
  );

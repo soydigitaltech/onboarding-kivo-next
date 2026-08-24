@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  KivoSelect,
+} from "@/components/ui/kivo";
+
 import HeroKivoImage from "@/components/ui/HeroKivoImage";
 import { useState } from "react";
 import Image from "next/image";
@@ -22,7 +26,6 @@ import {
   X,
 } from "lucide-react";
 
-import { CustomSelect } from "@/components/ui/CustomSelect";
 import { DATOS_CAPTURADOS,
   WHATSAPP_KIVO
 } from "@/lib/kivo/datos";
@@ -681,7 +684,7 @@ export default function PerfilView() {
                     </span>
 
                     <div className="mt-2">
-                      <CustomSelect
+                      <KivoSelect
                         value={canalMock}
                         onChange={setCanalMock}
                         ariaLabel="Canal preferido"

@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  KivoAffixedInput,
+  KivoDangerNotice,
+  kivoAffixedInputClassName,
+} from "@/components/ui/kivo";
+
 import { useEffect, useMemo, useState } from "react";
 import {
  AnimatePresence,
@@ -26,12 +32,6 @@ import {
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
-import {
- DangerNotice,
- PrefixedInputShell,
- prefixedInputClassName,
-} from "@/components/ui/fields";
-
 const REVEAL: Transition = {
  duration: 0.3,
  ease: [0.25, 0.8, 0.25, 1],
@@ -275,7 +275,7 @@ export function SimulacionForm() {
  </p>
 
  <div className="mt-2">
- <PrefixedInputShell prefix="Bs">
+ <KivoAffixedInput prefix="Bs">
  <NumericFormat
  id="montoSimulacion"
  value={monto}
@@ -292,10 +292,10 @@ export function SimulacionForm() {
  allowNegative={false}
  decimalScale={0}
  inputMode="numeric"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  aria-label="Monto del préstamo"
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  </div>
 
  <p className="mt-1.5 text-xs text-muted">
@@ -330,7 +330,7 @@ export function SimulacionForm() {
  </p>
 
  <div className="mt-2">
- <PrefixedInputShell prefix="Meses">
+ <KivoAffixedInput prefix="Meses">
  <NumericFormat
  id="plazoSimulacion"
  value={plazoActivo}
@@ -345,10 +345,10 @@ export function SimulacionForm() {
  allowNegative={false}
  decimalScale={0}
  inputMode="numeric"
- className={prefixedInputClassName}
+ className={kivoAffixedInputClassName}
  aria-label="Plazo del préstamo en meses"
  />
- </PrefixedInputShell>
+ </KivoAffixedInput>
  </div>
 
  <p className="mt-1.5 text-xs text-muted">
@@ -515,11 +515,11 @@ export function SimulacionForm() {
  className="overflow-hidden"
  >
  <div className="pt-5">
- <DangerNotice title="Por ahora no podemos continuar">
+ <KivoDangerNotice title="Por ahora no podemos continuar">
  Tus compromisos actuales no dejan espacio para una
  nueva cuota. Puedes volver a intentarlo cuando
  reduzcas tus deudas.
- </DangerNotice>
+ </KivoDangerNotice>
  </div>
  </motion.div>
  ) : resultado.viable ? (
@@ -576,7 +576,7 @@ export function SimulacionForm() {
  className="overflow-hidden"
  >
  <div className="pt-5">
- <DangerNotice title="Esta combinación supera tu capacidad">
+ <KivoDangerNotice title="Esta combinación supera tu capacidad">
  La cuota de {formatBs(resultado.cuotaMensual)} está
  por encima de tu máximo de{" "}
  {formatBs(
@@ -584,7 +584,7 @@ export function SimulacionForm() {
  )}
  . Reduce el monto o aumenta el plazo para encontrar
  una opción compatible.
- </DangerNotice>
+ </KivoDangerNotice>
 
  {alternativa ? (
  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning-border bg-warning-bg px-4 py-3.5">

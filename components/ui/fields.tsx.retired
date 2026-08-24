@@ -1,0 +1,260 @@
+"use client";
+
+/**
+ * KIVO LEGACY BRIDGE
+ * ============================================================
+ *
+ * Este archivo existe temporalmente para mantener compatibilidad
+ * con formularios existentes mientras migramos hacia:
+ *
+ *   @/components/ui/kivo
+ *
+ * IMPORTANTE:
+ *
+ * - No crear componentes nuevos aquí.
+ * - No agregar estilos nuevos aquí.
+ * - Código nuevo debe importar desde @/components/ui/kivo.
+ * - Los componentes legacy delegan su UI al Design System.
+ *
+ * El objetivo final es eliminar este archivo cuando no existan
+ * consumidores productivos.
+ */
+
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+} from "react";
+
+import {
+  ChevronDown,
+} from "lucide-react";
+
+import {
+  KivoAffixedInput,
+  KivoBusinessNotice,
+  KivoDangerNotice,
+  KivoField,
+  KivoRadioPill,
+  kivoAffixedInputClassName,
+} from "@/components/ui/kivo";
+
+
+/* ============================================================
+   INPUT BASE
+
+   Se mantiene exportado porque todavía existen inputs nativos
+   en formularios legacy.
+
+   Visualmente está sincronizado con KivoInput.
+============================================================ */
+
+export const inputClassName =
+  "h-12 w-full min-w-0 rounded-xl border-2 border-border bg-white px-4 text-[15px] font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-placeholder focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-surface disabled:opacity-60";
+
+
+/* ============================================================
+   SELECT NATIVO
+============================================================ */
+
+export const selectClassName =
+  `${inputClassName} appearance-none pr-10`;
+
+
+/* ============================================================
+   INPUT PARA PREFIX/SUFFIX
+============================================================ */
+
+export const prefixedInputClassName =
+  kivoAffixedInputClassName;
+
+
+/* ============================================================
+   FIELD
+
+   Este wrapper queda temporalmente porque muchos formularios
+   todavía esperan la API:
+
+   <Field
+     label=""
+     htmlFor=""
+     error=""
+   >
+     ...
+   </Field>
+
+   KivoInput ya incorpora este patrón para código nuevo.
+============================================================ */
+
+interface FieldProps {
+  label: string;
+  htmlFor: string;
+  error?: string;
+  helper?: string;
+  required?: boolean;
+  children: ReactNode;
+}
+
+export function Field({
+  label,
+  htmlFor,
+  error,
+  helper,
+  required = false,
+  children,
+}: FieldProps) {
+  return (
+    <KivoField
+      label={label}
+      htmlFor={htmlFor}
+      error={error}
+      helper={helper}
+      required={required}
+    >
+      {children}
+    </KivoField>
+  );
+}
+
+
+/* ============================================================
+   PREFIXED INPUT
+
+   Legacy API:
+     <PrefixedInputShell prefix="Bs">
+
+   Nueva implementación:
+     KivoAffixedInput
+============================================================ */
+
+export function PrefixedInputShell({
+  prefix,
+  children,
+}: {
+  prefix: string;
+  children: ReactNode;
+}) {
+  return (
+    <KivoAffixedInput
+      prefix={prefix}
+    >
+      {children}
+    </KivoAffixedInput>
+  );
+}
+
+
+/* ============================================================
+   SUFFIXED INPUT
+
+   Legacy API:
+     <SuffixedInputShell suffix="meses">
+
+   Nueva implementación:
+     KivoAffixedInput
+============================================================ */
+
+export function SuffixedInputShell({
+  suffix,
+  children,
+}: {
+  suffix: string;
+  children: ReactNode;
+}) {
+  return (
+    <KivoAffixedInput
+      suffix={suffix}
+    >
+      {children}
+    </KivoAffixedInput>
+  );
+}
+
+
+/* ============================================================
+   SELECT CHEVRON
+
+   Solo para selects HTML nativos legacy.
+   KivoSelect / CustomSelect ya gestionan su propio icono.
+============================================================ */
+
+export function SelectChevron() {
+  return (
+    <ChevronDown
+      aria-hidden="true"
+      strokeWidth={2.5}
+      className="
+        pointer-events-none
+        absolute right-3.5 top-1/2
+        h-4 w-4
+        -translate-y-1/2
+        text-muted
+      "
+    />
+  );
+}
+
+
+/* ============================================================
+   BUSINESS NOTICE
+
+   La implementación visual viene del Design System.
+============================================================ */
+
+export function BusinessNotice({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <KivoBusinessNotice>
+      {children}
+    </KivoBusinessNotice>
+  );
+}
+
+
+/* ============================================================
+   DANGER NOTICE
+
+   La implementación visual viene del Design System.
+============================================================ */
+
+export function DangerNotice({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <KivoDangerNotice
+      title={title}
+    >
+      {children}
+    </KivoDangerNotice>
+  );
+}
+
+
+/* ============================================================
+   RADIO PILL
+
+   La implementación visual viene del Design System.
+============================================================ */
+
+export function RadioPill({
+  label,
+  inputProps,
+}: {
+  label: string;
+
+  inputProps:
+    InputHTMLAttributes<HTMLInputElement>;
+}) {
+  return (
+    <KivoRadioPill
+      label={label}
+      {...inputProps}
+    />
+  );
+}
