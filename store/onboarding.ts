@@ -10,6 +10,7 @@ export const STEP_ORDER = [
   "datos-financieros",
   "simulacion",
   "informacion-complementaria",
+  "referencias",
   "carga-documentos",
   "resumen",
 ] as const;
@@ -33,6 +34,12 @@ export interface DatosPersonales {
 
   /** Dirección actual de domicilio del solicitante. */
   direccion: string;
+
+  /** Ubicación seleccionada en el mapa para el domicilio. */
+  ubicacionDomicilio: {
+    lat: number;
+    lng: number;
+  };
 
   /** Personas que dependen económicamente del solicitante. */
   numeroDependientes: number;
@@ -132,6 +139,13 @@ export interface SimulacionConfirmada {
   confirmadaEn: string;
 }
 
+export interface SolicitudMayor {
+  monto: number;
+  plazoMeses: number;
+  requiereEvaluacionEspecial: true;
+  registradaEn: string;
+}
+
 export interface DatosComplementarios {
   /** Empresa donde trabaja o nombre de su negocio. */
   nombreEmpresaNegocio: string;
@@ -148,7 +162,35 @@ export interface DatosComplementarios {
   /** Dirección de la empresa, negocio o lugar de trabajo. */
   direccionLaboral: string;
 
+  /** Ubicación seleccionada en el mapa para empresa, trabajo o negocio. */
+  ubicacionLaboral: {
+    lat: number;
+    lng: number;
+  };
+
+  /** Información adicional requerida únicamente para independientes. */
+  negocioFormalizado?: "SI" | "NO";
+
+  tipoLocalNegocio?:
+    | "PROPIO"
+    | "ALQUILER"
+    | "ANTICRETICO"
+    | "DOMICILIO"
+    | "OTRO";
+
+  /** Indica si el solicitante declara un vehículo a su nombre. */
+  tieneVehiculo: "SI" | "NO";
+
   vivienda: "PROPIA" | "FAMILIAR" | "ALQUILER" | "ANTICRETICO";
+
+  /**
+   * Actualmente se solicita cuando la vivienda es
+   * alquilada o en anticrético.
+   *
+   * No asumir todavía que corresponde al garante financiero
+   * de la operación hasta confirmar la regla con Kivo.
+   */
+  tieneGarante?: "SI" | "NO";
 
   estadoCivil:
     | "SOLTERO"
@@ -157,7 +199,26 @@ export interface DatosComplementarios {
     | "VIUDO"
     | "CONYUGE";
 
+  /** Datos básicos requeridos para casado(a) o unión libre. */
+  nombreConyuge?: string;
+  celularConyuge?: string;
+
   destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
+
+  /** Descripción proporcionada por el cliente sobre el uso del préstamo. */
+  detalleDestinoPrestamo: string;
+}
+
+export interface Referencia {
+  nombreCompleto: string;
+  relacion: string;
+  celular: string;
+}
+
+export interface DatosReferencias {
+  personal1: Referencia;
+  personal2: Referencia;
+  laboralComercial: Referencia;
 }
 
 /** Metadatos de un archivo cargado (el binario no se persiste). */
@@ -173,6 +234,40 @@ export interface DatosDocumentos {
   ciAnverso: DocumentoMeta | null;
   ciReverso: DocumentoMeta | null;
   selfie: DocumentoMeta | null;
+
+  viviendaPropia: DocumentoMeta | null;
+  viviendaAlquiler: DocumentoMeta | null;
+  viviendaAnticretico: DocumentoMeta | null;
+  viviendaFamiliar: DocumentoMeta | null;
+
+  /** Respaldos para solicitantes asalariados. */
+  asalariadoExtractoSueldo: DocumentoMeta | null;
+  asalariadoBoletasPago: DocumentoMeta | null;
+  asalariadoGestora: DocumentoMeta | null;
+  asalariadoCertificadoLaboral: DocumentoMeta | null;
+
+  /** Respaldos para solicitantes independientes. */
+  independienteExtractosIngresos: DocumentoMeta | null;
+  independienteRespaldosNegocio: DocumentoMeta | null;
+
+  /** Documentación condicional del negocio del independiente. */
+  negocioFormalizacion: DocumentoMeta | null;
+  negocioLocalPropio: DocumentoMeta | null;
+  negocioLocalAlquiler: DocumentoMeta | null;
+  negocioLocalAnticretico: DocumentoMeta | null;
+
+  /** Respaldos de préstamos vigentes. */
+  planPagosPrestamos: DocumentoMeta | null;
+  extractosPrestamos: DocumentoMeta | null;
+
+  /** Respaldo de una segunda fuente de ingresos declarada. */
+  segundoIngresoRespaldo: DocumentoMeta | null;
+
+  /** Comprobante actualizado del domicilio declarado. */
+  comprobanteDomicilio: DocumentoMeta | null;
+
+  /** Respaldo de vehículo declarado. */
+  documentoVehiculo: DocumentoMeta | null;
 }
 
 /** Se genera al enviar la solicitud desde el paso "Resumen". */
@@ -187,7 +282,9 @@ interface OnboardingState {
   datosPersonales: DatosPersonales | null;
   datosFinancieros: DatosFinancieros | null;
   simulacion: SimulacionConfirmada | null;
+  solicitudMayor: SolicitudMayor | null;
   datosComplementarios: DatosComplementarios | null;
+  referencias: DatosReferencias | null;
   datosDocumentos: DatosDocumentos | null;
   solicitudEnviada: SolicitudEnviada | null;
   cuenta: Cuenta | null;
@@ -196,7 +293,9 @@ interface OnboardingState {
   setDatosPersonales: (datos: DatosPersonales) => void;
   setDatosFinancieros: (datos: DatosFinancieros) => void;
   setSimulacion: (datos: SimulacionConfirmada) => void;
+  setSolicitudMayor: (datos: SolicitudMayor | null) => void;
   setDatosComplementarios: (datos: DatosComplementarios) => void;
+  setReferencias: (datos: DatosReferencias) => void;
   setDatosDocumentos: (datos: DatosDocumentos) => void;
   setSolicitudEnviada: (solicitud: SolicitudEnviada) => void;
   completeAndAdvance: (step: StepId) => void;
@@ -209,6 +308,7 @@ const initialCompleted: Record<StepId, boolean> = {
   "datos-financieros": false,
   simulacion: false,
   "informacion-complementaria": false,
+  referencias: false,
   "carga-documentos": false,
   resumen: false,
 };
@@ -221,7 +321,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       datosPersonales: null,
       datosFinancieros: null,
       simulacion: null,
+      solicitudMayor: null,
       datosComplementarios: null,
+      referencias: null,
       datosDocumentos: null,
       solicitudEnviada: null,
       cuenta: null,
@@ -234,8 +336,13 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       setSimulacion: (datos) => set({ simulacion: datos }),
 
+      setSolicitudMayor: (datos) => set({ solicitudMayor: datos }),
+
       setDatosComplementarios: (datos) =>
         set({ datosComplementarios: datos }),
+
+      setReferencias: (datos) =>
+        set({ referencias: datos }),
 
       setDatosDocumentos: (datos) => set({ datosDocumentos: datos }),
 
@@ -262,7 +369,9 @@ export const useOnboardingStore = create<OnboardingState>()(
           datosPersonales: null,
           datosFinancieros: null,
           simulacion: null,
+          solicitudMayor: null,
           datosComplementarios: null,
+          referencias: null,
           datosDocumentos: null,
           solicitudEnviada: null,
           cuenta: null,

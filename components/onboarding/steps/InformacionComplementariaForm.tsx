@@ -42,6 +42,9 @@ const EMPTY_VALUES: InformacionComplementariaValues = {
  cargoActividad: "",
  antiguedadActividad: undefined as unknown as number,
  direccionLaboral: "",
+ negocioFormalizado: undefined,
+ tipoLocalNegocio: undefined,
+ tieneVehiculo: undefined as unknown as InformacionComplementariaValues["tieneVehiculo"],
  vivienda: undefined as unknown as InformacionComplementariaValues["vivienda"],
  estadoCivil:
  undefined as unknown as InformacionComplementariaValues["estadoCivil"],
@@ -59,6 +62,8 @@ type Paso =
  | "cargoActividad"
  | "antiguedadActividad"
  | "direccionLaboral"
+ | "datosNegocio"
+ | "vehiculo"
  | "vivienda"
  | "estadoCivil"
  | "destinoPrestamo";
@@ -69,6 +74,8 @@ const PASOS: Paso[] = [
  "cargoActividad",
  "antiguedadActividad",
  "direccionLaboral",
+ "datosNegocio",
+ "vehiculo",
  "vivienda",
  "estadoCivil",
  "destinoPrestamo",
@@ -77,6 +84,7 @@ const PASOS: Paso[] = [
 function pasoCompleto(
  paso: Paso,
  values: Partial<InformacionComplementariaValues>,
+ esAsalariado: boolean,
 ): boolean {
  switch (paso) {
  case "nombreEmpresaNegocio":
@@ -99,6 +107,17 @@ function pasoCompleto(
 
  case "direccionLaboral":
  return (values.direccionLaboral ?? "").trim().length >= 5;
+
+ case "datosNegocio":
+ if (esAsalariado) return true;
+
+ return (
+   values.negocioFormalizado !== undefined &&
+   values.tipoLocalNegocio !== undefined
+ );
+
+ case "vehiculo":
+ return values.tieneVehiculo !== undefined;
 
  case "vivienda": {
  const viviendaSeleccionada = values.vivienda !== undefined;
@@ -179,8 +198,11 @@ export function InformacionComplementariaForm() {
 
  const values = watch();
 
+ const esAsalariado =
+ datosFinancieros?.perfilLaboral === "ASALARIADO";
+
  const primerIncompleto = PASOS.findIndex(
- (paso) => !pasoCompleto(paso, values),
+ (paso) => !pasoCompleto(paso, values, esAsalariado),
  );
 
  const limite =
@@ -202,16 +224,20 @@ export function InformacionComplementariaForm() {
 
  const todoCompleto = primerIncompleto === -1;
 
- const esAsalariado =
- datosFinancieros?.perfilLaboral === "ASALARIADO";
-
  const puedeElegirCapitalTrabajo =
  !esAsalariado || datosFinancieros?.tieneSegundoIngreso === true;
 
  const onSubmit = (
  formValues: InformacionComplementariaValues,
  ) => {
- setDatosComplementarios(formValues);
+ setDatosComplementarios({
+  ...formValues,
+  ubicacionLaboral: {
+   lat: ubicacionLaboralMock.lat,
+   lng: ubicacionLaboralMock.lng,
+  },
+ });
+
  completeAndAdvance("informacion-complementaria");
  };
 
@@ -386,6 +412,144 @@ export function InformacionComplementariaForm() {
  </span>
  </div>
  </div>
+ </div>
+
+
+ {/* Datos adicionales del negocio - solo independientes */}
+ {!esAsalariado ? (
+ <div
+   className={`sm:col-span-2 ${lockCls("datosNegocio")}`}
+ >
+   <div className="border-t border-border-soft pt-6">
+     <p className="text-sm font-extrabold text-ink">
+       Sobre tu negocio
+     </p>
+
+     <p className="mt-1 text-xs leading-5 text-muted">
+       Esta información nos ayuda a solicitar únicamente los
+       respaldos que realmente corresponden a tu actividad.
+     </p>
+
+     <div className="mt-5 grid gap-5 sm:grid-cols-2">
+       <fieldset>
+         <legend className="text-sm font-bold text-ink">
+           ¿Tu negocio está formalizado?
+         </legend>
+
+         <div className="mt-3 flex flex-wrap gap-3">
+           <label
+             className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+               values.negocioFormalizado === "SI"
+                 ? "bg-primary text-white"
+                 : "bg-surface-blue text-primary-dark"
+             }`}
+           >
+             <input
+               type="radio"
+               value="SI"
+               className="sr-only"
+               {...register("negocioFormalizado")}
+             />
+             Sí
+           </label>
+
+           <label
+             className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+               values.negocioFormalizado === "NO"
+                 ? "bg-primary text-white"
+                 : "bg-surface-blue text-primary-dark"
+             }`}
+           >
+             <input
+               type="radio"
+               value="NO"
+               className="sr-only"
+               {...register("negocioFormalizado")}
+             />
+             No
+           </label>
+         </div>
+       </fieldset>
+
+       <Controller
+         control={control}
+         name="tipoLocalNegocio"
+         render={({ field }) => (
+           <KivoSelect
+             id="tipoLocalNegocio"
+             label="¿Dónde funciona principalmente tu negocio?"
+             value={field.value ?? ""}
+             options={[
+               { value: "PROPIO", label: "Local propio" },
+               { value: "ALQUILER", label: "Local alquilado" },
+               { value: "ANTICRETICO", label: "Local en anticrético" },
+               { value: "DOMICILIO", label: "Desde mi domicilio" },
+               { value: "OTRO", label: "Otro" },
+             ]}
+             placeholder="Selecciona una opción"
+             onChange={field.onChange}
+             onBlur={field.onBlur}
+           />
+         )}
+       />
+     </div>
+   </div>
+ </div>
+ ) : null}
+
+
+ {/* Vehículo */}
+ <div className={`sm:col-span-2 ${lockCls("vehiculo")}`}>
+ <fieldset>
+ <legend className="text-sm font-bold text-ink">
+ ¿Tienes vehículo a tu nombre?
+ </legend>
+
+ <p className="mt-1 text-xs leading-5 text-muted">
+ Si cuentas con un vehículo propio, podremos solicitarte un respaldo
+ adicional durante la carga de documentos.
+ </p>
+
+ <div className="mt-3 flex flex-wrap gap-3">
+ <label
+ className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+ values.tieneVehiculo === "SI"
+ ? "bg-primary text-white"
+ : "bg-surface-blue text-primary-dark"
+ }`}
+ >
+ <input
+ type="radio"
+ value="SI"
+ className="sr-only"
+ {...register("tieneVehiculo")}
+ />
+ Sí
+ </label>
+
+ <label
+ className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+ values.tieneVehiculo === "NO"
+ ? "bg-primary text-white"
+ : "bg-surface-blue text-primary-dark"
+ }`}
+ >
+ <input
+ type="radio"
+ value="NO"
+ className="sr-only"
+ {...register("tieneVehiculo")}
+ />
+ No
+ </label>
+ </div>
+
+ {errors.tieneVehiculo ? (
+ <p className="mt-2 text-xs font-semibold text-error">
+ {errors.tieneVehiculo.message}
+ </p>
+ ) : null}
+ </fieldset>
  </div>
 
  {/* Vivienda */}

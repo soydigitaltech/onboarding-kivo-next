@@ -62,6 +62,17 @@ const InformacionComplementariaForm = dynamic(
  },
 );
 
+const ReferenciasForm = dynamic(
+ () =>
+  import("@/components/onboarding/steps/ReferenciasForm").then(
+   (mod) => mod.ReferenciasForm,
+  ),
+ {
+  ssr: false,
+  loading: PasoLoading,
+ },
+);
+
 const DocumentosForm = dynamic(
  () =>
   import("@/components/onboarding/steps/DocumentosForm").then(
@@ -101,6 +112,7 @@ const STEP_TITLES: Record<StepId, string> = {
  "datos-financieros": "Tus finanzas",
  simulacion: "Elige tu préstamo",
  "informacion-complementaria": "Más sobre ti",
+ referencias: "Tus referencias",
  "carga-documentos": "Tus documentos",
  resumen: "Resumen",
 };
@@ -151,6 +163,8 @@ export default function OnboardingPage() {
  return <SimulacionForm />;
  case "informacion-complementaria":
  return <InformacionComplementariaForm />;
+ case "referencias":
+ return <ReferenciasForm />;
  case "carga-documentos":
  return <DocumentosForm />;
  case "resumen":

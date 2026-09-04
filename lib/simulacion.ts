@@ -13,7 +13,7 @@ export const REGLAS_SIMULACION = {
   tasaMensualPorcentaje: 3,
 
   montoMinimo: 7000,
-  montoMaximo: 35000,
+  montoMaximo: 50000,
 
   /** Los montos solo avanzan de Bs 1.000 en Bs 1.000. */
   pasoMonto: 1000,

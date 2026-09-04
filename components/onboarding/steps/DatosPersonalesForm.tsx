@@ -292,9 +292,13 @@ export function DatosPersonalesForm() {
       return;
     }
 
-    setDatosPersonales(
-      formValues,
-    );
+    setDatosPersonales({
+      ...formValues,
+      ubicacionDomicilio: {
+        lat: ubicacionMock.lat,
+        lng: ubicacionMock.lng,
+      },
+    });
 
     completeAndAdvance(
       "datos-personales",

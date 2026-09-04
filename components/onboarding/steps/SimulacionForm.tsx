@@ -16,6 +16,7 @@ import {
 } from "motion/react";
 import {
  ArrowRight,
+ BadgeDollarSign,
  CircleCheckBig,
  Lightbulb,
  Percent,
@@ -71,6 +72,14 @@ export function SimulacionForm() {
  return state.setSimulacion;
  });
 
+ const solicitudMayor = useOnboardingStore((state) => {
+ return state.solicitudMayor;
+ });
+
+ const setSolicitudMayor = useOnboardingStore((state) => {
+ return state.setSolicitudMayor;
+ });
+
  const completeAndAdvance = useOnboardingStore((state) => {
  return state.completeAndAdvance;
  });
@@ -81,9 +90,8 @@ export function SimulacionForm() {
 
  const aplicaLimiteJoven = edad >= 18 && edad <= 24;
 
- const montoMaximoPermitido: number = aplicaLimiteJoven
- ? 20000
- : REGLAS_SIMULACION.montoMaximo;
+ const montoMaximoPermitido: number =
+ REGLAS_SIMULACION.montoMaximo;
 
  const plazoMaximoPermitido = aplicaLimiteJoven ? 24 : 36;
 
@@ -111,6 +119,17 @@ export function SimulacionForm() {
  useState<number>(plazoInicial);
 
  const [confirmo, setConfirmo] = useState(false);
+ const [mostrarSolicitudMayor, setMostrarSolicitudMayor] = useState(false);
+
+ const [necesitaMasDeCincuenta, setNecesitaMasDeCincuenta] = useState<
+ boolean | null
+ >(null);
+
+ const [montoSolicitudMayor, setMontoSolicitudMayor] = useState<
+ number | undefined
+ >(undefined);
+
+ const [plazoSolicitudMayor, setPlazoSolicitudMayor] = useState(36);
 
  // En el flujo de asalariados, el destino se asigna automáticamente.
  const destinoPrestamo = "USO_PERSONAL" as const;
@@ -267,6 +286,52 @@ export function SimulacionForm() {
  Kivo calculará una cuota compatible con tu capacidad de pago.
  </p>
 
+ {solicitudMayor ? (
+ <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+ <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+ <div>
+ <p className="text-xs font-bold uppercase tracking-wide text-primary">
+ Solicitud mayor a Bs 50.000
+ </p>
+
+ <p className="mt-1 text-sm leading-6 text-body">
+ Registramos el monto y plazo que necesitas para una evaluación
+ personalizada.
+ </p>
+ </div>
+
+ <div className="grid grid-cols-2 gap-6 sm:min-w-[280px]">
+ <div>
+ <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+ Monto solicitado
+ </p>
+
+ <p className="mt-1 text-lg font-extrabold text-ink">
+ {formatBs(solicitudMayor.monto)}
+ </p>
+ </div>
+
+ <div>
+ <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+ Plazo solicitado
+ </p>
+
+ <p className="mt-1 text-lg font-extrabold text-ink">
+ {solicitudMayor.plazoMeses} meses
+ </p>
+ </div>
+ </div>
+ </div>
+
+ <div className="mt-4 border-t border-primary/10 pt-3">
+ <p className="text-xs font-semibold leading-5 text-body">
+ Esta solicitud requiere una evaluación adicional y documentación
+ de respaldo en oficinas de Kivo.
+ </p>
+ </div>
+ </div>
+ ) : null}
+
  <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.95fr]">
  {/* Controles */}
  <div>
@@ -281,7 +346,13 @@ export function SimulacionForm() {
  value={monto}
  onValueChange={(value) => {
  if (value.floatValue !== undefined) {
- setMonto(value.floatValue);
+ const nuevoMonto = value.floatValue;
+
+ setMonto(nuevoMonto);
+
+ if (nuevoMonto >= REGLAS_SIMULACION.montoMaximo) {
+ setMostrarSolicitudMayor(true);
+ }
  }
  }}
  onBlur={() => {
@@ -311,7 +382,13 @@ export function SimulacionForm() {
  step={REGLAS_SIMULACION.pasoMonto}
  value={normalizarMonto(monto)}
  onChange={(event) => {
- setMonto(Number(event.target.value));
+ const nuevoMonto = Number(event.target.value);
+
+ setMonto(nuevoMonto);
+
+ if (nuevoMonto >= REGLAS_SIMULACION.montoMaximo) {
+ setMostrarSolicitudMayor(true);
+ }
  }}
  aria-label="Ajustar monto del préstamo"
  className="mt-4 w-full accent-primary"
@@ -648,6 +725,222 @@ export function SimulacionForm() {
  />
  </button>
  </div>
+
+ <AnimatePresence>
+ {mostrarSolicitudMayor ? (
+ <motion.div
+ className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
+ initial={{ opacity: 0 }}
+ animate={{ opacity: 1 }}
+ exit={{ opacity: 0 }}
+ role="dialog"
+ aria-modal="true"
+ aria-labelledby="solicitud-mayor-titulo"
+ onClick={() => {
+ setMostrarSolicitudMayor(false);
+ setNecesitaMasDeCincuenta(null);
+ setMontoSolicitudMayor(undefined);
+ }}
+ >
+ <motion.div
+ initial={{ opacity: 0, y: 12, scale: 0.98 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: 8, scale: 0.98 }}
+ transition={REVEAL}
+ onClick={(event) => event.stopPropagation()}
+ className="w-full max-w-md rounded-[24px] bg-white p-6 sm:p-7"
+ >
+ <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+ <BadgeDollarSign className="h-6 w-6" />
+ </div>
+
+ <h2
+ id="solicitud-mayor-titulo"
+ className="mt-5 text-xl font-extrabold text-ink"
+ >
+ ¿Necesitas más de Bs 50.000?
+ </h2>
+
+ <p className="mt-2 text-sm leading-6 text-body">
+ Si necesitas un monto mayor, podemos evaluar tu solicitud de manera
+ personalizada.
+ </p>
+
+ <div className="mt-5 grid grid-cols-2 gap-3">
+ <button
+ type="button"
+ onClick={() => {
+ setNecesitaMasDeCincuenta(true);
+ }}
+ className={`min-h-11 rounded-xl border px-4 text-sm font-bold transition-colors ${
+ necesitaMasDeCincuenta === true
+ ? "border-primary bg-primary text-white"
+ : "border-border bg-white text-ink hover:border-primary/40"
+ }`}
+ >
+ Sí
+ </button>
+
+ <button
+ type="button"
+ onClick={() => {
+ setNecesitaMasDeCincuenta(false);
+ setMontoSolicitudMayor(undefined);
+ }}
+ className={`min-h-11 rounded-xl border px-4 text-sm font-bold transition-colors ${
+ necesitaMasDeCincuenta === false
+ ? "border-primary bg-primary text-white"
+ : "border-border bg-white text-ink hover:border-primary/40"
+ }`}
+ >
+ No
+ </button>
+ </div>
+
+ <AnimatePresence initial={false}>
+ {necesitaMasDeCincuenta === true ? (
+ <motion.div
+ initial={{ opacity: 0, height: 0 }}
+ animate={{ opacity: 1, height: "auto" }}
+ exit={{ opacity: 0, height: 0 }}
+ transition={REVEAL}
+ className="overflow-hidden"
+ >
+ <div className="mt-6 border-t border-border-soft pt-5">
+
+ <p className="text-sm font-bold text-ink">
+ ¿Qué monto necesitas?
+ </p>
+
+ <div className="mt-2">
+ <KivoAffixedInput prefix="Bs">
+ <NumericFormat
+ value={montoSolicitudMayor ?? ""}
+ onValueChange={(value) => {
+ setMontoSolicitudMayor(value.floatValue);
+ }}
+ thousandSeparator="."
+ decimalSeparator=","
+ allowNegative={false}
+ decimalScale={0}
+ inputMode="numeric"
+ placeholder="Ej. 75.000"
+ className={kivoAffixedInputClassName}
+ aria-label="Monto solicitado mayor a cincuenta mil bolivianos"
+ />
+ </KivoAffixedInput>
+ </div>
+
+ {montoSolicitudMayor !== undefined &&
+ montoSolicitudMayor <= 50000 ? (
+ <p className="mt-2 text-xs font-semibold text-error">
+ Ingresa un monto mayor a Bs 50.000.
+ </p>
+ ) : null}
+
+ {montoSolicitudMayor !== undefined &&
+ montoSolicitudMayor > 50000 ? (
+ <div className="mt-5">
+ <div className="flex items-center justify-between gap-3">
+ <p className="text-sm font-bold text-ink">
+ ¿En cuántos meses quieres pagarlo?
+ </p>
+
+ <span className="text-sm font-extrabold text-primary">
+ {plazoSolicitudMayor} meses
+ </span>
+ </div>
+
+ <input
+ type="range"
+ min={12}
+ max={72}
+ step={3}
+ value={plazoSolicitudMayor}
+ onChange={(event) => {
+ setPlazoSolicitudMayor(Number(event.target.value));
+ }}
+ className="mt-4 w-full accent-primary"
+ aria-label="Plazo de solicitud especial en meses"
+ />
+
+ <div className="mt-2 flex justify-between text-xs font-semibold text-muted">
+ <span>12 meses</span>
+ <span>72 meses</span>
+ </div>
+ </div>
+ ) : null}
+
+ {montoSolicitudMayor !== undefined &&
+ montoSolicitudMayor > 50000 ? (
+ <div className="mt-5 rounded-xl bg-surface p-4">
+ <p className="text-sm font-bold text-ink">
+ Tu solicitud requiere una evaluación adicional
+ </p>
+
+ <p className="mt-2 text-xs leading-5 text-body">
+ Para montos superiores a Bs 50.000, Kivo solicitará
+ documentación adicional de respaldo.
+ </p>
+
+ <p className="mt-2 text-xs leading-5 text-body">
+ Deberás visitar una de nuestras oficinas. Nuestro equipo te
+ indicará los documentos necesarios para continuar con tu solicitud.
+ </p>
+ </div>
+ ) : null}
+
+ </div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+
+ {necesitaMasDeCincuenta === false ? (
+ <p className="mt-5 text-sm leading-6 text-body">
+ Perfecto. Puedes continuar con tu simulación de hasta Bs 50.000.
+ </p>
+ ) : null}
+
+ <button
+ type="button"
+ disabled={
+ necesitaMasDeCincuenta === null ||
+ (necesitaMasDeCincuenta === true &&
+ (!montoSolicitudMayor || montoSolicitudMayor <= 50000))
+ }
+ onClick={() => {
+ if (
+ necesitaMasDeCincuenta === true &&
+ montoSolicitudMayor &&
+ montoSolicitudMayor > 50000
+ ) {
+ setSolicitudMayor({
+ monto: montoSolicitudMayor,
+ plazoMeses: plazoSolicitudMayor,
+ requiereEvaluacionEspecial: true,
+ registradaEn: new Date().toISOString(),
+ });
+ } else {
+ setSolicitudMayor(null);
+ }
+
+ setMostrarSolicitudMayor(false);
+ setNecesitaMasDeCincuenta(null);
+ setMontoSolicitudMayor(undefined);
+ setPlazoSolicitudMayor(36);
+ }}
+ className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
+ >
+ {necesitaMasDeCincuenta === true
+ ? "Entendido"
+ : "Continuar"}
+ </button>
+
+ </motion.div>
+ </motion.div>
+ ) : null}
+ </AnimatePresence>
+
  </div>
  );
 }

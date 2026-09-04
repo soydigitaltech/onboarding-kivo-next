@@ -44,6 +44,22 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .min(5, "Ingresa la dirección de tu lugar de trabajo o negocio."),
 
+  negocioFormalizado: z.enum(["SI", "NO"]).optional(),
+
+  tipoLocalNegocio: z
+    .enum([
+      "PROPIO",
+      "ALQUILER",
+      "ANTICRETICO",
+      "DOMICILIO",
+      "OTRO",
+    ])
+    .optional(),
+
+  tieneVehiculo: z.enum(["SI", "NO"], {
+    message: "Indica si tienes vehículo a tu nombre.",
+  }),
+
   vivienda: z.enum(
     ["PROPIA", "FAMILIAR", "ALQUILER", "ANTICRETICO"],
     {

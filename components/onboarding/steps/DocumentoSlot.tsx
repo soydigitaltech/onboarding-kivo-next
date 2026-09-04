@@ -18,7 +18,30 @@ import type { DocumentoMeta } from "@/store/onboarding";
 const TAMANO_MAXIMO_BYTES = 8 * 1024 * 1024; // 8 MB
 
 export interface DocConfig {
- key: "autorizacionBic" | "ciAnverso" | "ciReverso" | "selfie";
+ key:
+  | "autorizacionBic"
+  | "ciAnverso"
+  | "ciReverso"
+  | "selfie"
+  | "viviendaPropia"
+  | "viviendaAlquiler"
+  | "viviendaAnticretico"
+  | "viviendaFamiliar"
+  | "asalariadoExtractoSueldo"
+  | "asalariadoBoletasPago"
+  | "asalariadoGestora"
+  | "asalariadoCertificadoLaboral"
+  | "independienteExtractosIngresos"
+  | "independienteRespaldosNegocio"
+  | "negocioFormalizacion"
+  | "negocioLocalPropio"
+  | "negocioLocalAlquiler"
+  | "negocioLocalAnticretico"
+  | "planPagosPrestamos"
+  | "extractosPrestamos"
+  | "segundoIngresoRespaldo"
+  | "comprobanteDomicilio"
+  | "documentoVehiculo";
  titulo: string;
  descripcion: string;
  accept: string;
