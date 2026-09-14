@@ -10,7 +10,6 @@ export const STEP_ORDER = [
   "datos-financieros",
   "simulacion",
   "informacion-complementaria",
-  "referencias",
   "carga-documentos",
   "resumen",
 ] as const;
@@ -18,6 +17,16 @@ export const STEP_ORDER = [
 export type StepId = (typeof STEP_ORDER)[number];
 
 export type StepStatus = "locked" | "active" | "done";
+
+export type MotivoNoElegible =
+  | "EDAD_FUERA_RANGO"
+  | "CIUDAD_SIN_COBERTURA";
+
+export interface ElegibilidadInicial {
+  estado: "ELEGIBLE" | "NO_ELEGIBLE";
+  motivo: MotivoNoElegible | null;
+  evaluadaEn: string;
+}
 
 /** Cuenta verificada por OTP. */
 export interface Cuenta {
@@ -117,9 +126,14 @@ export interface DatosFinancieros {
 export interface SimulacionConfirmada {
   monto: number;
   plazoMeses: number;
-  destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
-
+  /**
+   * Cuota KIVO total mensual (CK).
+   * Se conserva cuotaMensual por compatibilidad.
+   */
   cuotaMensual: number;
+  cuotaKivo: number;
+
+  /** Cuota base francesa (R). */
   cuotaBase: number;
 
   capitalPrimeraCuota: number;
@@ -132,26 +146,41 @@ export interface SimulacionConfirmada {
   seguroTotal: number;
   gastosAdministrativosTotal: number;
 
-  cuotaMaxima: number;
-  porcentajeCapacidad: number;
+  /**
+   * PDE = (CK + TD) / IN
+   * Expresado como porcentaje.
+   */
+  porcentajeEndeudamiento: number;
+
+  /**
+   * MA = DIF / IN
+   * Expresado como porcentaje.
+   */
+  margenAhorroPorcentaje: number;
+
   tasaMensualPorcentaje: number;
 
   confirmadaEn: string;
 }
 
-export interface SolicitudMayor {
-  monto: number;
-  plazoMeses: number;
-  requiereEvaluacionEspecial: true;
-  registradaEn: string;
-}
 
 export interface DatosComplementarios {
   /** Empresa donde trabaja o nombre de su negocio. */
   nombreEmpresaNegocio: string;
 
   /** Rubro de la empresa o actividad económica. */
-  rubro: string;
+  rubro:
+    | "Comercio"
+    | "Servicios"
+    | "Industria"
+    | "Agropecuaria"
+    | "Construcción"
+    | "Transporte"
+    | "Tecnología"
+    | "Finanzas"
+    | "Turismo"
+    | "Salud y Educación"
+    | "OTRO";
 
   /** Cargo, profesión, oficio o actividad principal. */
   cargoActividad: string;
@@ -159,8 +188,20 @@ export interface DatosComplementarios {
   /** Antigüedad laboral o en la actividad económica, expresada en meses. */
   antiguedadActividad: number;
 
+  /** Indica si el trabajador independiente declara contar con NIT. */
+  tieneNit?: "SI" | "NO";
+
+  /** Indica si cuenta con licencia de funcionamiento o patente. */
+  tieneLicenciaFuncionamiento?: "SI" | "NO";
+
   /** Dirección de la empresa, negocio o lugar de trabajo. */
   direccionLaboral: string;
+
+  /** Afiliación declarada a AFP para perfiles donde corresponde. */
+  tieneAfp?: "SI" | "NO";
+
+  /** Disponibilidad declarada de boletas de pago. */
+  tieneBoletasPago?: "SI" | "NO";
 
   /** Ubicación seleccionada en el mapa para empresa, trabajo o negocio. */
   ubicacionLaboral: {
@@ -168,24 +209,22 @@ export interface DatosComplementarios {
     lng: number;
   };
 
-  /** Información adicional requerida únicamente para independientes. */
-  negocioFormalizado?: "SI" | "NO";
-
-  tipoLocalNegocio?:
-    | "PROPIO"
-    | "ALQUILER"
-    | "ANTICRETICO"
-    | "DOMICILIO"
-    | "OTRO";
-
-  /** Indica si el solicitante declara un vehículo a su nombre. */
-  tieneVehiculo: "SI" | "NO";
-
   vivienda: "PROPIA" | "FAMILIAR" | "ALQUILER" | "ANTICRETICO";
 
+  /** Parentesco cuando declara vivienda familiar. */
+  parentescoViviendaFamiliar?:
+    | "PADRES"
+    | "HIJOS"
+    | "HERMANOS"
+    | "ABUELOS"
+    | "OTROS";
+
+  /** Detalle requerido cuando selecciona Otros. */
+  detalleParentescoViviendaFamiliar?: string;
+
   /**
-   * Actualmente se solicita cuando la vivienda es
-   * alquilada o en anticrético.
+   * Se solicita para vivienda alquilada o en anticrético
+   * y corresponde a un garante con vivienda propia.
    *
    * No asumir todavía que corresponde al garante financiero
    * de la operación hasta confirmar la regla con Kivo.
@@ -199,27 +238,12 @@ export interface DatosComplementarios {
     | "VIUDO"
     | "CONYUGE";
 
-  /** Datos básicos requeridos para casado(a) o unión libre. */
-  nombreConyuge?: string;
-  celularConyuge?: string;
-
   destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
 
   /** Descripción proporcionada por el cliente sobre el uso del préstamo. */
   detalleDestinoPrestamo: string;
 }
 
-export interface Referencia {
-  nombreCompleto: string;
-  relacion: string;
-  celular: string;
-}
-
-export interface DatosReferencias {
-  personal1: Referencia;
-  personal2: Referencia;
-  laboralComercial: Referencia;
-}
 
 /** Metadatos de un archivo cargado (el binario no se persiste). */
 export interface DocumentoMeta {
@@ -230,44 +254,10 @@ export interface DocumentoMeta {
 }
 
 export interface DatosDocumentos {
-  autorizacionBic: DocumentoMeta | null;
   ciAnverso: DocumentoMeta | null;
   ciReverso: DocumentoMeta | null;
   selfie: DocumentoMeta | null;
-
-  viviendaPropia: DocumentoMeta | null;
-  viviendaAlquiler: DocumentoMeta | null;
-  viviendaAnticretico: DocumentoMeta | null;
-  viviendaFamiliar: DocumentoMeta | null;
-
-  /** Respaldos para solicitantes asalariados. */
-  asalariadoExtractoSueldo: DocumentoMeta | null;
-  asalariadoBoletasPago: DocumentoMeta | null;
-  asalariadoGestora: DocumentoMeta | null;
-  asalariadoCertificadoLaboral: DocumentoMeta | null;
-
-  /** Respaldos para solicitantes independientes. */
-  independienteExtractosIngresos: DocumentoMeta | null;
-  independienteRespaldosNegocio: DocumentoMeta | null;
-
-  /** Documentación condicional del negocio del independiente. */
-  negocioFormalizacion: DocumentoMeta | null;
-  negocioLocalPropio: DocumentoMeta | null;
-  negocioLocalAlquiler: DocumentoMeta | null;
-  negocioLocalAnticretico: DocumentoMeta | null;
-
-  /** Respaldos de préstamos vigentes. */
-  planPagosPrestamos: DocumentoMeta | null;
-  extractosPrestamos: DocumentoMeta | null;
-
-  /** Respaldo de una segunda fuente de ingresos declarada. */
-  segundoIngresoRespaldo: DocumentoMeta | null;
-
-  /** Comprobante actualizado del domicilio declarado. */
-  comprobanteDomicilio: DocumentoMeta | null;
-
-  /** Respaldo de vehículo declarado. */
-  documentoVehiculo: DocumentoMeta | null;
+  autorizacionBic: DocumentoMeta | null;
 }
 
 /** Se genera al enviar la solicitud desde el paso "Resumen". */
@@ -280,22 +270,20 @@ interface OnboardingState {
   currentStep: StepId;
   completed: Record<StepId, boolean>;
   datosPersonales: DatosPersonales | null;
+  elegibilidadInicial: ElegibilidadInicial | null;
   datosFinancieros: DatosFinancieros | null;
   simulacion: SimulacionConfirmada | null;
-  solicitudMayor: SolicitudMayor | null;
   datosComplementarios: DatosComplementarios | null;
-  referencias: DatosReferencias | null;
   datosDocumentos: DatosDocumentos | null;
   solicitudEnviada: SolicitudEnviada | null;
   cuenta: Cuenta | null;
 
   setCuenta: (cuenta: Cuenta) => void;
   setDatosPersonales: (datos: DatosPersonales) => void;
+  setElegibilidadInicial: (datos: ElegibilidadInicial | null) => void;
   setDatosFinancieros: (datos: DatosFinancieros) => void;
   setSimulacion: (datos: SimulacionConfirmada) => void;
-  setSolicitudMayor: (datos: SolicitudMayor | null) => void;
   setDatosComplementarios: (datos: DatosComplementarios) => void;
-  setReferencias: (datos: DatosReferencias) => void;
   setDatosDocumentos: (datos: DatosDocumentos) => void;
   setSolicitudEnviada: (solicitud: SolicitudEnviada) => void;
   completeAndAdvance: (step: StepId) => void;
@@ -308,7 +296,6 @@ const initialCompleted: Record<StepId, boolean> = {
   "datos-financieros": false,
   simulacion: false,
   "informacion-complementaria": false,
-  referencias: false,
   "carga-documentos": false,
   resumen: false,
 };
@@ -319,11 +306,10 @@ export const useOnboardingStore = create<OnboardingState>()(
       currentStep: "datos-personales",
       completed: { ...initialCompleted },
       datosPersonales: null,
+      elegibilidadInicial: null,
       datosFinancieros: null,
       simulacion: null,
-      solicitudMayor: null,
       datosComplementarios: null,
-      referencias: null,
       datosDocumentos: null,
       solicitudEnviada: null,
       cuenta: null,
@@ -332,17 +318,15 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       setDatosPersonales: (datos) => set({ datosPersonales: datos }),
 
+      setElegibilidadInicial: (datos) =>
+        set({ elegibilidadInicial: datos }),
+
       setDatosFinancieros: (datos) => set({ datosFinancieros: datos }),
 
       setSimulacion: (datos) => set({ simulacion: datos }),
 
-      setSolicitudMayor: (datos) => set({ solicitudMayor: datos }),
-
       setDatosComplementarios: (datos) =>
         set({ datosComplementarios: datos }),
-
-      setReferencias: (datos) =>
-        set({ referencias: datos }),
 
       setDatosDocumentos: (datos) => set({ datosDocumentos: datos }),
 
@@ -367,11 +351,10 @@ export const useOnboardingStore = create<OnboardingState>()(
           currentStep: "datos-personales",
           completed: { ...initialCompleted },
           datosPersonales: null,
+          elegibilidadInicial: null,
           datosFinancieros: null,
           simulacion: null,
-          solicitudMayor: null,
           datosComplementarios: null,
-          referencias: null,
           datosDocumentos: null,
           solicitudEnviada: null,
           cuenta: null,
@@ -380,6 +363,48 @@ export const useOnboardingStore = create<OnboardingState>()(
     {
       name: "kivo-onboarding",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+
+      migrate: (persistedState) => {
+        const state = persistedState as {
+          currentStep?: string;
+          completed?: Record<string, boolean>;
+          datosDocumentos?: Record<string, unknown> | null;
+          solicitudMayor?: unknown;
+        };
+
+        if (state.currentStep === "referencias") {
+          state.currentStep = "carga-documentos";
+        }
+
+        if (state.completed) {
+          const {
+            referencias: _referencias,
+            ...completedSinReferencias
+          } = state.completed;
+
+          state.completed = {
+            ...initialCompleted,
+            ...completedSinReferencias,
+          };
+        }
+
+        if (state.datosDocumentos) {
+          const documentos = state.datosDocumentos;
+
+          state.datosDocumentos = {
+            ciAnverso: documentos.ciAnverso ?? null,
+            ciReverso: documentos.ciReverso ?? null,
+            selfie: documentos.selfie ?? null,
+            autorizacionBic:
+              documentos.autorizacionBic ?? null,
+          };
+        }
+
+        delete state.solicitudMayor;
+
+        return state;
+      },
     },
   ),
 );

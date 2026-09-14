@@ -4,7 +4,6 @@ import {
   KivoAffixedInput,
   KivoBusinessNotice,
   KivoButton,
-  KivoDangerNotice,
   KivoField,
   KivoInput,
   KivoRadioPill,
@@ -19,7 +18,6 @@ import { AnimatePresence, motion } from "motion/react";
 import {
  ArrowRight,
  BadgeDollarSign,
- HandCoins,
  Plus,
  Store,
  Trash2,
@@ -34,7 +32,7 @@ import {
  formatBs,
  type DatosFinancierosValues,
 } from "@/lib/schemas/datos-financieros";
-import { calcularCapacidadPago } from "@/lib/simulacion";
+
 import { useOnboardingStore } from "@/store/onboarding";
 const dineroInputProps = {
  thousandSeparator: ".",
@@ -60,7 +58,8 @@ const PASOS: Paso[] = [
 ];
 
 export function DatosFinancierosForm() {
- const [tieneSegundoIngreso, setTieneSegundoIngreso] = useState(false);
+ const [tieneSegundoIngreso, setTieneSegundoIngreso] =
+  useState<boolean | null>(null);
  const [segundoIngresoOrigen, setSegundoIngresoOrigen] = useState("");
  const [segundoIngresoMonto, setSegundoIngresoMonto] = useState<
  number | undefined
@@ -97,7 +96,6 @@ export function DatosFinancierosForm() {
  control,
  handleSubmit,
  watch,
- setValue,
  formState: { errors },
  } = useForm<DatosFinancierosValues>({
  resolver: zodResolver(datosFinancierosSchema),
@@ -113,15 +111,6 @@ export function DatosFinancierosForm() {
  cuotaMensual: deuda.cuotaMensual,
  })),
 
- masDeTresDeudas:
- guardados.excepcionMasDeTres !== null
- ? true
- : guardados.deudas.length >= MAX_DEUDAS
- ? false
- : undefined,
- excepcionTipo: guardados.excepcionMasDeTres?.tipo,
- deudaCuatro: guardados.excepcionMasDeTres?.deudaCuatro,
- deudaCompra: guardados.excepcionMasDeTres?.deudaCompra,
 
  deudaMoraOVencida: guardados.sinDeudaMoraOVencida
  ? "NO"
@@ -132,10 +121,6 @@ export function DatosFinancierosForm() {
  : {
  perfilLaboral: datosPersonales?.perfilLaboral,
  deudas: [],
- masDeTresDeudas: undefined,
- excepcionTipo: undefined,
- deudaCuatro: undefined,
- deudaCompra: undefined,
  deudaMoraOVencida: undefined,
  extractos: undefined,
  },
@@ -157,55 +142,8 @@ export function DatosFinancierosForm() {
 
  const enLimiteDeudas = fields.length >= MAX_DEUDAS;
 
- /*
-  * La cuarta deuda es una excepción.
-  * Si se elimina alguna de las tres deudas principales,
-  * limpiamos automáticamente la excepción.
-  */
- useEffect(() => {
- if (fields.length < MAX_DEUDAS && values.excepcionTipo !== undefined) {
- setValue("masDeTresDeudas", undefined);
- setValue("excepcionTipo", undefined);
- setValue("deudaCuatro", undefined);
- setValue("deudaCompra", undefined);
- }
- }, [fields.length, values.excepcionTipo, setValue]);
-
- const deudaCuatroValida =
- values.excepcionTipo !== "ULTIMA_CUOTA" ||
- ((values.deudaCuatro?.entidadFinanciera ?? "").trim().length >= 2 &&
- (values.deudaCuatro?.cuotaMensual ?? 0) > 0 &&
- (values.deudaCuatro?.capitalPendiente ?? 0) > 0);
-
- const deudaCompraValida =
- values.excepcionTipo !== "COMPRA_DEUDA" ||
- ((values.deudaCompra?.entidadFinanciera ?? "").trim().length >= 2 &&
- (values.deudaCompra?.cuotaMensual ?? 0) > 0 &&
- (values.deudaCompra?.capitalPendiente ?? 0) > 0);
-
  const tieneDeudaAtrasada = values.deudaMoraOVencida === "SI";
  const sinExtractos = values.extractos === "NO";
-
- const ingresoAdicionalConsiderado =
- values.perfilLaboral === "ASALARIADO" &&
- tieneSegundoIngreso
- ? segundoIngresoMonto ?? 0
- : 0;
-
- const ingresoTotalConsiderado =
- (values.ingresoNeto ?? 0) + ingresoAdicionalConsiderado;
-
- const capacidad =
- ingresoTotalConsiderado > 0
- ? calcularCapacidadPago({
- ingresoNeto: ingresoTotalConsiderado,
- totalDeudas: totalCuotas,
- })
- : null;
-
- const sinCapacidad =
- capacidad !== null && capacidad.cuotaMaxima <= 0;
-
  function pasoCompleto(paso: Paso): boolean {
  switch (paso) {
  case "perfilLaboral":
@@ -214,29 +152,14 @@ export function DatosFinancierosForm() {
  case "ingresoNeto":
  return (values.ingresoNeto ?? 0) > 0;
 
- case "deudas": {
- const deudasPrincipalesValidas = deudas.every((deuda) => {
- return (
- (deuda?.entidadFinanciera ?? "").trim().length >= 2 &&
- (deuda?.cuotaMensual ?? 0) > 0
- );
+ case "deudas":
+ return deudas.every((deuda) => {
+  return (
+   (deuda?.entidadFinanciera ?? "")
+    .trim().length >= 2 &&
+   (deuda?.cuotaMensual ?? 0) > 0
+  );
  });
-
- const respondioSobreCuartaDeuda =
- !enLimiteDeudas || values.masDeTresDeudas !== undefined;
-
- const seleccionoCasoEspecial =
- values.masDeTresDeudas !== true ||
- values.excepcionTipo !== undefined;
-
- return (
- deudasPrincipalesValidas &&
- respondioSobreCuartaDeuda &&
- seleccionoCasoEspecial &&
- deudaCuatroValida &&
- deudaCompraValida
- );
- }
 
  case "deudaAtrasada":
  return values.deudaMoraOVencida !== undefined;
@@ -268,13 +191,18 @@ export function DatosFinancierosForm() {
  const todoCompleto = primerIncompleto === -1;
 
  const segundoIngresoCompleto =
- values.perfilLaboral !== "ASALARIADO" ||
- !tieneSegundoIngreso ||
- (
- segundoIngresoOrigen.trim().length >= 2 &&
- (segundoIngresoMonto ?? 0) > 0 &&
- aceptaRespaldoSegundoIngreso
- );
+  values.perfilLaboral !== "ASALARIADO" ||
+  (
+   tieneSegundoIngreso !== null &&
+   (
+    tieneSegundoIngreso === false ||
+    (
+     segundoIngresoOrigen.trim().length >= 2 &&
+     (segundoIngresoMonto ?? 0) > 0 &&
+     aceptaRespaldoSegundoIngreso
+    )
+   )
+  );
 
  const agregarDeuda = () => {
  if (fields.length >= MAX_DEUDAS) return;
@@ -285,18 +213,7 @@ export function DatosFinancierosForm() {
  });
  };
 
- const limpiarExcepcion = () => {
- setValue("masDeTresDeudas", false);
- setValue("excepcionTipo", undefined);
- setValue("deudaCuatro", undefined);
- setValue("deudaCompra", undefined);
- };
-
- const excepcionElegida = values.excepcionTipo !== undefined;
-
  const onSubmit = (formValues: DatosFinancierosValues) => {
- if (formValues.deudaMoraOVencida === "SI") return;
-
  const deudasNormalizadas = formValues.deudas.map((deuda) => ({
  entidadFinanciera: deuda.entidadFinanciera.trim(),
  cuotaMensual: deuda.cuotaMensual,
@@ -312,24 +229,24 @@ export function DatosFinancierosForm() {
  */
  tieneSegundoIngreso:
  formValues.perfilLaboral === "ASALARIADO"
- ? tieneSegundoIngreso
+ ? tieneSegundoIngreso === true
  : false,
 
  segundoIngresoOrigen:
  formValues.perfilLaboral === "ASALARIADO" &&
- tieneSegundoIngreso
+ tieneSegundoIngreso === true
  ? segundoIngresoOrigen.trim() || undefined
  : undefined,
 
  segundoIngresoMonto:
  formValues.perfilLaboral === "ASALARIADO" &&
- tieneSegundoIngreso
+ tieneSegundoIngreso === true
  ? segundoIngresoMonto
  : undefined,
 
  segundoIngresoRespaldado:
  formValues.perfilLaboral === "ASALARIADO" &&
- tieneSegundoIngreso &&
+ tieneSegundoIngreso === true &&
  aceptaRespaldoSegundoIngreso,
 
  numeroDeudas: deudasNormalizadas.length,
@@ -345,38 +262,7 @@ export function DatosFinancierosForm() {
 
  extractos: formValues.extractos,
 
- excepcionMasDeTres:
- formValues.excepcionTipo
- ? {
- tipo: formValues.excepcionTipo,
-
- deudaCuatro:
- formValues.excepcionTipo === "ULTIMA_CUOTA" &&
- formValues.deudaCuatro
- ? {
- entidadFinanciera:
- formValues.deudaCuatro.entidadFinanciera.trim(),
- cuotaMensual:
- formValues.deudaCuatro.cuotaMensual,
- capitalPendiente:
- formValues.deudaCuatro.capitalPendiente,
- }
- : undefined,
-
- deudaCompra:
- formValues.excepcionTipo === "COMPRA_DEUDA" &&
- formValues.deudaCompra
- ? {
- entidadFinanciera:
- formValues.deudaCompra.entidadFinanciera.trim(),
- cuotaMensual:
- formValues.deudaCompra.cuotaMensual,
- capitalPendiente:
- formValues.deudaCompra.capitalPendiente,
- }
- : undefined,
- }
- : null,
+ excepcionMasDeTres: null,
  });
 
  completeAndAdvance("datos-financieros");
@@ -545,7 +431,7 @@ export function DatosFinancierosForm() {
  setAceptaRespaldoSegundoIngreso(false);
  }}
  className={`min-h-11 cursor-pointer rounded-xl px-5 text-sm font-bold transition ${
- !tieneSegundoIngreso
+ tieneSegundoIngreso === false
  ? "bg-primary text-white"
  : "bg-surface-blue text-primary-dark"
  }`}
@@ -553,6 +439,12 @@ export function DatosFinancierosForm() {
  No
  </button>
  </div>
+
+ {tieneSegundoIngreso === null ? (
+  <p className="mt-2 text-xs font-semibold text-warning">
+   Selecciona Sí o No para continuar.
+  </p>
+ ) : null}
  </fieldset>
 
  <AnimatePresence initial={false}>
@@ -602,11 +494,11 @@ export function DatosFinancierosForm() {
 
  <div className="min-w-0">
  <p className="text-[15px] font-extrabold leading-5 text-[#071A25]">
- Importante: debes respaldar los ingresos de tu segunda actividad
+ Importante: debes respaldar tus ingresos adicionales
  </p>
 
  <p className="mt-2 text-xs leading-5 text-[#5F7180]">
- Si declaras ingresos adicionales provenientes de una segunda actividad,{" "}
+ Si declaras un ingreso adicional,{" "}
  <strong className="font-extrabold text-[#E08600]">
  deberás respaldar el 100% de ese ingreso con extractos bancarios
  </strong>{" "}
@@ -758,296 +650,11 @@ export function DatosFinancierosForm() {
  ) : null}
 
  {enLimiteDeudas ? (
- <div className="mt-5 rounded-2xl border border-warning-border bg-warning-bg p-4 sm:p-5">
- <div className="flex items-start gap-3">
- <HandCoins className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-
- <div>
- <p className="text-sm font-bold text-ink-soft">
- Ya registraste 3 deudas
- </p>
-
- <p className="mt-1 text-xs leading-5 text-body">
- Antes de continuar, necesitamos saber si tienes una deuda adicional.
- </p>
- </div>
- </div>
-
- <fieldset className="mt-4">
- <legend className="text-sm font-extrabold text-ink">
- ¿Tienes una cuarta deuda?
- </legend>
-
- <div className="mt-3 grid max-w-xs grid-cols-2 gap-3">
- <button
- type="button"
- onClick={() => {
- setValue("masDeTresDeudas", true, {
- shouldValidate: true,
- shouldDirty: true,
- });
- }}
- className={`min-h-11 rounded-xl px-5 text-sm font-bold transition-colors ${
- values.masDeTresDeudas === true
- ? "bg-primary text-white"
- : "bg-white text-primary-dark hover:bg-surface-blue"
- }`}
- >
- Sí
- </button>
-
- <button
- type="button"
- onClick={() => {
- setValue("masDeTresDeudas", false, {
- shouldValidate: true,
- shouldDirty: true,
- });
- setValue("excepcionTipo", undefined);
- setValue("deudaCuatro", undefined);
- setValue("deudaCompra", undefined);
- }}
- className={`min-h-11 rounded-xl px-5 text-sm font-bold transition-colors ${
- values.masDeTresDeudas === false
- ? "bg-primary text-white"
- : "bg-white text-primary-dark hover:bg-surface-blue"
- }`}
- >
- No
- </button>
- </div>
-
- {values.masDeTresDeudas === undefined ? (
- <p className="mt-2 text-xs font-semibold text-warning">
- Selecciona Sí o No para continuar.
- </p>
- ) : null}
- </fieldset>
-
- <AnimatePresence initial={false}>
- {values.masDeTresDeudas === true ? (
- <motion.div
- key="casos-cuarta-deuda"
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: "auto", opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- className="overflow-hidden"
- >
- <div className="mt-5 border-t border-warning-border pt-5">
- <p className="text-sm font-bold text-ink">
- ¿Cuál de estas situaciones aplica a tu cuarta deuda?
- </p>
-
- <p className="mt-1 text-xs leading-5 text-body">
- Para continuar con una cuarta deuda, debe cumplir una de estas condiciones.
- </p>
-
- <div className="mt-4 grid gap-3 sm:grid-cols-2">
- <KivoRadioPill
- label="Una de mis deudas está en su última cuota"
- inputProps={{
- value: "ULTIMA_CUOTA",
- ...register("excepcionTipo"),
- }}
- />
-
- <KivoRadioPill
- label="Quiero que Kivo compre una de mis deudas"
- inputProps={{
- value: "COMPRA_DEUDA",
- ...register("excepcionTipo"),
- }}
- />
- </div>
-
- <AnimatePresence initial={false} mode="wait">
- {values.excepcionTipo === "ULTIMA_CUOTA" ? (
- <motion.div
- key="deuda-cuatro"
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: "auto", opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- className="overflow-hidden"
- >
- <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
- <p className="text-sm font-extrabold text-ink">
- Deuda 4
- </p>
-
- <p className="mt-1 text-xs leading-5 text-body">
- Registra la deuda que se encuentra en su última cuota. En este caso, el capital pendiente es obligatorio.
- </p>
-
- <div className="mt-4 grid gap-4 sm:grid-cols-2">
- <KivoInput
- id="deuda-cuatro-entidad"
- label="Entidad financiera"
- type="text"
- placeholder="Ej. Banco Unión"
- error={errors.deudaCuatro?.entidadFinanciera?.message}
- {...register("deudaCuatro.entidadFinanciera")}
-/>
-
- <KivoField
- label="Cuota mensual"
- htmlFor="deuda-cuatro-cuota"
- error={errors.deudaCuatro?.cuotaMensual?.message}
- >
- <Controller
- name="deudaCuatro.cuotaMensual"
- control={control}
- render={({ field }) => (
- <KivoAffixedInput prefix="Bs">
- <NumericFormat
- id="deuda-cuatro-cuota"
- getInputRef={field.ref}
- value={field.value ?? ""}
- onValueChange={(value) =>
- field.onChange(value.floatValue)
- }
- onBlur={field.onBlur}
- placeholder="Ej. 800"
- className={kivoAffixedInputClassName}
- {...dineroInputProps}
- />
- </KivoAffixedInput>
- )}
- />
- </KivoField>
-
- <div className="sm:col-span-2">
- <KivoField
- label="Capital pendiente"
- htmlFor="deuda-cuatro-capital"
- error={errors.deudaCuatro?.capitalPendiente?.message}
- >
- <Controller
- name="deudaCuatro.capitalPendiente"
- control={control}
- render={({ field }) => (
- <KivoAffixedInput prefix="Bs">
- <NumericFormat
- id="deuda-cuatro-capital"
- getInputRef={field.ref}
- value={field.value ?? ""}
- onValueChange={(value) =>
- field.onChange(value.floatValue)
- }
- onBlur={field.onBlur}
- placeholder="Ej. 12.000"
- className={kivoAffixedInputClassName}
- {...dineroInputProps}
- />
- </KivoAffixedInput>
- )}
- />
- </KivoField>
- </div>
- </div>
- </div>
- </motion.div>
- ) : null}
-
- {values.excepcionTipo === "COMPRA_DEUDA" ? (
- <motion.div
- key="deuda-compra"
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: "auto", opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- className="overflow-hidden"
- >
- <div className="mt-4 rounded-2xl border border-warning-border bg-white p-4 sm:p-5">
- <p className="text-sm font-extrabold text-ink">
- Deuda que Kivo evaluará comprar
- </p>
-
- <p className="mt-1 text-xs leading-5 text-body">
- Registra los datos de la deuda que quieres incluir en la evaluación de compra.
- </p>
-
- <div className="mt-4 grid gap-4 sm:grid-cols-2">
- <KivoInput
- id="deuda-compra-entidad"
- label="Entidad financiera"
- type="text"
- placeholder="Ej. Banco Unión"
- error={errors.deudaCompra?.entidadFinanciera?.message}
- {...register("deudaCompra.entidadFinanciera")}
-/>
-
- <KivoField
- label="Cuota mensual"
- htmlFor="deuda-compra-cuota"
- error={errors.deudaCompra?.cuotaMensual?.message}
- >
- <Controller
- name="deudaCompra.cuotaMensual"
- control={control}
- render={({ field }) => (
- <KivoAffixedInput prefix="Bs">
- <NumericFormat
- id="deuda-compra-cuota"
- getInputRef={field.ref}
- value={field.value ?? ""}
- onValueChange={(value) =>
- field.onChange(value.floatValue)
- }
- onBlur={field.onBlur}
- placeholder="Ej. 800"
- className={kivoAffixedInputClassName}
- {...dineroInputProps}
- />
- </KivoAffixedInput>
- )}
- />
- </KivoField>
-
- <div className="sm:col-span-2">
- <KivoField
- label="Capital pendiente"
- htmlFor="deuda-compra-capital"
- error={errors.deudaCompra?.capitalPendiente?.message}
- >
- <Controller
- name="deudaCompra.capitalPendiente"
- control={control}
- render={({ field }) => (
- <KivoAffixedInput prefix="Bs">
- <NumericFormat
- id="deuda-compra-capital"
- getInputRef={field.ref}
- value={field.value ?? ""}
- onValueChange={(value) =>
- field.onChange(value.floatValue)
- }
- onBlur={field.onBlur}
- placeholder="Ej. 12.000"
- className={kivoAffixedInputClassName}
- {...dineroInputProps}
- />
- </KivoAffixedInput>
- )}
- />
- </KivoField>
- </div>
- </div>
- </div>
- </motion.div>
- ) : null}
- </AnimatePresence>
- </div>
- </motion.div>
- ) : null}
- </AnimatePresence>
-
- {values.masDeTresDeudas === false ? (
- <div className="mt-4 rounded-xl bg-surface-blue px-4 py-3">
- <p className="text-[13px] font-bold leading-5 text-primary-dark">
- No tienes una cuarta deuda. Puedes continuar normalmente.
- </p>
- </div>
- ) : null}
- </div>
+  <div className="mt-4 rounded-xl bg-surface-blue px-4 py-3">
+   <p className="text-[13px] font-bold leading-5 text-primary-dark">
+    Alcanzaste el máximo de deudas que puedes registrar actualmente.
+   </p>
+  </div>
  ) : null}
 
  {totalCuotas > 0 ? (
@@ -1056,25 +663,7 @@ export function DatosFinancierosForm() {
  Cuotas mensuales actuales: {formatBs(totalCuotas)}
  </p>
  ) : null}
-
- <AnimatePresence>
- {sinCapacidad ? (
- <motion.div
- initial={{ height: 0, opacity: 0 }}
- animate={{ height: "auto", opacity: 1 }}
- exit={{ height: 0, opacity: 0 }}
- className="overflow-hidden"
- >
- <div className="pt-4">
- <KivoDangerNotice title="Por ahora no podemos continuar">
- Según tus ingresos y compromisos actuales, no queda
- suficiente capacidad para asumir una nueva cuota.
- </KivoDangerNotice>
- </div>
- </motion.div>
- ) : null}
- </AnimatePresence>
- </div>
+</div>
 
  {/* 4. Deudas atrasadas */}
  <fieldset
@@ -1121,10 +710,11 @@ export function DatosFinancierosForm() {
  className="overflow-hidden"
  >
  <div className="pt-4">
- <KivoDangerNotice title="Por ahora no podemos continuar">
- Mientras tengas deudas atrasadas, Kivo no podrá continuar
- con la evaluación de la solicitud.
- </KivoDangerNotice>
+ <KivoBusinessNotice>
+ Registramos que actualmente declaraste una deuda vencida,
+ atrasada o en mora. Esta información será considerada
+ durante la evaluación de tu solicitud.
+ </KivoBusinessNotice>
  </div>
  </motion.div>
  ) : null}
@@ -1200,12 +790,7 @@ export function DatosFinancierosForm() {
  <div className="mt-6">
  <KivoButton
  type="submit"
- disabled={
-   !todoCompleto ||
-   !segundoIngresoCompleto ||
-   tieneDeudaAtrasada ||
-   sinCapacidad
- }
+ disabled={!todoCompleto || !segundoIngresoCompleto}
  fullWidth
  className="sm:w-auto"
  iconRight={

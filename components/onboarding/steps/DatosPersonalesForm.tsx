@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -184,6 +185,13 @@ export function DatosPersonalesForm() {
     );
 
 
+  const setElegibilidadInicial =
+    useOnboardingStore(
+      (state) =>
+        state.setElegibilidadInicial,
+    );
+
+
   const completeAndAdvance =
     useOnboardingStore(
       (state) =>
@@ -278,6 +286,65 @@ export function DatosPersonalesForm() {
     !ciudadTieneCobertura(
       values.ciudad,
     );
+
+
+  useEffect(() => {
+    const fechaIngresada =
+      Boolean(values.fechaNacimiento);
+
+    const ciudadIngresada =
+      Boolean(values.ciudad);
+
+    if (
+      fechaIngresada &&
+      (edad < EDAD_MINIMA ||
+        edad > EDAD_MAXIMA)
+    ) {
+      setElegibilidadInicial({
+        estado: "NO_ELEGIBLE",
+        motivo: "EDAD_FUERA_RANGO",
+        evaluadaEn:
+          new Date().toISOString(),
+      });
+
+      return;
+    }
+
+    if (sinCobertura) {
+      setElegibilidadInicial({
+        estado: "NO_ELEGIBLE",
+        motivo:
+          "CIUDAD_SIN_COBERTURA",
+        evaluadaEn:
+          new Date().toISOString(),
+      });
+
+      return;
+    }
+
+    if (
+      fechaIngresada &&
+      ciudadIngresada &&
+      edad >= EDAD_MINIMA &&
+      edad <= EDAD_MAXIMA &&
+      ciudadTieneCobertura(
+        values.ciudad,
+      )
+    ) {
+      setElegibilidadInicial({
+        estado: "ELEGIBLE",
+        motivo: null,
+        evaluadaEn:
+          new Date().toISOString(),
+      });
+    }
+  }, [
+    edad,
+    sinCobertura,
+    values.fechaNacimiento,
+    values.ciudad,
+    setElegibilidadInicial,
+  ]);
 
 
   function onSubmit(

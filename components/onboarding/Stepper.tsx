@@ -15,7 +15,6 @@ const STEP_LABELS: Record<StepId, string> = {
   "datos-financieros": "Tus finanzas",
   simulacion: "Elige tu préstamo",
   "informacion-complementaria": "Más sobre ti",
-  referencias: "Referencias",
   "carga-documentos": "Tus documentos",
   resumen: "Resumen",
 };

@@ -315,7 +315,6 @@ export const BLOQUES_PERFIL: BloquePerfil[] = [
   { nombre: "Datos personales", avance: 1 },
   { nombre: "Domicilio", avance: 1 },
   { nombre: "Trabajo e ingresos", avance: 0.6 },
-  { nombre: "Referencias", avance: 0 },
   { nombre: "Documentos", avance: 0.5 },
 ];
 
@@ -358,16 +357,11 @@ export const DATOS_CAPTURADOS: Record<string, Campo[]> = {
     { etiqueta: "Deudas registradas", valor: "1 · Bs 980 mensual" },
     { etiqueta: "Respaldo de ingresos", valor: "Sin cargar", falta: true },
   ],
-  Referencias: [
-    { etiqueta: "Referencia personal 1", valor: "Sin registrar", falta: true },
-    { etiqueta: "Referencia personal 2", valor: "Sin registrar", falta: true },
-    { etiqueta: "Referencia comercial", valor: "Sin registrar", falta: true },
-  ],
   Documentos: [
     { etiqueta: "CI anverso", valor: "Cargado · 27 jul", verificado: true },
     { etiqueta: "CI reverso", valor: "Cargado · 27 jul", verificado: true },
-    { etiqueta: "Factura de luz o agua", valor: "Sin cargar", falta: true },
-    { etiqueta: "Respaldo de ingresos", valor: "Sin cargar", falta: true },
+    { etiqueta: "Fotografía / selfie", valor: "Cargado · 27 jul", verificado: true },
+    { etiqueta: "Autorización expresa firmada", valor: "Sin cargar", falta: true },
   ],
 };
 

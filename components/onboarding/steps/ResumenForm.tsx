@@ -5,13 +5,13 @@ import confetti from "canvas-confetti";
 import { Pencil, ShieldCheck } from "lucide-react";
 
 import { useOnboardingStore } from "@/store/onboarding";
-import { calcularCapacidadPago } from "@/lib/simulacion";
 import { formatBs } from "@/lib/schemas/datos-financieros";
 import {
  CIUDADES,
  calcularEdad,
 } from "@/lib/schemas/datos-personales";
 import {
+ FAMILY_HOUSING_RELATIONSHIPS,
  HOUSING_TYPES,
  MARITAL_STATUSES,
 } from "@/lib/schemas/informacion-complementaria";
@@ -134,13 +134,7 @@ export function ResumenForm() {
  </p>
  );
  }
-
- const capacidad = calcularCapacidadPago({
- ingresoNeto: datosFinancieros.ingresoNeto,
- totalDeudas: datosFinancieros.totalCuotasMensuales,
- });
-
- const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
+const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
 
  const vivienda = buscarLabel(
  HOUSING_TYPES,
@@ -151,6 +145,18 @@ export function ResumenForm() {
  MARITAL_STATUSES,
  datosComplementarios.estadoCivil,
  );
+
+ const parentescoVivienda = buscarLabel(
+ FAMILY_HOUSING_RELATIONSHIPS,
+ datosComplementarios.parentescoViviendaFamiliar,
+ );
+
+ const esAsalariado =
+ datosFinancieros.perfilLaboral === "ASALARIADO";
+
+ const requiereGarante =
+ datosComplementarios.vivienda === "ALQUILER" ||
+ datosComplementarios.vivienda === "ANTICRETICO";
 
  const edad = calcularEdad(datosPersonales.fechaNacimiento);
 
@@ -173,7 +179,7 @@ export function ResumenForm() {
  meta: datosDocumentos.selfie,
  },
  {
- label: "Autorización",
+ label: "Autorización expresa",
  meta: datosDocumentos.autorizacionBic,
  },
  ];
@@ -293,11 +299,13 @@ export function ResumenForm() {
  />
 
  <Dato
- label="Capacidad de pago"
- valor={formatBs(
- Math.max(0, capacidad.cuotaMaxima),
- )}
- />
+  label="Endeudamiento (PDE)"
+  valor={
+ typeof simulacion.porcentajeEndeudamiento === "number"
+ ? `${simulacion.porcentajeEndeudamiento.toFixed(2)}%`
+ : "—"
+}
+/>
  </SummarySection>
 
  <SummarySection
@@ -332,10 +340,8 @@ export function ResumenForm() {
  }
  >
  <Dato
- label="Empresa / negocio"
- valor={
- datosComplementarios.nombreEmpresaNegocio
- }
+ label={esAsalariado ? "Empresa" : "Negocio"}
+ valor={datosComplementarios.nombreEmpresaNegocio}
  />
 
  <Dato
@@ -344,19 +350,102 @@ export function ResumenForm() {
  />
 
  <Dato
- label="Cargo / actividad"
+ label={esAsalariado ? "Cargo" : "Ocupación"}
  valor={datosComplementarios.cargoActividad}
  />
 
  <Dato
- label="Dirección laboral"
+ label={
+ esAsalariado
+ ? "Antigüedad laboral"
+ : "Antigüedad en la actividad"
+ }
+ valor={`${datosComplementarios.antiguedadActividad} meses`}
+ />
+
+ <Dato
+ label={
+ esAsalariado
+ ? "Dirección laboral"
+ : "Dirección del negocio"
+ }
  valor={datosComplementarios.direccionLaboral}
  />
+
+ {!esAsalariado ? (
+ <>
+ <Dato
+ label="NIT"
+ valor={
+ datosComplementarios.tieneNit === "SI"
+ ? "Sí"
+ : datosComplementarios.tieneNit === "NO"
+ ? "No"
+ : "—"
+ }
+ />
+
+ <Dato
+ label="Licencia de funcionamiento / patente"
+ valor={
+ datosComplementarios.tieneLicenciaFuncionamiento === "SI"
+ ? "Sí"
+ : datosComplementarios.tieneLicenciaFuncionamiento === "NO"
+ ? "No"
+ : "—"
+ }
+ />
+ </>
+ ) : null}
+
+ {esAsalariado ? (
+ <>
+ <Dato
+ label="AFP"
+ valor={
+ datosComplementarios.tieneAfp === "SI"
+ ? "Sí"
+ : "No"
+ }
+ />
+
+ <Dato
+ label="Boletas de pago"
+ valor={
+ datosComplementarios.tieneBoletasPago === "SI"
+ ? "Sí"
+ : "No"
+ }
+ />
+ </>
+ ) : null}
 
  <Dato
  label="Tipo de vivienda"
  valor={vivienda}
  />
+
+ {datosComplementarios.vivienda === "FAMILIAR" ? (
+ <Dato
+ label="Vivienda familiar"
+ valor={
+ datosComplementarios.parentescoViviendaFamiliar === "OTROS"
+ ? datosComplementarios.detalleParentescoViviendaFamiliar || parentescoVivienda
+ : parentescoVivienda
+ }
+ />
+ ) : null}
+
+ {requiereGarante ? (
+ <Dato
+ label="Garante con vivienda propia"
+ valor={
+ datosComplementarios.tieneGarante === "SI"
+ ? "Sí"
+ : "No"
+ }
+ />
+ ) : null}
 
  <Dato
  label="Estado civil"
@@ -371,6 +460,11 @@ export function ResumenForm() {
  ? "Capital de trabajo"
  : "Uso personal"
  }
+ />
+
+ <Dato
+ label="¿Para qué necesitas el préstamo?"
+ valor={datosComplementarios.detalleDestinoPrestamo}
  />
  </SummarySection>
 

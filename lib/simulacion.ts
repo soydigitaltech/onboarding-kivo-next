@@ -1,3 +1,5 @@
+import { KIVO_ONBOARDING_DEFAULTS } from "@/lib/config/kivo";
+
 /**
  * Motor de simulación de préstamos Kivo.
  *
@@ -10,16 +12,27 @@
 
 export const REGLAS_SIMULACION = {
   /** Tasa mensual. */
-  tasaMensualPorcentaje: 3,
+  tasaMensualPorcentaje: KIVO_ONBOARDING_DEFAULTS.tasaMensualPorcentaje,
 
   montoMinimo: 7000,
+
+  /**
+   * Límite visual utilizado por el slider.
+   * No representa el monto máximo del préstamo.
+   */
   montoMaximo: 50000,
 
-  /** Los montos solo avanzan de Bs 1.000 en Bs 1.000. */
-  pasoMonto: 1000,
+  /**
+   * Permite respetar límites exactos como
+   * Bs 20.001, 35.001 y 50.001.
+   */
+  pasoMonto: 1,
 
   /** Plazos disponibles, siempre de tres en tres meses. */
-  plazosMeses: [6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+  plazosMeses: Array.from(
+    { length: 67 },
+    (_, index) => index + 6,
+  ),
 
   castigoGastosPersonales: 0.4,
   margenAhorroSobreSaldo: 0.1,
@@ -28,20 +41,33 @@ export const REGLAS_SIMULACION = {
    * Parámetros provisionales para mostrar el desglose.
    * Deben confirmarse con Kivo antes de producción.
    */
-  seguroDesgravamenMensualPorcentaje: 0.15,
-  gastosAdministrativosMensuales: 18,
+  seguroDesgravamenMensualPorcentaje: 0.07,
 } as const;
 
-export type DestinoPrestamo = "CAPITAL_TRABAJO" | "USO_PERSONAL";
 
 export interface CapacidadPago {
   ingresoNeto: number;
   gastosPersonales: number;
   saldoDisponible: number;
   totalDeudas: number;
+
+  /** MD = IN - GP - TD */
   disponibleTrasDeudas: number;
+
+  /** DIF = MD - CK */
+  diferencia: number;
+
+  /**
+   * Se conserva por compatibilidad.
+   * Representa la diferencia disponible después de CK.
+   */
   margenAhorro: number;
-  cuotaMaxima: number;
+
+  /** MA = DIF / IN expresado en porcentaje. */
+  margenAhorroPorcentaje: number;
+
+  /** PDE = (CK + TD) / IN expresado en porcentaje. */
+  porcentajeEndeudamiento: number;
 }
 
 export interface DesgloseCuota {
@@ -65,7 +91,6 @@ export interface CronogramaItem {
 export interface ResultadoSimulacion {
   monto: number;
   plazoMeses: number;
-  destinoPrestamo: DestinoPrestamo;
 
   cuotaBase: number;
   cuotaMensual: number;
@@ -77,8 +102,12 @@ export interface ResultadoSimulacion {
   desglosePrimeraCuota: DesgloseCuota;
   cronograma: CronogramaItem[];
 
+  cargoAdministrativoConfigurado: boolean;
+  motivoCalculoNoDisponible:
+    | "CARGO_ADMINISTRATIVO_NO_CONFIGURADO"
+    | null;
+
   capacidad: CapacidadPago;
-  porcentajeCapacidad: number;
   nivelCapacidad: "COMODA" | "AJUSTADA" | "AL_LIMITE";
   viable: boolean;
 }
@@ -102,59 +131,114 @@ export interface Alternativa {
 export function calcularCapacidadPago({
   ingresoNeto,
   totalDeudas,
+  cuotaKivo = 0,
 }: {
   ingresoNeto: number;
   totalDeudas: number;
+  cuotaKivo?: number;
 }): CapacidadPago {
   const gastosPersonales = redondear(
-    ingresoNeto * REGLAS_SIMULACION.castigoGastosPersonales,
+    ingresoNeto *
+      REGLAS_SIMULACION.castigoGastosPersonales,
   );
 
-  const saldoDisponible = redondear(ingresoNeto - gastosPersonales);
-  const disponibleTrasDeudas = redondear(saldoDisponible - totalDeudas);
-
-  const margenAhorro = redondear(
-    saldoDisponible * REGLAS_SIMULACION.margenAhorroSobreSaldo,
+  const saldoDisponible = redondear(
+    ingresoNeto - gastosPersonales,
   );
 
-  const cuotaMaxima = redondear(disponibleTrasDeudas - margenAhorro);
+  const disponibleTrasDeudas = redondear(
+    saldoDisponible - totalDeudas,
+  );
 
-  return {
+  const diferencia = redondear(
+    disponibleTrasDeudas - cuotaKivo,
+  );
+
+  const porcentajeEndeudamiento =
+    ingresoNeto > 0
+      ? redondear(
+          ((cuotaKivo + totalDeudas) /
+            ingresoNeto) *
+            100,
+        )
+      : 100;
+
+  const margenAhorroPorcentaje =
+    ingresoNeto > 0
+      ? redondear(
+          (diferencia / ingresoNeto) * 100,
+        )
+      : 0;
+return {
     ingresoNeto,
     gastosPersonales,
     saldoDisponible,
     totalDeudas,
     disponibleTrasDeudas,
-    margenAhorro,
-    cuotaMaxima,
+    diferencia,
+
+    // Compatibilidad con componentes existentes.
+    margenAhorro: diferencia,
+
+    margenAhorroPorcentaje,
+    porcentajeEndeudamiento,
   };
 }
 
 /**
  * Define los plazos disponibles según el monto solicitado.
  */
-export function obtenerPlazosPorMonto(monto: number): number[] {
-  if (monto <= 15000) {
-    return [6, 9, 12, 15, 18, 21, 24];
+export function obtenerPlazosPorMonto(
+  monto: number,
+): number[] {
+  let minimo: number;
+  let maximo: number;
+
+  if (monto <= 20000) {
+    minimo = 6;
+    maximo = 24;
+  } else if (monto <= 35000) {
+    minimo = 6;
+    maximo = 36;
+  } else if (monto <= 50000) {
+    minimo = 12;
+    maximo = 48;
+  } else {
+    minimo = 12;
+    maximo = 72;
   }
 
-  if (monto <= 25000) {
-    return [9, 12, 15, 18, 21, 24, 27, 30];
-  }
-
-  return [12, 15, 18, 21, 24, 27, 30, 33, 36];
+  return Array.from(
+    {
+      length: maximo - minimo + 1,
+    },
+    (_, index) => minimo + index,
+  );
 }
 
 /**
  * Garantiza montos válidos, dentro del rango y en incrementos de Bs 1.000.
  */
 export function normalizarMonto(valor: number): number {
-  const { montoMinimo, montoMaximo, pasoMonto } = REGLAS_SIMULACION;
+  const {
+    montoMinimo,
+    pasoMonto,
+  } = REGLAS_SIMULACION;
 
-  const acotado = Math.min(montoMaximo, Math.max(montoMinimo, valor));
-  const normalizado = Math.round(acotado / pasoMonto) * pasoMonto;
+  const acotado = Math.max(
+    montoMinimo,
+    valor,
+  );
 
-  return Math.min(montoMaximo, Math.max(montoMinimo, normalizado));
+  const normalizado =
+    Math.round(
+      acotado / pasoMonto,
+    ) * pasoMonto;
+
+  return Math.max(
+    montoMinimo,
+    normalizado,
+  );
 }
 
 /**
@@ -186,19 +270,37 @@ function calcularSeguroMensual(monto: number): number {
   );
 }
 
+
+export function calcularGastoAdministrativoMensual(
+  monto: number,
+): number | null {
+  const rango =
+    KIVO_ONBOARDING_DEFAULTS.cargosAdministrativos.find(
+      (item) =>
+        monto >= item.desde &&
+        monto <= item.hasta,
+    );
+
+  return rango?.cargo ?? null;
+}
+
 function generarCronograma({
   monto,
   plazoMeses,
   cuotaBase,
   seguroMensual,
+  gastosMensuales,
 }: {
   monto: number;
   plazoMeses: number;
   cuotaBase: number;
   seguroMensual: number;
+  gastosMensuales: number;
 }): CronogramaItem[] {
-  const tasa = REGLAS_SIMULACION.tasaMensualPorcentaje / 100;
-  const gastos = REGLAS_SIMULACION.gastosAdministrativosMensuales;
+  const tasa =
+    REGLAS_SIMULACION.tasaMensualPorcentaje / 100;
+
+  const gastos = gastosMensuales;
 
   let saldo = monto;
   const cronograma: CronogramaItem[] = [];
@@ -227,35 +329,58 @@ export function simular({
   plazoMeses,
   ingresoNeto,
   totalDeudas,
-  destinoPrestamo = "CAPITAL_TRABAJO",
 }: {
   monto: number;
   plazoMeses: number;
   ingresoNeto: number;
   totalDeudas: number;
-  destinoPrestamo?: DestinoPrestamo;
 }): ResultadoSimulacion {
   const montoNormalizado = normalizarMonto(monto);
-  const capacidad = calcularCapacidadPago({ ingresoNeto, totalDeudas });
 
   const cuotaBase = calcularCuotaMensual({
     monto: montoNormalizado,
     plazoMeses,
   });
 
-  const seguroMensual = calcularSeguroMensual(montoNormalizado);
-  const gastosMensuales = REGLAS_SIMULACION.gastosAdministrativosMensuales;
+  const seguroMensual =
+    calcularSeguroMensual(montoNormalizado);
 
-  const cuotaMensual = redondear(
-    cuotaBase + seguroMensual + gastosMensuales,
-  );
+  const gastoAdministrativo =
+    calcularGastoAdministrativoMensual(
+      montoNormalizado,
+    );
 
-  const cronograma = generarCronograma({
-    monto: montoNormalizado,
-    plazoMeses,
-    cuotaBase,
-    seguroMensual,
+  const cargoAdministrativoConfigurado =
+    gastoAdministrativo !== null;
+
+  const gastosMensuales =
+    gastoAdministrativo ?? 0;
+
+  const cuotaMensual =
+    cargoAdministrativoConfigurado
+      ? redondear(
+          cuotaBase +
+            seguroMensual +
+            gastosMensuales,
+        )
+      : 0;
+
+  const capacidad = calcularCapacidadPago({
+    ingresoNeto,
+    totalDeudas,
+    cuotaKivo: cuotaMensual,
   });
+
+  const cronograma =
+    cargoAdministrativoConfigurado
+      ? generarCronograma({
+          monto: montoNormalizado,
+          plazoMeses,
+          cuotaBase,
+          seguroMensual,
+          gastosMensuales,
+        })
+      : [];
 
   const interesTotal = redondear(
     cronograma.reduce((total, cuota) => total + cuota.interes, 0),
@@ -275,22 +400,16 @@ export function simular({
 
   const primeraCuota = cronograma[0];
 
-  const porcentajeCapacidad =
-    capacidad.cuotaMaxima > 0
-      ? redondear((cuotaMensual / capacidad.cuotaMaxima) * 100)
-      : 100;
-
   const nivelCapacidad =
-    porcentajeCapacidad <= 70
+    capacidad.porcentajeEndeudamiento < 40
       ? "COMODA"
-      : porcentajeCapacidad <= 90
+      : capacidad.porcentajeEndeudamiento < 51
         ? "AJUSTADA"
         : "AL_LIMITE";
 
   return {
     monto: montoNormalizado,
     plazoMeses,
-    destinoPrestamo,
     cuotaBase,
     cuotaMensual,
     totalPagar,
@@ -305,13 +424,20 @@ export function simular({
       total: cuotaMensual,
     },
     cronograma,
+
+    cargoAdministrativoConfigurado,
+    motivoCalculoNoDisponible:
+      cargoAdministrativoConfigurado
+        ? null
+        : "CARGO_ADMINISTRATIVO_NO_CONFIGURADO",
+
     capacidad,
-    porcentajeCapacidad,
     nivelCapacidad,
     viable:
+      cargoAdministrativoConfigurado &&
       cuotaMensual > 0 &&
-      capacidad.cuotaMaxima > 0 &&
-      cuotaMensual <= capacidad.cuotaMaxima,
+      ingresoNeto > 0 &&
+      capacidad.porcentajeEndeudamiento < 51,
   };
 }
 
@@ -319,12 +445,10 @@ export function compararPlazos({
   monto,
   ingresoNeto,
   totalDeudas,
-  destinoPrestamo,
 }: {
   monto: number;
   ingresoNeto: number;
   totalDeudas: number;
-  destinoPrestamo: DestinoPrestamo;
 }): ComparacionPlazo[] {
   const plazos = obtenerPlazosPorMonto(monto);
 
@@ -334,7 +458,6 @@ export function compararPlazos({
       plazoMeses,
       ingresoNeto,
       totalDeudas,
-      destinoPrestamo,
     });
 
     return {
@@ -367,13 +490,11 @@ export function buscarAlternativa({
   plazoMeses,
   ingresoNeto,
   totalDeudas,
-  destinoPrestamo = "CAPITAL_TRABAJO",
 }: {
   monto: number;
   plazoMeses: number;
   ingresoNeto: number;
   totalDeudas: number;
-  destinoPrestamo?: DestinoPrestamo;
 }): Alternativa | null {
   const montoNormalizado = normalizarMonto(monto);
   const plazosDisponibles = obtenerPlazosPorMonto(montoNormalizado);
@@ -388,7 +509,6 @@ export function buscarAlternativa({
       plazoMeses: plazo,
       ingresoNeto,
       totalDeudas,
-      destinoPrestamo,
     });
 
     if (resultado.viable) {
@@ -414,7 +534,6 @@ export function buscarAlternativa({
       plazoMeses: plazoMasLargo,
       ingresoNeto,
       totalDeudas,
-      destinoPrestamo,
     });
 
     if (resultado.viable) {

@@ -16,11 +16,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, BriefcaseBusiness, ShoppingBag } from "lucide-react";
 
 import {
+ FAMILY_HOUSING_RELATIONSHIPS,
  HOUSING_TYPES,
  MARITAL_STATUSES,
+ RUBROS,
  informacionComplementariaSchema,
  type InformacionComplementariaValues,
 } from "@/lib/schemas/informacion-complementaria";
+import { calcularEdad } from "@/lib/schemas/datos-personales";
 import { useOnboardingStore } from "@/store/onboarding";
 import type { Coordenadas } from "@/components/onboarding/steps/MapaUbicacion";
 const MapaUbicacion = dynamic(
@@ -38,22 +41,25 @@ const MapaUbicacion = dynamic(
 );
 const EMPTY_VALUES: InformacionComplementariaValues = {
  nombreEmpresaNegocio: "",
- rubro: "",
+ rubro:
+ undefined as unknown as InformacionComplementariaValues["rubro"],
  cargoActividad: "",
  antiguedadActividad: undefined as unknown as number,
+ tieneNit: undefined,
+ tieneLicenciaFuncionamiento: undefined,
  direccionLaboral: "",
- negocioFormalizado: undefined,
- tipoLocalNegocio: undefined,
- tieneVehiculo: undefined as unknown as InformacionComplementariaValues["tieneVehiculo"],
- vivienda: undefined as unknown as InformacionComplementariaValues["vivienda"],
+ tieneAfp: undefined,
+ tieneBoletasPago: undefined,
+ vivienda:
+ undefined as unknown as InformacionComplementariaValues["vivienda"],
+ parentescoViviendaFamiliar: undefined,
+ detalleParentescoViviendaFamiliar: "",
  estadoCivil:
  undefined as unknown as InformacionComplementariaValues["estadoCivil"],
  destinoPrestamo:
  undefined as unknown as InformacionComplementariaValues["destinoPrestamo"],
  detalleDestinoPrestamo: "",
  tieneGarante: undefined,
- nombreConyuge: "",
- celularConyuge: "",
 };
 
 type Paso =
@@ -62,8 +68,8 @@ type Paso =
  | "cargoActividad"
  | "antiguedadActividad"
  | "direccionLaboral"
- | "datosNegocio"
- | "vehiculo"
+ | "afp"
+ | "boletasPago"
  | "vivienda"
  | "estadoCivil"
  | "destinoPrestamo";
@@ -74,8 +80,8 @@ const PASOS: Paso[] = [
  "cargoActividad",
  "antiguedadActividad",
  "direccionLaboral",
- "datosNegocio",
- "vehiculo",
+ "afp",
+ "boletasPago",
  "vivienda",
  "estadoCivil",
  "destinoPrestamo",
@@ -85,6 +91,7 @@ function pasoCompleto(
  paso: Paso,
  values: Partial<InformacionComplementariaValues>,
  esAsalariado: boolean,
+ antiguedadMinima: number,
 ): boolean {
  switch (paso) {
  case "nombreEmpresaNegocio":
@@ -103,60 +110,53 @@ function pasoCompleto(
  return (values.cargoActividad ?? "").trim().length >= 2;
 
  case "antiguedadActividad":
- return (values.antiguedadActividad ?? 0) >= 12;
+ return (values.antiguedadActividad ?? 0) >= antiguedadMinima;
 
  case "direccionLaboral":
  return (values.direccionLaboral ?? "").trim().length >= 5;
 
- case "datosNegocio":
- if (esAsalariado) return true;
+ case "afp":
+ if (!esAsalariado) return true;
+ return values.tieneAfp !== undefined;
 
- return (
-   values.negocioFormalizado !== undefined &&
-   values.tipoLocalNegocio !== undefined
- );
-
- case "vehiculo":
- return values.tieneVehiculo !== undefined;
+ case "boletasPago":
+ if (!esAsalariado) return true;
+ return values.tieneBoletasPago === "SI";
 
  case "vivienda": {
  const viviendaSeleccionada = values.vivienda !== undefined;
 
  if (!viviendaSeleccionada) return false;
 
+ if (values.vivienda === "FAMILIAR") {
+   if (!values.parentescoViviendaFamiliar) return false;
+
+   if (
+     values.parentescoViviendaFamiliar === "OTROS" &&
+     (values.detalleParentescoViviendaFamiliar ?? "")
+       .trim()
+       .length < 2
+   ) {
+     return false;
+   }
+ }
+
  const requiereGarante =
- values.vivienda === "ALQUILER" ||
- values.vivienda === "ANTICRETICO";
+   values.vivienda === "ALQUILER" ||
+   values.vivienda === "ANTICRETICO";
 
  if (!requiereGarante) return true;
 
- return values.tieneGarante !== undefined;
+ return values.tieneGarante === "SI";
  }
 
- case "estadoCivil": {
- if (values.estadoCivil === undefined) return false;
-
- const requiereConyuge =
- values.estadoCivil === "CASADO" ||
- values.estadoCivil === "CONYUGE";
-
- if (!requiereConyuge) return true;
-
- const nombreCompleto =
- (values.nombreConyuge ?? "").trim().length >= 2;
-
- const celularCompleto =
- /^[67]\d{7}$/.test(
- (values.celularConyuge ?? "").trim(),
- );
-
- return nombreCompleto && celularCompleto;
- }
+ case "estadoCivil":
+ return values.estadoCivil !== undefined;
 
  case "destinoPrestamo":
  return (
- values.destinoPrestamo !== undefined &&
- (values.detalleDestinoPrestamo ?? "").trim().length >= 10
+   values.destinoPrestamo !== undefined &&
+   (values.detalleDestinoPrestamo ?? "").trim().length >= 10
  );
  }
 }
@@ -174,6 +174,10 @@ export function InformacionComplementariaForm() {
 
  const datosFinancieros = useOnboardingStore(
  (state) => state.datosFinancieros,
+ );
+
+ const datosPersonales = useOnboardingStore(
+ (state) => state.datosPersonales,
  );
 
  const setDatosComplementarios = useOnboardingStore(
@@ -201,8 +205,30 @@ export function InformacionComplementariaForm() {
  const esAsalariado =
  datosFinancieros?.perfilLaboral === "ASALARIADO";
 
+ const edad = datosPersonales
+ ? calcularEdad(datosPersonales.fechaNacimiento)
+ : null;
+
+ const requiere24Meses =
+ edad !== null &&
+ edad >= 18 &&
+ edad <= 25;
+
+ const antiguedadMinima =
+ requiere24Meses ? 24 : 12;
+
+ const noTieneBoletas =
+ esAsalariado &&
+ values.tieneBoletasPago === "NO";
+
  const primerIncompleto = PASOS.findIndex(
- (paso) => !pasoCompleto(paso, values, esAsalariado),
+ (paso) =>
+ !pasoCompleto(
+   paso,
+   values,
+   esAsalariado,
+   antiguedadMinima,
+ ),
  );
 
  const limite =
@@ -272,20 +298,23 @@ export function InformacionComplementariaForm() {
 
  {/* Rubro */}
  <div className={lockCls("rubro")}>
- <KivoInput
- id="rubro"
- label="Rubro"
- type="text"
- inputMode="text"
- placeholder={
-   esAsalariado
-     ? "Ej. Servicios financieros"
-     : "Ej. Comercio de alimentos"
- }
- error={errors.rubro?.message}
- tabIndex={lockTab("rubro")}
- {...register("rubro")}
-/>
+  <Controller
+   control={control}
+   name="rubro"
+   render={({ field }) => (
+    <KivoSelect
+     id="rubro"
+     label="Rubro"
+     value={field.value ?? ""}
+     options={RUBROS}
+     placeholder="Selecciona un rubro"
+     error={errors.rubro?.message}
+     tabIndex={lockTab("rubro")}
+     onChange={field.onChange}
+     onBlur={field.onBlur}
+    />
+   )}
+  />
  </div>
 
  {/* Cargo / actividad */}
@@ -349,7 +378,110 @@ export function InformacionComplementariaForm() {
 </div>
  </div>
 
- {/* Dirección laboral */}
+ <p className="sm:col-span-2 -mt-2 text-xs leading-5 text-muted">
+ {esAsalariado
+   ? `Para tu perfil se requieren al menos ${antiguedadMinima} meses de antigüedad laboral.`
+   : `Para tu perfil se requieren al menos ${antiguedadMinima} meses de antigüedad en la actividad.`}
+</p>
+
+{/* NIT y licencia - solo Independiente */}
+{!esAsalariado ? (
+ <>
+  <div className="sm:col-span-2">
+   <fieldset>
+    <legend className="text-sm font-bold text-ink">
+     ¿Cuentas con NIT?
+    </legend>
+
+    <p className="mt-1 text-xs leading-5 text-muted">
+     Indica si actualmente cuentas con Número de Identificación Tributaria.
+    </p>
+
+    <div className="mt-3 flex flex-wrap gap-3">
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneNit === "SI"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="SI"
+       className="sr-only"
+       {...register("tieneNit")}
+      />
+      Sí
+     </label>
+
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneNit === "NO"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="NO"
+       className="sr-only"
+       {...register("tieneNit")}
+      />
+      No
+     </label>
+    </div>
+   </fieldset>
+  </div>
+
+  <div className="sm:col-span-2">
+   <fieldset>
+    <legend className="text-sm font-bold text-ink">
+     ¿Cuentas con licencia de funcionamiento o patente?
+    </legend>
+
+    <p className="mt-1 text-xs leading-5 text-muted">
+     Indica si tu actividad o negocio cuenta actualmente con alguno de estos registros.
+    </p>
+
+    <div className="mt-3 flex flex-wrap gap-3">
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneLicenciaFuncionamiento === "SI"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="SI"
+       className="sr-only"
+       {...register("tieneLicenciaFuncionamiento")}
+      />
+      Sí
+     </label>
+
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneLicenciaFuncionamiento === "NO"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="NO"
+       className="sr-only"
+       {...register("tieneLicenciaFuncionamiento")}
+      />
+      No
+     </label>
+    </div>
+   </fieldset>
+  </div>
+ </>
+) : null}
+
+{/* Dirección laboral */}
  <div
  className={`sm:col-span-2 ${lockCls(
  "direccionLaboral",
@@ -374,13 +506,13 @@ export function InformacionComplementariaForm() {
  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
  <div>
  <p className="text-sm font-bold text-ink">
- Ubicación exacta en el mapa
+ Ubicación laboral exacta en el mapa
  </p>
 
  <p className="mt-1 text-xs leading-5 text-muted">
  Marca la ubicación de tu{" "}
  {esAsalariado ? "lugar de trabajo" : "negocio"} o mueve
- el pin hasta la dirección correcta.
+ el pin hasta la ubicación laboral correcta.
  </p>
  </div>
 
@@ -415,144 +547,123 @@ export function InformacionComplementariaForm() {
  </div>
 
 
- {/* Datos adicionales del negocio - solo independientes */}
- {!esAsalariado ? (
- <div
-   className={`sm:col-span-2 ${lockCls("datosNegocio")}`}
- >
-   <div className="border-t border-border-soft pt-6">
-     <p className="text-sm font-extrabold text-ink">
-       Sobre tu negocio
-     </p>
+ {/* AFP / boletas - solo asalariados */}
+{esAsalariado ? (
+ <>
+  <div className={`sm:col-span-2 ${lockCls("afp")}`}>
+   <fieldset>
+    <legend className="text-sm font-bold text-ink">
+     ¿Estás afiliado(a) a una AFP?
+    </legend>
 
-     <p className="mt-1 text-xs leading-5 text-muted">
-       Esta información nos ayuda a solicitar únicamente los
-       respaldos que realmente corresponden a tu actividad.
-     </p>
+    <p className="mt-1 text-xs leading-5 text-muted">
+     Indica si actualmente cuentas con afiliación a una AFP.
+    </p>
 
-     <div className="mt-5 grid gap-5 sm:grid-cols-2">
-       <fieldset>
-         <legend className="text-sm font-bold text-ink">
-           ¿Tu negocio está formalizado?
-         </legend>
+    <div className="mt-3 flex flex-wrap gap-3">
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneAfp === "SI"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="SI"
+       className="sr-only"
+       tabIndex={lockTab("afp")}
+       {...register("tieneAfp")}
+      />
+      Sí
+     </label>
 
-         <div className="mt-3 flex flex-wrap gap-3">
-           <label
-             className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
-               values.negocioFormalizado === "SI"
-                 ? "bg-primary text-white"
-                 : "bg-surface-blue text-primary-dark"
-             }`}
-           >
-             <input
-               type="radio"
-               value="SI"
-               className="sr-only"
-               {...register("negocioFormalizado")}
-             />
-             Sí
-           </label>
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneAfp === "NO"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="NO"
+       className="sr-only"
+       tabIndex={lockTab("afp")}
+       {...register("tieneAfp")}
+      />
+      No
+     </label>
+    </div>
+   </fieldset>
+  </div>
 
-           <label
-             className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
-               values.negocioFormalizado === "NO"
-                 ? "bg-primary text-white"
-                 : "bg-surface-blue text-primary-dark"
-             }`}
-           >
-             <input
-               type="radio"
-               value="NO"
-               className="sr-only"
-               {...register("negocioFormalizado")}
-             />
-             No
-           </label>
-         </div>
-       </fieldset>
+  <div className={`sm:col-span-2 ${lockCls("boletasPago")}`}>
+   <fieldset>
+    <legend className="text-sm font-bold text-ink">
+     ¿Cuentas con boletas de pago?
+    </legend>
 
-       <Controller
-         control={control}
-         name="tipoLocalNegocio"
-         render={({ field }) => (
-           <KivoSelect
-             id="tipoLocalNegocio"
-             label="¿Dónde funciona principalmente tu negocio?"
-             value={field.value ?? ""}
-             options={[
-               { value: "PROPIO", label: "Local propio" },
-               { value: "ALQUILER", label: "Local alquilado" },
-               { value: "ANTICRETICO", label: "Local en anticrético" },
-               { value: "DOMICILIO", label: "Desde mi domicilio" },
-               { value: "OTRO", label: "Otro" },
-             ]}
-             placeholder="Selecciona una opción"
-             onChange={field.onChange}
-             onBlur={field.onBlur}
-           />
-         )}
-       />
+    <p className="mt-1 text-xs leading-5 text-muted">
+     Para continuar con la solicitud necesitamos que puedas presentar
+     tus boletas de pago.
+    </p>
+
+    <div className="mt-3 flex flex-wrap gap-3">
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneBoletasPago === "SI"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="SI"
+       className="sr-only"
+       tabIndex={lockTab("boletasPago")}
+       {...register("tieneBoletasPago")}
+      />
+      Sí
+     </label>
+
+     <label
+      className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+       values.tieneBoletasPago === "NO"
+        ? "bg-primary text-white"
+        : "bg-surface-blue text-primary-dark"
+      }`}
+     >
+      <input
+       type="radio"
+       value="NO"
+       className="sr-only"
+       tabIndex={lockTab("boletasPago")}
+       {...register("tieneBoletasPago")}
+      />
+      No
+     </label>
+    </div>
+
+    {noTieneBoletas ? (
+     <div className="mt-4 rounded-[18px] bg-surface px-4 py-3">
+      <p className="text-sm font-bold text-error">
+       Por ahora no podremos continuar con tu solicitud.
+      </p>
+
+      <p className="mt-1 text-xs leading-5 text-error">
+       Para este tipo de actividad necesitamos que cuentes con
+       boletas de pago.
+      </p>
      </div>
-   </div>
- </div>
- ) : null}
+    ) : null}
+   </fieldset>
+  </div>
+ </>
+) : null}
 
 
- {/* Vehículo */}
- <div className={`sm:col-span-2 ${lockCls("vehiculo")}`}>
- <fieldset>
- <legend className="text-sm font-bold text-ink">
- ¿Tienes vehículo a tu nombre?
- </legend>
-
- <p className="mt-1 text-xs leading-5 text-muted">
- Si cuentas con un vehículo propio, podremos solicitarte un respaldo
- adicional durante la carga de documentos.
- </p>
-
- <div className="mt-3 flex flex-wrap gap-3">
- <label
- className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
- values.tieneVehiculo === "SI"
- ? "bg-primary text-white"
- : "bg-surface-blue text-primary-dark"
- }`}
- >
- <input
- type="radio"
- value="SI"
- className="sr-only"
- {...register("tieneVehiculo")}
- />
- Sí
- </label>
-
- <label
- className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
- values.tieneVehiculo === "NO"
- ? "bg-primary text-white"
- : "bg-surface-blue text-primary-dark"
- }`}
- >
- <input
- type="radio"
- value="NO"
- className="sr-only"
- {...register("tieneVehiculo")}
- />
- No
- </label>
- </div>
-
- {errors.tieneVehiculo ? (
- <p className="mt-2 text-xs font-semibold text-error">
- {errors.tieneVehiculo.message}
- </p>
- ) : null}
- </fieldset>
- </div>
-
- {/* Vivienda */}
+{/* Vivienda */}
  <div className={lockCls("vivienda")}>
  <Controller
  control={control}
@@ -573,7 +684,42 @@ export function InformacionComplementariaForm() {
 />
  </div>
 
- {/* Estado civil */}
+ {values.vivienda === "FAMILIAR" ? (
+ <div className={`sm:col-span-2 ${lockCls("vivienda")}`}>
+  <Controller
+   control={control}
+   name="parentescoViviendaFamiliar"
+   render={({ field }) => (
+    <KivoSelect
+     id="parentescoViviendaFamiliar"
+     label="¿De quién es la vivienda familiar?"
+     value={field.value ?? ""}
+     options={FAMILY_HOUSING_RELATIONSHIPS}
+     placeholder="Selecciona el parentesco"
+     error={errors.parentescoViviendaFamiliar?.message}
+     onChange={field.onChange}
+     onBlur={field.onBlur}
+    />
+   )}
+  />
+
+  {values.parentescoViviendaFamiliar === "OTROS" ? (
+   <div className="mt-4">
+    <KivoInput
+     id="detalleParentescoViviendaFamiliar"
+     label="Indica el parentesco o relación"
+     type="text"
+     placeholder="Ej. Tío, primo u otro familiar"
+     error={errors.detalleParentescoViviendaFamiliar?.message}
+     {...register("detalleParentescoViviendaFamiliar")}
+    />
+   </div>
+  ) : null}
+ </div>
+) : null}
+
+
+{/* Estado civil */}
  <div className={lockCls("estadoCivil")}>
  <Controller
  control={control}
@@ -600,12 +746,11 @@ export function InformacionComplementariaForm() {
  <div className="sm:col-span-2">
  <fieldset>
  <legend className="text-sm font-bold text-ink">
- ¿Cuentas con garante?
+ ¿Cuentas con un garante con vivienda propia?
  </legend>
 
  <p className="mt-1 text-xs leading-5 text-muted">
- Indícanos si cuentas con una persona que pueda respaldar
- tu solicitud.
+ Para continuar necesitamos que tu garante cuente con vivienda propia.
  </p>
 
  <div className="mt-3 flex flex-wrap gap-3">
@@ -642,66 +787,26 @@ export function InformacionComplementariaForm() {
  </label>
  </div>
 
- {errors.tieneGarante ? (
+ {values.tieneGarante === "NO" ? (
+ <div className="mt-4 rounded-[18px] bg-surface px-4 py-3">
+  <p className="text-sm font-bold text-error">
+   Por ahora no podremos continuar con tu solicitud.
+  </p>
+
+  <p className="mt-1 text-xs leading-5 text-error">
+   Para vivienda en alquiler o anticrético se requiere
+   un garante con vivienda propia.
+  </p>
+ </div>
+) : null}
+
+{errors.tieneGarante ? (
  <p className="mt-2 text-xs font-semibold text-error">
  {errors.tieneGarante.message}
  </p>
  ) : null}
  </fieldset>
  </div>
- ) : null}
-
- {/* Cónyuge - Casado / Unión libre */}
- {(values.estadoCivil === "CASADO" ||
- values.estadoCivil === "CONYUGE") ? (
- <>
- <div className="sm:col-span-2">
- <div className="rounded-[20px] bg-[#E9F7FF] px-5 py-4">
- <p className="text-sm font-extrabold text-primary-dark">
- {values.estadoCivil === "CASADO"
- ? "Datos de tu esposo(a)"
- : "Datos de tu cónyuge"}
- </p>
-
- <p className="mt-1 text-xs leading-5 text-muted">
- Necesitamos algunos datos básicos para completar la
- información de tu solicitud.
- </p>
- </div>
- </div>
-
- <div>
- <KivoInput
- id="nombreConyuge"
- label={
-   values.estadoCivil === "CASADO"
-     ? "Nombre completo de tu esposo(a)"
-     : "Nombre completo de tu pareja"
- }
- type="text"
- placeholder="Ej. María Elena Vargas"
- error={errors.nombreConyuge?.message}
- {...register("nombreConyuge")}
-/>
- </div>
-
- <div>
- <KivoInput
- id="celularConyuge"
- label={
-   values.estadoCivil === "CASADO"
-     ? "Número de celular de tu esposo(a)"
-     : "Número de celular de tu pareja"
- }
- type="tel"
- inputMode="numeric"
- maxLength={8}
- placeholder="Ej. 70000000"
- error={errors.celularConyuge?.message}
- {...register("celularConyuge")}
-/>
- </div>
- </>
  ) : null}
  </div>
 
