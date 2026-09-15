@@ -15,6 +15,12 @@ export interface KivoTextareaProps
   label?: string;
   helper?: string;
   error?: string;
+
+  /**
+   * Convierte el contenido ingresado a MAYÚSCULAS.
+   * Por defecto está activo.
+   */
+  uppercase?: boolean;
 }
 
 export const KivoTextarea = forwardRef<
@@ -28,6 +34,10 @@ export const KivoTextarea = forwardRef<
     error,
     required,
     className,
+    uppercase = true,
+    onChange,
+    autoCapitalize,
+    placeholder,
     ...props
   },
   ref,
@@ -36,6 +46,12 @@ export const KivoTextarea = forwardRef<
   const textareaId = id ?? generatedId;
   const helperId = `${textareaId}-helper`;
   const errorId = `${textareaId}-error`;
+
+  const placeholderNormalizado =
+    uppercase &&
+    typeof placeholder === "string"
+      ? placeholder.toLocaleUpperCase("es-BO")
+      : placeholder;
 
   return (
     <div className="w-full">
@@ -60,7 +76,23 @@ export const KivoTextarea = forwardRef<
       <textarea
         ref={ref}
         id={textareaId}
+        placeholder={placeholderNormalizado}
         required={required}
+        autoCapitalize={
+          uppercase
+            ? "characters"
+            : autoCapitalize
+        }
+        onChange={(event) => {
+          if (uppercase) {
+            event.currentTarget.value =
+              event.currentTarget.value.toLocaleUpperCase(
+                "es-BO",
+              );
+          }
+
+          onChange?.(event);
+        }}
         aria-invalid={Boolean(error)}
         aria-describedby={
           error

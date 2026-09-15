@@ -47,18 +47,42 @@ export function calcularEdad(fechaNacimiento: string): number {
 export const EDAD_MINIMA = 18;
 export const EDAD_MAXIMA = 65;
 
-/** Nombre completo: al menos dos palabras. */
-export const NOMBRE_COMPLETO_REGEX = /^\s*\S+(\s+\S+)+\s*$/;
-
 export const datosPersonalesSchema = z.object({
-  nombreCompleto: z
+  primerNombre: z
     .string()
     .trim()
-    .min(5, "Ingresa tu nombre completo.")
-    .regex(
-      NOMBRE_COMPLETO_REGEX,
-      "Ingresa al menos un nombre y un apellido.",
-    ),
+    .min(2, "Ingresa tu primer nombre."),
+
+  segundoNombre: z
+    .string()
+    .trim()
+    .optional(),
+
+  primerApellido: z
+    .string()
+    .trim()
+    .min(2, "Ingresa tu primer apellido."),
+
+  segundoApellido: z
+    .string()
+    .trim()
+    .optional(),
+
+  sexo: z.enum(
+    ["HOMBRE", "MUJER"],
+    {
+      message: "Selecciona tu sexo.",
+    },
+  ),
+
+  esCasada: z
+    .enum(["SI", "NO"])
+    .optional(),
+
+  apellidoMatrimonio: z
+    .string()
+    .trim()
+    .optional(),
 
   ci: z
     .string()
@@ -101,6 +125,31 @@ export const datosPersonalesSchema = z.object({
   perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"]).optional(),
   rubroLaboral: z.string().optional(),
   direccionTrabajo: z.string().optional(),
+}).superRefine((values, ctx) => {
+  if (values.sexo !== "MUJER") {
+    return;
+  }
+
+  if (!values.esCasada) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["esCasada"],
+      message: "Indica si estás casada.",
+    });
+
+    return;
+  }
+
+  if (
+    values.esCasada === "SI" &&
+    (values.apellidoMatrimonio ?? "").trim().length < 2
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["apellidoMatrimonio"],
+      message: "Ingresa tu apellido por matrimonio.",
+    });
+  }
 });
 
 export type DatosPersonalesValues = z.infer<typeof datosPersonalesSchema>;

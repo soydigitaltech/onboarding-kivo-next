@@ -19,6 +19,10 @@ import type {
   CaptureDocKey,
 } from "@/lib/mock-capture-sessions";
 
+import {
+  procesarCarnetOpenCv,
+} from "@/lib/procesar-documento-opencv";
+
 interface CapturaMovilProps {
   token: string;
 }
@@ -61,6 +65,135 @@ const DOCUMENTOS: DocumentoCaptura[] = [
   },
 ];
 
+
+interface CaptureFrame {
+  aspectRatio: number;
+  width: number;
+  height: number;
+}
+
+function getCaptureFrame(
+  documento: DocumentoCaptura,
+): CaptureFrame {
+  if (
+    documento.key === "ciAnverso" ||
+    documento.key === "ciReverso"
+  ) {
+    /*
+     * Proporción aproximada ISO ID-1:
+     * 85.60 × 53.98 mm
+     */
+    return {
+      aspectRatio: 85.6 / 53.98,
+      width: 1400,
+      height: 883,
+    };
+  }
+
+  return {
+    aspectRatio: 3 / 4,
+    width: 1080,
+    height: 1440,
+  };
+}
+
+function recortarYOptimizarCaptura(
+  dataUrl: string,
+  frame: CaptureFrame,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      const sourceWidth = image.naturalWidth;
+      const sourceHeight = image.naturalHeight;
+
+      if (!sourceWidth || !sourceHeight) {
+        reject(
+          new Error(
+            "No pudimos procesar la fotografía.",
+          ),
+        );
+        return;
+      }
+
+      const sourceRatio =
+        sourceWidth / sourceHeight;
+
+      const targetRatio =
+        frame.width / frame.height;
+
+      let sx = 0;
+      let sy = 0;
+      let sw = sourceWidth;
+      let sh = sourceHeight;
+
+      /*
+       * Recorte centrado equivalente a object-cover.
+       * Así el archivo enviado coincide con lo que el
+       * usuario ve dentro del encuadre.
+       */
+      if (sourceRatio > targetRatio) {
+        sw = sourceHeight * targetRatio;
+        sx = (sourceWidth - sw) / 2;
+      } else if (sourceRatio < targetRatio) {
+        sh = sourceWidth / targetRatio;
+        sy = (sourceHeight - sh) / 2;
+      }
+
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width = frame.width;
+      canvas.height = frame.height;
+
+      const ctx =
+        canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(
+          new Error(
+            "No pudimos preparar la fotografía.",
+          ),
+        );
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      ctx.drawImage(
+        image,
+        sx,
+        sy,
+        sw,
+        sh,
+        0,
+        0,
+        frame.width,
+        frame.height,
+      );
+
+      resolve(
+        canvas.toDataURL(
+          "image/jpeg",
+          0.86,
+        ),
+      );
+    };
+
+    image.onerror = () => {
+      reject(
+        new Error(
+          "No pudimos procesar la fotografía.",
+        ),
+      );
+    };
+
+    image.src = dataUrl;
+  });
+}
+
 export function CapturaMovil({
   token,
 }: CapturaMovilProps) {
@@ -101,8 +234,10 @@ export function CapturaMovil({
     );
   }, [token]);
 
-  function tomarFoto() {
+  async function tomarFoto() {
     setError(null);
+
+    if (!documento) return;
 
     const screenshot =
       webcamRef.current?.getScreenshot();
@@ -115,7 +250,44 @@ export function CapturaMovil({
       return;
     }
 
-    setPreview(screenshot);
+    try {
+      const frame =
+        getCaptureFrame(documento);
+
+      const esCarnet =
+        documento.key === "ciAnverso" ||
+        documento.key === "ciReverso";
+
+      let capturaAjustada: string;
+
+      if (esCarnet) {
+        const capturaOpenCv =
+          await procesarCarnetOpenCv(
+            screenshot,
+          );
+
+        capturaAjustada =
+          capturaOpenCv ??
+          (await recortarYOptimizarCaptura(
+            screenshot,
+            frame,
+          ));
+      } else {
+        capturaAjustada =
+          await recortarYOptimizarCaptura(
+            screenshot,
+            frame,
+          );
+      }
+
+      setPreview(capturaAjustada);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No pudimos procesar la fotografía.",
+      );
+    }
   }
 
   async function confirmarFoto() {
@@ -209,6 +381,9 @@ export function CapturaMovil({
 
   if (!documento) return null;
 
+  const captureFrame =
+    getCaptureFrame(documento);
+
   const progreso =
     ((indice + (preview ? 1 : 0)) /
       DOCUMENTOS.length) *
@@ -261,12 +436,18 @@ export function CapturaMovil({
           </p>
         </div>
 
-        <div className="bg-black">
+        <div
+          className="overflow-hidden bg-black"
+          style={{
+            aspectRatio:
+              captureFrame.aspectRatio,
+          }}
+        >
           {preview ? (
             <img
               src={preview}
               alt="Vista previa de la fotografía tomada"
-              className="aspect-[3/4] w-full object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <Webcam
@@ -293,7 +474,7 @@ export function CapturaMovil({
                   "Necesitamos permiso para usar la cámara. No habilitamos la galería ni la carga de archivos.",
                 )
               }
-              className="aspect-[3/4] w-full object-cover"
+              className="h-full w-full object-cover"
             />
           )}
         </div>
@@ -336,7 +517,7 @@ export function CapturaMovil({
           ) : (
             <button
               type="button"
-              onClick={tomarFoto}
+              onClick={() => void tomarFoto()}
               className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-extrabold text-white"
             >
               <Camera className="h-5 w-5" />

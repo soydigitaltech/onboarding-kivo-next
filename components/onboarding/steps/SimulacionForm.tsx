@@ -472,7 +472,7 @@ aria-label="Ajustar monto del préstamo"
  <dl className="mt-4 space-y-3 text-sm">
  <div className="flex items-center justify-between gap-4">
  <dt className="text-white/65">
- Capital solicitado (Co)
+ Capital solicitado
  </dt>
 
  <dd className="font-bold text-white">
@@ -482,7 +482,7 @@ aria-label="Ajustar monto del préstamo"
 
  <div className="flex items-center justify-between gap-4">
  <dt className="text-white/65">
- Plazo (T)
+ Plazo
  </dt>
 
  <dd className="font-bold text-white">
@@ -492,7 +492,7 @@ aria-label="Ajustar monto del préstamo"
 
  <div className="flex items-center justify-between gap-4">
  <dt className="text-white/65">
- Tasa mensual (i)
+ Tasa mensual
  </dt>
 
  <dd className="font-bold text-white">
@@ -500,85 +500,47 @@ aria-label="Ajustar monto del préstamo"
  </dd>
  </div>
 
- <div className="flex items-center justify-between gap-4">
- <dt className="text-white/65">
- Cuota base (R)
- </dt>
-
- <dd className="font-bold text-white">
- {formatBs(resultado.cuotaBase)}
- </dd>
- </div>
-
- <div className="flex items-center justify-between gap-4">
- <dt className="text-white/65">
- Endeudamiento (PDE)
- </dt>
-
- <dd className="font-bold text-white">
- {resultado.capacidad
-  .porcentajeEndeudamiento
-  .toFixed(2)}%
- </dd>
- </div>
  </dl>
  </div>
 
- <div className="mt-5 border-t border-white/15 pt-4">
- <div>
- <h3 className="text-sm font-extrabold text-white">
- Desglose de la primera cuota
- </h3>
+ 
 
- <p className="mt-1 text-xs leading-5 text-white/60">
- Valores estimados para que entiendas cómo se compone.
- </p>
- </div>
+ {alternativa ? (
+ <div className="mt-5 border-t border-white/15 pt-5">
+  <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/50">
+   Opción recomendada
+  </p>
 
- <dl className="mt-4 space-y-3 text-sm">
- {[
- [
- "Capital",
- resultado.desglosePrimeraCuota.capital,
- ],
- [
- "Interés",
- resultado.desglosePrimeraCuota.interes,
- ],
- [
- "Seguro",
- resultado.desglosePrimeraCuota
- .seguroDesgravamen,
- ],
- [
- "Gastos Administrativos",
- resultado.desglosePrimeraCuota
- .gastosAdministrativos,
- ],
- [
- "Cuota KIVO (CK)",
- resultado.desglosePrimeraCuota.total,
- ],
- ].map(([label, value], index, items) => (
- <div
- key={String(label)}
- className={`flex items-center justify-between gap-4 ${
- index === items.length - 1
- ? "border-t border-white/15 pt-3"
- : ""
- }`}
- >
- <dt className="text-white/65">
- {label}
- </dt>
+  <p className="mt-2 text-xl font-extrabold tracking-tight text-white">
+   {formatBs(alternativa.monto)}
+  </p>
 
- <dd className="font-bold text-white">
- {formatBs(Number(value))}
- </dd>
+  <div className="mt-2">
+   <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-white/75">
+    {alternativa.plazoMeses} meses
+   </span>
+  </div>
+
+  <div className="mt-4">
+   <p className="text-xs text-white/60">
+    Cuota mensual estimada
+   </p>
+
+   <p className="mt-1 text-2xl font-extrabold tracking-tight text-white">
+    {formatBs(alternativa.cuotaMensual)}
+   </p>
+  </div>
+
+  <button
+   type="button"
+   onClick={usarAlternativa}
+   className="mt-5 min-h-11 w-full rounded-xl bg-white px-4 text-sm font-extrabold text-primary transition-colors hover:bg-white/90 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
+  >
+   Usar esta opción
+  </button>
  </div>
- ))}
- </dl>
- </div>
+) : null}
+
  </div>
  </div>
 
@@ -647,26 +609,7 @@ aria-label="Ajustar monto del préstamo"
  o aumenta el plazo para encontrar una opción compatible.
  </KivoDangerNotice>
 
- {alternativa ? (
- <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning-border bg-warning-bg px-4 py-3.5">
- <Lightbulb className="h-4.5 w-4.5 shrink-0 text-warning" />
-
- <p className="flex-1 text-[13px] leading-5 text-ink-soft">
- <strong>Te sugerimos:</strong>{" "}
- {formatBs(alternativa.monto)} a{" "}
- {alternativa.plazoMeses} meses, con cuota de{" "}
- {formatBs(alternativa.cuotaMensual)}.
- </p>
-
- <button
- type="button"
- onClick={usarAlternativa}
- className="min-h-9 rounded-lg bg-primary px-3.5 text-[13px] font-bold text-white transition-colors hover:bg-primary-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
- >
- Usar esta opción
- </button>
- </div>
- ) : null}
+ 
  </div>
  </motion.div>
  )}

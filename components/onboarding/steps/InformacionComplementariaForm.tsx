@@ -9,7 +9,7 @@ import {
   kivoAffixedInputClassName,
 } from "@/components/ui/kivo";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +18,6 @@ import { ArrowRight, BriefcaseBusiness, ShoppingBag } from "lucide-react";
 import {
  FAMILY_HOUSING_RELATIONSHIPS,
  HOUSING_TYPES,
- MARITAL_STATUSES,
  RUBROS,
  informacionComplementariaSchema,
  type InformacionComplementariaValues,
@@ -43,6 +42,7 @@ const EMPTY_VALUES: InformacionComplementariaValues = {
  nombreEmpresaNegocio: "",
  rubro:
  undefined as unknown as InformacionComplementariaValues["rubro"],
+ detalleRubro: "",
  cargoActividad: "",
  antiguedadActividad: undefined as unknown as number,
  tieneNit: undefined,
@@ -54,12 +54,12 @@ const EMPTY_VALUES: InformacionComplementariaValues = {
  undefined as unknown as InformacionComplementariaValues["vivienda"],
  parentescoViviendaFamiliar: undefined,
  detalleParentescoViviendaFamiliar: "",
- estadoCivil:
- undefined as unknown as InformacionComplementariaValues["estadoCivil"],
  destinoPrestamo:
  undefined as unknown as InformacionComplementariaValues["destinoPrestamo"],
  detalleDestinoPrestamo: "",
  tieneGarante: undefined,
+ esposoEsGarante: undefined,
+ nombreGarante: "",
 };
 
 type Paso =
@@ -71,7 +71,6 @@ type Paso =
  | "afp"
  | "boletasPago"
  | "vivienda"
- | "estadoCivil"
  | "destinoPrestamo";
 
 const PASOS: Paso[] = [
@@ -83,7 +82,6 @@ const PASOS: Paso[] = [
  "afp",
  "boletasPago",
  "vivienda",
- "estadoCivil",
  "destinoPrestamo",
 ];
 
@@ -147,11 +145,11 @@ function pasoCompleto(
 
  if (!requiereGarante) return true;
 
- return values.tieneGarante === "SI";
+ return (
+  values.tieneGarante === "SI" &&
+  (values.nombreGarante ?? "").trim().length >= 3
+ );
  }
-
- case "estadoCivil":
- return values.estadoCivil !== undefined;
 
  case "destinoPrestamo":
  return (
@@ -193,17 +191,26 @@ export function InformacionComplementariaForm() {
  register,
  handleSubmit,
  watch,
+ setValue,
  formState: { errors },
  } = useForm<InformacionComplementariaValues>({
  resolver: zodResolver(informacionComplementariaSchema),
  mode: "onChange",
- defaultValues: guardados ?? EMPTY_VALUES,
+ defaultValues: {
+  ...EMPTY_VALUES,
+  ...(guardados ?? {}),
+ },
  });
 
  const values = watch();
 
  const esAsalariado =
  datosFinancieros?.perfilLaboral === "ASALARIADO";
+
+ const esCasadaConApellido =
+  datosPersonales?.sexo === "MUJER" &&
+  datosPersonales?.esCasada === "SI" &&
+  Boolean(datosPersonales?.apellidoMatrimonio?.trim());
 
  const edad = datosPersonales
  ? calcularEdad(datosPersonales.fechaNacimiento)
@@ -220,6 +227,25 @@ export function InformacionComplementariaForm() {
  const noTieneBoletas =
  esAsalariado &&
  values.tieneBoletasPago === "NO";
+
+ useEffect(() => {
+  if (
+   esCasadaConApellido &&
+   (values.esposoEsGarante === "SI" ||
+    values.esposoEsGarante === "NO") &&
+   values.tieneGarante !== "SI"
+  ) {
+   setValue("tieneGarante", "SI", {
+    shouldValidate: true,
+    shouldDirty: true,
+   });
+  }
+ }, [
+  esCasadaConApellido,
+  values.esposoEsGarante,
+  values.tieneGarante,
+  setValue,
+ ]);
 
  const primerIncompleto = PASOS.findIndex(
  (paso) =>
@@ -253,11 +279,82 @@ export function InformacionComplementariaForm() {
  const puedeElegirCapitalTrabajo =
  !esAsalariado || datosFinancieros?.tieneSegundoIngreso === true;
 
+  async function actualizarUbicacionLaboral(
+    coords: Coordenadas,
+  ) {
+    setUbicacionLaboralMock(coords);
+
+    try {
+      const params = new URLSearchParams({
+        lat: String(coords.lat),
+        lng: String(coords.lng),
+      });
+
+      const response = await fetch(
+        `/api/geocoding/reverse?${params.toString()}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se pudo obtener la dirección laboral.",
+        );
+      }
+
+      const data = await response.json();
+
+      if (
+        typeof data.direccion === "string" &&
+        data.direccion.trim()
+      ) {
+        setValue(
+          "direccionLaboral",
+          data.direccion
+            .trim()
+            .toLocaleUpperCase("es-BO"),
+          {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          },
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Error obteniendo dirección laboral:",
+        error,
+      );
+    }
+  }
+
+
  const onSubmit = (
  formValues: InformacionComplementariaValues,
  ) => {
+ const requiereGarante =
+  formValues.vivienda === "ALQUILER" ||
+  formValues.vivienda === "ANTICRETICO";
+
  setDatosComplementarios({
   ...formValues,
+  tieneGarante:
+   requiereGarante && esCasadaConApellido
+    ? "SI"
+    : formValues.tieneGarante,
+
+  esposoEsGarante:
+   requiereGarante && esCasadaConApellido
+    ? formValues.esposoEsGarante
+    : undefined,
+
+  nombreGarante:
+   requiereGarante &&
+   (
+    formValues.tieneGarante === "SI" ||
+    esCasadaConApellido
+   )
+    ? formValues.nombreGarante?.trim()
+    : undefined,
+
   ubicacionLaboral: {
    lat: ubicacionLaboralMock.lat,
    lng: ubicacionLaboralMock.lng,
@@ -315,6 +412,19 @@ export function InformacionComplementariaForm() {
     />
    )}
   />
+
+  {values.rubro === "OTRO" ? (
+   <div className="mt-4">
+    <KivoInput
+     id="detalleRubro"
+     label="Especifica el rubro"
+     type="text"
+     placeholder="Ej. Servicios técnicos"
+     error={errors.detalleRubro?.message}
+     {...register("detalleRubro")}
+    />
+   </div>
+  ) : null}
  </div>
 
  {/* Cargo / actividad */}
@@ -481,73 +591,78 @@ export function InformacionComplementariaForm() {
  </>
 ) : null}
 
-{/* Dirección laboral */}
+{/* UBICACIÓN LABORAL */}
  <div
- className={`sm:col-span-2 ${lockCls(
- "direccionLaboral",
- )}`}
+  className={`sm:col-span-2 ${lockCls(
+   "direccionLaboral",
+  )}`}
  >
- <KivoInput
- id="direccionLaboral"
- label="Dirección exacta laboral"
- type="text"
- placeholder={
-   esAsalariado
-     ? "Ej. Zona Sopocachi, Av. Arce N.º 1234, Edificio ABC"
-     : "Ej. Zona Villa Fátima, Av. Las Américas N.º 345"
- }
- error={errors.direccionLaboral?.message}
- tabIndex={lockTab("direccionLaboral")}
- {...register("direccionLaboral")}
-/>
+  <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+   <div>
+    <p className="text-sm font-bold text-ink">
+     Ubicación laboral exacta
+    </p>
 
- {/* MAPA LABORAL - MOCK */}
- <div className="mt-4">
- <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
- <div>
- <p className="text-sm font-bold text-ink">
- Ubicación laboral exacta en el mapa
- </p>
+    <p className="mt-1 text-xs leading-5 text-muted">
+     Marca la ubicación de tu{" "}
+     {esAsalariado
+      ? "lugar de trabajo"
+      : "negocio"}{" "}
+     o mueve el pin hasta la ubicación correcta.
+    </p>
+   </div>
 
- <p className="mt-1 text-xs leading-5 text-muted">
- Marca la ubicación de tu{" "}
- {esAsalariado ? "lugar de trabajo" : "negocio"} o mueve
- el pin hasta la ubicación laboral correcta.
- </p>
+   <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">
+    Mapa de referencia
+   </span>
+  </div>
+
+  <div className="overflow-hidden rounded-[22px] bg-surface-blue">
+   <MapaUbicacion
+    value={ubicacionLaboralMock}
+    onChange={actualizarUbicacionLaboral}
+   />
+  </div>
+
+  <div className="mt-3 hidden flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted sm:flex">
+   <span>
+    Latitud{" "}
+    <strong className="font-bold text-ink">
+     {ubicacionLaboralMock.lat.toFixed(6)}
+    </strong>
+   </span>
+
+   <span>
+    Longitud{" "}
+    <strong className="font-bold text-ink">
+     {ubicacionLaboralMock.lng.toFixed(6)}
+    </strong>
+   </span>
+  </div>
+
+  <div className="mt-5">
+   <KivoInput
+    id="direccionLaboral"
+    label="Dirección exacta laboral"
+    type="text"
+    placeholder={
+     esAsalariado
+      ? "EJ. ZONA SOPOCACHI, AV. ARCE N.º 1234, EDIFICIO ABC"
+      : "EJ. ZONA VILLA FÁTIMA, AV. LAS AMÉRICAS N.º 345"
+    }
+    error={errors.direccionLaboral?.message}
+    tabIndex={lockTab("direccionLaboral")}
+    {...register("direccionLaboral")}
+   />
+
+   <p className="mt-1.5 text-xs leading-5 text-muted">
+    Puedes corregir la dirección si el mapa no identifica exactamente el número o edificio.
+   </p>
+  </div>
  </div>
 
- <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">
- Mapa de referencia
- </span>
- </div>
 
- <div className="hidden overflow-hidden rounded-[22px] bg-surface-blue sm:block">
- <MapaUbicacion
- value={ubicacionLaboralMock}
- onChange={setUbicacionLaboralMock}
- />
- </div>
-
- <div className="mt-3 hidden flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted sm:flex">
- <span>
- Latitud{" "}
- <strong className="font-bold text-ink">
- {ubicacionLaboralMock.lat.toFixed(6)}
- </strong>
- </span>
-
- <span>
- Longitud{" "}
- <strong className="font-bold text-ink">
- {ubicacionLaboralMock.lng.toFixed(6)}
- </strong>
- </span>
- </div>
- </div>
- </div>
-
-
- {/* AFP / boletas - solo asalariados */}
+{/* AFP / boletas - solo asalariados */}
 {esAsalariado ? (
  <>
   <div className={`sm:col-span-2 ${lockCls("afp")}`}>
@@ -717,95 +832,178 @@ export function InformacionComplementariaForm() {
   ) : null}
  </div>
 ) : null}
-
-
-{/* Estado civil */}
- <div className={lockCls("estadoCivil")}>
- <Controller
- control={control}
- name="estadoCivil"
- render={({ field }) => (
-   <KivoSelect
-     id="estadoCivil"
-     label="Estado civil"
-     value={field.value ?? ""}
-     options={MARITAL_STATUSES}
-     placeholder="Selecciona una opción"
-     error={errors.estadoCivil?.message}
-     tabIndex={lockTab("estadoCivil")}
-     onChange={field.onChange}
-     onBlur={field.onBlur}
-   />
- )}
-/>
- </div>
-
  {/* Garante - solo alquiler / anticrético */}
  {(values.vivienda === "ALQUILER" ||
  values.vivienda === "ANTICRETICO") ? (
  <div className="sm:col-span-2">
- <fieldset>
- <legend className="text-sm font-bold text-ink">
- ¿Cuentas con un garante con vivienda propia?
- </legend>
+  <fieldset>
+   {esCasadaConApellido ? (
+    <>
+     <legend className="text-sm font-bold text-ink">
+      ¿Tu esposo será tu garante con vivienda propia?
+     </legend>
 
- <p className="mt-1 text-xs leading-5 text-muted">
- Para continuar necesitamos que tu garante cuente con vivienda propia.
- </p>
+     <p className="mt-1 text-xs leading-5 text-muted">
+      Como ya nos indicaste que estás casada, solo necesitamos saber
+      si tu esposo será quien respalde tu solicitud.
+     </p>
 
- <div className="mt-3 flex flex-wrap gap-3">
- <label
- className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
- values.tieneGarante === "SI"
- ? "bg-primary text-white"
- : "bg-surface-blue text-primary-dark"
- }`}
- >
- <input
- type="radio"
- value="SI"
- className="sr-only"
- {...register("tieneGarante")}
- />
- Sí
- </label>
+     <div className="mt-3 flex flex-wrap gap-3">
+      <label
+       className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+        values.esposoEsGarante === "SI"
+         ? "bg-primary text-white"
+         : "bg-surface-blue text-primary-dark"
+       }`}
+      >
+       <input
+        type="radio"
+        value="SI"
+        className="sr-only"
+        {...register("esposoEsGarante", {
+         onChange: () => {
+          setValue("tieneGarante", "SI", {
+           shouldValidate: true,
+           shouldDirty: true,
+          });
+         },
+        })}
+       />
+       Sí
+      </label>
 
- <label
- className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
- values.tieneGarante === "NO"
- ? "bg-primary text-white"
- : "bg-surface-blue text-primary-dark"
- }`}
- >
- <input
- type="radio"
- value="NO"
- className="sr-only"
- {...register("tieneGarante")}
- />
- No
- </label>
- </div>
+      <label
+       className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+        values.esposoEsGarante === "NO"
+         ? "bg-primary text-white"
+         : "bg-surface-blue text-primary-dark"
+       }`}
+      >
+       <input
+        type="radio"
+        value="NO"
+        className="sr-only"
+        {...register("esposoEsGarante", {
+         onChange: () => {
+          setValue("tieneGarante", "SI", {
+           shouldValidate: true,
+           shouldDirty: true,
+          });
+         },
+        })}
+       />
+       No
+      </label>
+     </div>
 
- {values.tieneGarante === "NO" ? (
- <div className="mt-4 rounded-[18px] bg-surface px-4 py-3">
-  <p className="text-sm font-bold text-error">
-   Por ahora no podremos continuar con tu solicitud.
-  </p>
+     {values.esposoEsGarante === "SI" ? (
+      <div className="mt-4">
+       <KivoInput
+        id="nombreGarante"
+        label="Nombre completo de tu esposo"
+        type="text"
+        placeholder="Ej. Juan Pérez Mendoza"
+        error={errors.nombreGarante?.message}
+        {...register("nombreGarante")}
+       />
+      </div>
+     ) : null}
 
-  <p className="mt-1 text-xs leading-5 text-error">
-   Para vivienda en alquiler o anticrético se requiere
-   un garante con vivienda propia.
-  </p>
- </div>
-) : null}
+     {values.esposoEsGarante === "NO" ? (
+      <div className="mt-4">
+       <KivoInput
+        id="nombreGarante"
+        label="Nombre completo del garante"
+        type="text"
+        placeholder="Ej. Carlos Mendoza López"
+        error={errors.nombreGarante?.message}
+        {...register("nombreGarante")}
+       />
 
-{errors.tieneGarante ? (
- <p className="mt-2 text-xs font-semibold text-error">
- {errors.tieneGarante.message}
- </p>
- ) : null}
- </fieldset>
+       <p className="mt-1.5 text-xs leading-5 text-muted">
+        Esta persona debe contar con vivienda propia.
+       </p>
+      </div>
+     ) : null}
+    </>
+   ) : (
+    <>
+     <legend className="text-sm font-bold text-ink">
+      ¿Cuentas con un garante con vivienda propia?
+     </legend>
+
+     <p className="mt-1 text-xs leading-5 text-muted">
+      Para continuar necesitamos que tu garante cuente con vivienda propia.
+     </p>
+
+     <div className="mt-3 flex flex-wrap gap-3">
+      <label
+       className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+        values.tieneGarante === "SI"
+         ? "bg-primary text-white"
+         : "bg-surface-blue text-primary-dark"
+       }`}
+      >
+       <input
+        type="radio"
+        value="SI"
+        className="sr-only"
+        {...register("tieneGarante")}
+       />
+       Sí
+      </label>
+
+      <label
+       className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+        values.tieneGarante === "NO"
+         ? "bg-primary text-white"
+         : "bg-surface-blue text-primary-dark"
+       }`}
+      >
+       <input
+        type="radio"
+        value="NO"
+        className="sr-only"
+        {...register("tieneGarante")}
+       />
+       No
+      </label>
+     </div>
+
+     {values.tieneGarante === "SI" ? (
+      <div className="mt-4">
+       <KivoInput
+        id="nombreGarante"
+        label="Nombre completo del garante"
+        type="text"
+        placeholder="Ej. Juan Pérez Mendoza"
+        error={errors.nombreGarante?.message}
+        {...register("nombreGarante")}
+       />
+      </div>
+     ) : null}
+
+     {values.tieneGarante === "NO" ? (
+      <div className="mt-4 rounded-[18px] bg-surface px-4 py-3">
+       <p className="text-sm font-bold text-error">
+        Por ahora no podremos continuar con tu solicitud.
+       </p>
+
+       <p className="mt-1 text-xs leading-5 text-error">
+        Para vivienda en alquiler o anticrético se requiere
+        un garante con vivienda propia.
+       </p>
+      </div>
+     ) : null}
+
+     {errors.tieneGarante ? (
+      <p className="mt-2 text-xs font-semibold text-error">
+       {errors.tieneGarante.message}
+      </p>
+     ) : null}
+    </>
+   )}
+  </fieldset>
  </div>
  ) : null}
  </div>

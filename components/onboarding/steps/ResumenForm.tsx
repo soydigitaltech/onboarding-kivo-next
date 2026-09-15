@@ -13,7 +13,6 @@ import {
 import {
  FAMILY_HOUSING_RELATIONSHIPS,
  HOUSING_TYPES,
- MARITAL_STATUSES,
 } from "@/lib/schemas/informacion-complementaria";
 
 /** Genera un código de referencia legible tipo KV-2026-482913. */
@@ -141,11 +140,6 @@ const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
  datosComplementarios.vivienda,
  );
 
- const estadoCivil = buscarLabel(
- MARITAL_STATUSES,
- datosComplementarios.estadoCivil,
- );
-
  const parentescoVivienda = buscarLabel(
  FAMILY_HOUSING_RELATIONSHIPS,
  datosComplementarios.parentescoViviendaFamiliar,
@@ -215,11 +209,58 @@ const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
  onEdit={() => editStep("datos-personales")}
  >
  <Dato
- label="Nombre completo"
- valor={datosPersonales.nombreCompleto}
- />
+ label="Primer nombre"
+ valor={datosPersonales.primerNombre}
+/>
 
- <Dato
+<Dato
+ label="Segundo nombre"
+ valor={datosPersonales.segundoNombre || "—"}
+/>
+
+<Dato
+ label="Primer apellido"
+ valor={datosPersonales.primerApellido}
+/>
+
+<Dato
+ label="Segundo apellido"
+ valor={datosPersonales.segundoApellido || "—"}
+/>
+
+<Dato
+ label="Sexo"
+ valor={
+ datosPersonales.sexo === "MUJER"
+ ? "Mujer"
+ : "Hombre"
+ }
+/>
+
+{datosPersonales.sexo === "MUJER" ? (
+ <>
+  <Dato
+   label="¿Está casada?"
+   valor={
+    datosPersonales.esCasada === "SI"
+     ? "Sí"
+     : "No"
+   }
+  />
+
+  {datosPersonales.esCasada === "SI" ? (
+   <Dato
+    label="Apellido por matrimonio"
+    valor={
+     datosPersonales.apellidoMatrimonio ||
+     "—"
+    }
+   />
+  ) : null}
+ </>
+) : null}
+
+<Dato
  label="Carnet"
  valor={datosPersonales.ci}
  />
@@ -446,11 +487,6 @@ const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
  }
  />
  ) : null}
-
- <Dato
- label="Estado civil"
- valor={estadoCivil}
- />
 
  <Dato
  label="Destino del préstamo"

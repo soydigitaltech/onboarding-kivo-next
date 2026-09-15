@@ -35,7 +35,23 @@ export interface Cuenta {
 }
 
 export interface DatosPersonales {
+  /** Nombre completo derivado para compatibilidad y visualización. */
   nombreCompleto: string;
+
+  primerNombre: string;
+  segundoNombre?: string;
+  primerApellido: string;
+  segundoApellido?: string;
+
+  /** Sexo declarado por la persona solicitante. */
+  sexo: "HOMBRE" | "MUJER";
+
+  /** Solo aplica cuando sexo es MUJER. */
+  esCasada?: "SI" | "NO";
+
+  /** Apellido por matrimonio cuando corresponde. */
+  apellidoMatrimonio?: string;
+
   ci: string;
   fechaNacimiento: string;
   celular: string;
@@ -182,6 +198,9 @@ export interface DatosComplementarios {
     | "Salud y Educación"
     | "OTRO";
 
+  /** Detalle cuando el usuario selecciona Otro rubro. */
+  detalleRubro?: string;
+
   /** Cargo, profesión, oficio o actividad principal. */
   cargoActividad: string;
 
@@ -231,12 +250,11 @@ export interface DatosComplementarios {
    */
   tieneGarante?: "SI" | "NO";
 
-  estadoCivil:
-    | "SOLTERO"
-    | "CASADO"
-    | "DIVORCIADO"
-    | "VIUDO"
-    | "CONYUGE";
+  /** Indica si el esposo será el garante cuando la cliente declaró estar casada. */
+  esposoEsGarante?: "SI" | "NO";
+
+  /** Nombre completo del garante cuando corresponde. */
+  nombreGarante?: string;
 
   destinoPrestamo: "CAPITAL_TRABAJO" | "USO_PERSONAL";
 

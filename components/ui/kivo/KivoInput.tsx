@@ -18,6 +18,13 @@ export interface KivoInputProps
   leadingIcon?: ReactNode;
   trailingAction?: ReactNode;
   requiredLabel?: boolean;
+
+  /**
+   * Convierte el valor ingresado a MAYÚSCULAS.
+   * Por defecto se aplica a inputs de texto,
+   * excepto campos numéricos, email y teléfono.
+   */
+  uppercase?: boolean;
 }
 
 export const KivoInput = forwardRef<
@@ -36,6 +43,12 @@ export const KivoInput = forwardRef<
     disabled,
     readOnly,
     className,
+    uppercase,
+    onChange,
+    type = "text",
+    inputMode,
+    autoCapitalize,
+    placeholder,
     ...props
   },
   ref,
@@ -45,6 +58,22 @@ export const KivoInput = forwardRef<
 
   const helperId = `${inputId}-helper`;
   const errorId = `${inputId}-error`;
+
+  const debeConvertirMayusculas =
+    uppercase ??
+    (
+      type === "text" &&
+      inputMode !== "numeric" &&
+      inputMode !== "decimal" &&
+      inputMode !== "tel" &&
+      inputMode !== "email"
+    );
+
+  const placeholderNormalizado =
+    debeConvertirMayusculas &&
+    typeof placeholder === "string"
+      ? placeholder.toLocaleUpperCase("es-BO")
+      : placeholder;
 
   const describedBy = error
     ? errorId
@@ -90,9 +119,27 @@ export const KivoInput = forwardRef<
         <input
           ref={ref}
           id={inputId}
+          type={type}
+          inputMode={inputMode}
+          placeholder={placeholderNormalizado}
+          autoCapitalize={
+            debeConvertirMayusculas
+              ? "characters"
+              : autoCapitalize
+          }
           required={required}
           disabled={disabled}
           readOnly={readOnly}
+          onChange={(event) => {
+            if (debeConvertirMayusculas) {
+              event.currentTarget.value =
+                event.currentTarget.value.toLocaleUpperCase(
+                  "es-BO",
+                );
+            }
+
+            onChange?.(event);
+          }}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           className={cn(

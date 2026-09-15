@@ -116,7 +116,7 @@ export function DatosFinancierosForm() {
  ? "NO"
  : "SI",
 
- extractos: guardados.extractos,
+ extractos: undefined,
  }
  : {
  perfilLaboral: datosPersonales?.perfilLaboral,
@@ -165,7 +165,10 @@ export function DatosFinancierosForm() {
  return values.deudaMoraOVencida !== undefined;
 
  case "extractos":
- return values.extractos !== undefined;
+ return (
+  values.extractos === "SI" ||
+  values.extractos === "NO"
+ );
  }
  }
 
@@ -189,6 +192,10 @@ export function DatosFinancierosForm() {
  bloqueado(paso) ? -1 : undefined;
 
  const todoCompleto = primerIncompleto === -1;
+
+ const extractosRespondidos =
+  values.extractos === "SI" ||
+  values.extractos === "NO";
 
  const segundoIngresoCompleto =
   values.perfilLaboral !== "ASALARIADO" ||
@@ -640,7 +647,7 @@ export function DatosFinancierosForm() {
  <button
  type="button"
  onClick={agregarDeuda}
- className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 text-sm font-bold text-body transition-colors hover:border-primary hover:text-primary"
+ className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl bg-surface-blue px-5 text-sm font-extrabold text-primary-dark transition-colors hover:bg-primary/10"
  >
  <Plus className="h-4 w-4" />
  {fields.length === 0
@@ -731,7 +738,7 @@ export function DatosFinancierosForm() {
  ¿Cuentas con movimientos bancarios que respalden tus ingresos?
  </legend>
 
-        <div className="mt-3 rounded-[18px] bg-[#E9F7FF] px-4 py-4">
+        <div className="mt-1 rounded-[18px] bg-[#E9F7FF] px-4 py-4">
           <p className="text-sm font-extrabold leading-5 text-primary-dark">
             Tus movimientos bancarios nos ayudan a validar tus ingresos y avanzar con tu solicitud.
           </p>
@@ -790,7 +797,11 @@ export function DatosFinancierosForm() {
  <div className="mt-6">
  <KivoButton
  type="submit"
- disabled={!todoCompleto || !segundoIngresoCompleto}
+ disabled={
+ !todoCompleto ||
+ !segundoIngresoCompleto ||
+ !extractosRespondidos
+}
  fullWidth
  className="sm:w-auto"
  iconRight={

@@ -1,3 +1,6 @@
+export const CAPTURE_DURATION_MS =
+  2 * 60 * 1000;
+
 export const CAPTURE_DOC_KEYS = [
   "ciAnverso",
   "ciReverso",
@@ -23,6 +26,8 @@ export interface CaptureSession {
   completed: boolean;
   createdAt: string;
   updatedAt: string;
+  captureStartedAt: string | null;
+  expiresAt: string | null;
   documents: Partial<
     Record<CaptureDocKey, CaptureDocument>
   >;
@@ -100,6 +105,8 @@ export function createCaptureSession():
     completed: false,
     createdAt: ahora,
     updatedAt: ahora,
+    captureStartedAt: null,
+    expiresAt: null,
     documents: {},
   };
 
@@ -116,6 +123,17 @@ export function getCaptureSession(
   return sessions.get(token) ?? null;
 }
 
+export function captureSessionExpired(
+  session: CaptureSession,
+): boolean {
+  if (!session.expiresAt) return false;
+
+  return (
+    Date.now() >=
+    new Date(session.expiresAt).getTime()
+  );
+}
+
 export function connectCaptureSession(
   token: string,
 ): CaptureSession | null {
@@ -123,8 +141,24 @@ export function connectCaptureSession(
 
   if (!session) return null;
 
+  const ahora = new Date();
+
+  if (
+    !session.captureStartedAt ||
+    !session.expiresAt
+  ) {
+    session.captureStartedAt =
+      ahora.toISOString();
+
+    session.expiresAt =
+      new Date(
+        ahora.getTime() +
+          CAPTURE_DURATION_MS,
+      ).toISOString();
+  }
+
   session.connected = true;
-  session.updatedAt = new Date().toISOString();
+  session.updatedAt = ahora.toISOString();
 
   sessions.set(token, session);
 

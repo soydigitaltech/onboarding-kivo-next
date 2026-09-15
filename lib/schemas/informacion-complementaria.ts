@@ -29,13 +29,35 @@ export const FAMILY_HOUSING_RELATIONSHIPS = [
   { value: "OTROS", label: "Otros" },
 ] as const;
 
-export const MARITAL_STATUSES = [
-  { value: "SOLTERO", label: "Soltero(a)" },
-  { value: "CASADO", label: "Casado(a)" },
-  { value: "DIVORCIADO", label: "Divorciado(a)" },
-  { value: "VIUDO", label: "Viudo(a)" },
-  { value: "CONYUGE", label: "Unión libre / Cónyuge" },
+export const MARITAL_STATUSES_HOMBRE = [
+  { value: "SOLTERO", label: "Soltero" },
+  { value: "CASADO", label: "Casado" },
+  { value: "DIVORCIADO", label: "Divorciado" },
+  { value: "VIUDO", label: "Viudo" },
+  { value: "CONYUGE", label: "Unión libre" },
 ] as const;
+
+export const MARITAL_STATUSES_MUJER = [
+  { value: "SOLTERO", label: "Soltera" },
+  { value: "CASADA", label: "Casada" },
+  { value: "DIVORCIADO", label: "Divorciada" },
+  { value: "VIUDO", label: "Viuda" },
+  { value: "CONYUGE", label: "Unión libre" },
+] as const;
+
+export function estadosCivilesPorSexo(
+  sexo?: "HOMBRE" | "MUJER",
+) {
+  if (sexo === "HOMBRE") {
+    return MARITAL_STATUSES_HOMBRE;
+  }
+
+  if (sexo === "MUJER") {
+    return MARITAL_STATUSES_MUJER;
+  }
+
+  return [];
+}
 
 export const informacionComplementariaSchema = z.object({
   nombreEmpresaNegocio: z
@@ -61,6 +83,11 @@ export const informacionComplementariaSchema = z.object({
       message: "Selecciona el rubro de la empresa o negocio.",
     },
   ),
+
+  detalleRubro: z
+    .string()
+    .trim()
+    .optional(),
 
   cargoActividad: z
     .string()
@@ -114,13 +141,6 @@ export const informacionComplementariaSchema = z.object({
     .trim()
     .optional(),
 
-  estadoCivil: z.enum(
-    ["SOLTERO", "CASADO", "DIVORCIADO", "VIUDO", "CONYUGE"],
-    {
-      message: "Selecciona tu estado civil.",
-    },
-  ),
-
   destinoPrestamo: z.enum(
     ["CAPITAL_TRABAJO", "USO_PERSONAL"],
     {
@@ -138,7 +158,27 @@ export const informacionComplementariaSchema = z.object({
 
   tieneGarante: z.enum(["SI", "NO"]).optional(),
 
+  esposoEsGarante: z.enum(["SI", "NO"]).optional(),
+
+  nombreGarante: z
+    .string()
+    .trim()
+    .optional(),
+
 }).superRefine((values, ctx) => {
+  if (
+    values.rubro === "OTRO" &&
+    (!values.detalleRubro ||
+      values.detalleRubro.trim().length < 2)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["detalleRubro"],
+      message: "Especifica el rubro.",
+    });
+  }
+
+
   if (
     values.vivienda === "FAMILIAR" &&
     !values.parentescoViviendaFamiliar
@@ -172,6 +212,19 @@ export const informacionComplementariaSchema = z.object({
       code: "custom",
       path: ["tieneGarante"],
       message: "Indica si cuentas con garante con vivienda propia.",
+    });
+  }
+
+  if (
+    requiereGarante &&
+    values.tieneGarante === "SI" &&
+    (!values.nombreGarante ||
+      values.nombreGarante.trim().length < 3)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["nombreGarante"],
+      message: "Ingresa el nombre completo del garante.",
     });
   }
 

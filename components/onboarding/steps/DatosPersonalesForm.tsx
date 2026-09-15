@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  estadosCivilesPorSexo,
+} from "@/lib/schemas/informacion-complementaria";
+
+import {
   useEffect,
   useState,
 } from "react";
@@ -29,7 +33,6 @@ import {
   CIUDADES,
   EDAD_MAXIMA,
   EDAD_MINIMA,
-  NOMBRE_COMPLETO_REGEX,
   calcularEdad,
   ciudadTieneCobertura,
   datosPersonalesSchema,
@@ -74,7 +77,13 @@ const MapaUbicacion = dynamic(
 
 
 const EMPTY_VALUES: DatosPersonalesValues = {
-  nombreCompleto: "",
+  primerNombre: "",
+  segundoNombre: "",
+  primerApellido: "",
+  segundoApellido: "",
+  sexo: undefined as unknown as DatosPersonalesValues["sexo"],
+  esCasada: undefined,
+  apellidoMatrimonio: "",
   ci: "",
   fechaNacimiento: "",
   celular: "",
@@ -85,7 +94,9 @@ const EMPTY_VALUES: DatosPersonalesValues = {
 
 
 type Campo =
-  | "nombreCompleto"
+  | "nombres"
+  | "sexo"
+  | "matrimonio"
   | "ci"
   | "fechaNacimiento"
   | "celular"
@@ -93,9 +104,10 @@ type Campo =
   | "direccion"
   | "numeroDependientes";
 
-
 const FIELD_ORDER: Campo[] = [
-  "nombreCompleto",
+  "nombres",
+  "sexo",
+  "matrimonio",
   "ci",
   "fechaNacimiento",
   "celular",
@@ -110,10 +122,40 @@ function campoCompleto(
   values: Partial<DatosPersonalesValues>,
 ): boolean {
   switch (campo) {
-    case "nombreCompleto":
-      return NOMBRE_COMPLETO_REGEX.test(
-        values.nombreCompleto ?? "",
+    case "nombres":
+      return (
+        (values.primerNombre ?? "").trim().length >= 2 &&
+        (values.primerApellido ?? "").trim().length >= 2
       );
+
+    case "sexo":
+      return (
+        values.sexo === "HOMBRE" ||
+        values.sexo === "MUJER"
+      );
+
+    case "matrimonio":
+      if (values.sexo === "HOMBRE") {
+        return true;
+      }
+
+      if (values.sexo !== "MUJER") {
+        return false;
+      }
+
+      if (!values.esCasada) {
+        return false;
+      }
+
+      if (values.esCasada === "SI") {
+        return (
+          (values.apellidoMatrimonio ?? "")
+            .trim()
+            .length >= 2
+        );
+      }
+
+      return true;
 
     case "ci":
       return /^\d{5,10}$/.test(
@@ -137,9 +179,7 @@ function campoCompleto(
       );
 
     case "ciudad":
-      return (
-        (values.ciudad ?? "") !== ""
-      );
+      return (values.ciudad ?? "") !== "";
 
     case "direccion":
       return (
@@ -150,11 +190,8 @@ function campoCompleto(
 
     case "numeroDependientes":
       return (
-        values.numeroDependientes !==
-          undefined &&
-        Number.isInteger(
-          values.numeroDependientes,
-        ) &&
+        values.numeroDependientes !== undefined &&
+        Number.isInteger(values.numeroDependientes) &&
         values.numeroDependientes >= 0
       );
   }
@@ -204,6 +241,7 @@ export function DatosPersonalesForm() {
     control,
     handleSubmit,
     watch,
+    setValue,
 
     formState: {
       errors,
@@ -347,6 +385,58 @@ export function DatosPersonalesForm() {
   ]);
 
 
+  async function actualizarUbicacionDesdeMapa(
+    coords: Coordenadas,
+  ) {
+    // Primero movemos el pin inmediatamente.
+    setUbicacionMock(coords);
+
+    try {
+      const params = new URLSearchParams({
+        lat: String(coords.lat),
+        lng: String(coords.lng),
+      });
+
+      const response = await fetch(
+        `/api/geocoding/reverse?${params.toString()}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se pudo obtener la dirección.",
+        );
+      }
+
+      const data = await response.json();
+
+      if (
+        typeof data.direccion === "string" &&
+        data.direccion.trim()
+      ) {
+        const direccion =
+          data.direccion
+            .trim()
+            .toLocaleUpperCase("es-BO");
+
+        setValue(
+          "direccion",
+          direccion,
+          {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          },
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Error obteniendo dirección del mapa:",
+        error,
+      );
+    }
+  }
+
+
   function onSubmit(
     formValues:
       DatosPersonalesValues,
@@ -359,8 +449,51 @@ export function DatosPersonalesForm() {
       return;
     }
 
+    const nombreCompleto = [
+
+
+      formValues.primerNombre,
+
+
+      formValues.segundoNombre,
+
+
+      formValues.primerApellido,
+
+
+      formValues.segundoApellido,
+
+
+    ]
+
+
+      .map((parte) => (parte ?? "").trim())
+
+
+      .filter(Boolean)
+
+
+      .join(" ");
+
+
+    
+
+
     setDatosPersonales({
       ...formValues,
+      nombreCompleto,
+
+      esCasada:
+        formValues.sexo === "MUJER"
+          ? formValues.esCasada
+          : undefined,
+
+      apellidoMatrimonio:
+        formValues.sexo === "MUJER" &&
+        formValues.esCasada === "SI"
+          ? formValues.apellidoMatrimonio?.trim()
+          : undefined,
+
       ubicacionDomicilio: {
         lat: ubicacionMock.lat,
         lng: ubicacionMock.lng,
@@ -388,37 +521,170 @@ export function DatosPersonalesForm() {
 
 
       <div className="grid gap-5 sm:grid-cols-2">
-
         {/* =========================================
-            NOMBRE COMPLETO
+            NOMBRES Y APELLIDOS
         ========================================= */}
 
         <div
           className={`sm:col-span-2 ${lockCls(
-            "nombreCompleto",
+            "nombres",
           )}`}
         >
-          <KivoInput
-            id="nombreCompleto"
-            label="Nombre completo"
-            type="text"
-            autoComplete="name"
-            placeholder="Ej. Sara Valentina Gonzales Mamani"
-            tabIndex={
-              lockTab(
-                "nombreCompleto",
-              )
-            }
-            error={
-              errors
-                .nombreCompleto
-                ?.message
-            }
-            {...register(
-              "nombreCompleto",
+          <p className="mb-4 text-xs leading-5 text-muted">
+            Ingresa tus nombres y apellidos tal como aparecen en tu carnet de identidad.
+          </p>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <KivoInput
+              id="primerNombre"
+              label="Primer nombre"
+              type="text"
+              autoComplete="given-name"
+              placeholder="EJ. SARA"
+              error={errors.primerNombre?.message}
+              {...register("primerNombre")}
+            />
+
+            <KivoInput
+              id="segundoNombre"
+              label="Segundo nombre (opcional)"
+              type="text"
+              placeholder="EJ. VALENTINA"
+              error={errors.segundoNombre?.message}
+              {...register("segundoNombre")}
+            />
+
+            <KivoInput
+              id="primerApellido"
+              label="Primer apellido"
+              type="text"
+              autoComplete="family-name"
+              placeholder="EJ. GONZALES"
+              error={errors.primerApellido?.message}
+              {...register("primerApellido")}
+            />
+
+            <KivoInput
+              id="segundoApellido"
+              label="Segundo apellido (opcional)"
+              type="text"
+              placeholder="EJ. MAMANI"
+              error={errors.segundoApellido?.message}
+              {...register("segundoApellido")}
+            />
+          </div>
+        </div>
+
+
+        {/* =========================================
+            SEXO
+        ========================================= */}
+
+        <div className="sm:col-span-2">
+          <Controller
+            control={control}
+            name="sexo"
+            render={({ field }) => (
+              <KivoSelect
+                id="sexo"
+                label="Sexo"
+                value={field.value ?? ""}
+                options={[
+                  {
+                    value: "HOMBRE",
+                    label: "Hombre",
+                  },
+                  {
+                    value: "MUJER",
+                    label: "Mujer",
+                  },
+                ]}
+                placeholder="SELECCIONA UNA OPCIÓN"
+                error={errors.sexo?.message}
+                onChange={(value) => {
+                  field.onChange(value);
+
+                  setValue(
+                    "esCasada",
+                    undefined,
+                  );
+
+                  setValue(
+                    "apellidoMatrimonio",
+                    "",
+                  );
+                }}
+                onBlur={field.onBlur}
+              />
             )}
           />
         </div>
+
+
+        {values.sexo === "MUJER" ? (
+          <div className="sm:col-span-2">
+            <fieldset>
+              <legend className="text-sm font-bold text-ink">
+                ¿Estás casada?
+              </legend>
+
+              <div className="mt-3 flex flex-wrap gap-3">
+                <label
+                  className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+                    values.esCasada === "SI"
+                      ? "bg-primary text-white"
+                      : "bg-surface-blue text-primary-dark"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="SI"
+                    className="sr-only"
+                    {...register("esCasada")}
+                  />
+                  Sí
+                </label>
+
+                <label
+                  className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
+                    values.esCasada === "NO"
+                      ? "bg-primary text-white"
+                      : "bg-surface-blue text-primary-dark"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="NO"
+                    className="sr-only"
+                    {...register("esCasada")}
+                  />
+                  No
+                </label>
+              </div>
+
+              {errors.esCasada?.message ? (
+                <p className="mt-2 text-xs font-semibold text-error">
+                  {errors.esCasada.message}
+                </p>
+              ) : null}
+            </fieldset>
+
+            {values.esCasada === "SI" ? (
+              <div className="mt-5">
+                <KivoInput
+                  id="apellidoMatrimonio"
+                  label="Apellido por matrimonio"
+                  type="text"
+                  placeholder="EJ. DE PÉREZ"
+                  error={
+                    errors.apellidoMatrimonio?.message
+                  }
+                  {...register("apellidoMatrimonio")}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
 
         {/* =========================================
@@ -645,6 +911,74 @@ export function DatosPersonalesForm() {
 
 
         {/* =========================================
+            MAPA
+        ========================================= */}
+
+        <div
+          className={`sm:col-span-2 ${lockCls(
+            "direccion",
+          )}`}
+        >
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+
+            <div>
+              <p className="text-sm font-bold text-ink">
+                Ubicación de tu
+                domicilio
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-body">
+                Marca tu ubicación en
+                el mapa o mueve el pin
+                hasta tu domicilio.
+              </p>
+            </div>
+
+
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">
+              Mapa de referencia
+            </span>
+          </div>
+
+
+          <div className="overflow- rounded-[22px] bg-surface-blue">
+            <MapaUbicacion
+              value={
+                ubicacionMock
+              }
+              onChange={
+                actualizarUbicacionDesdeMapa
+              }
+            />
+          </div>
+
+
+          <div className="mt-3 hidden flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted sm:flex">
+
+            <span>
+              Latitud{" "}
+              <strong className="font-bold text-ink">
+                {ubicacionMock.lat.toFixed(
+                  6,
+                )}
+              </strong>
+            </span>
+
+
+            <span>
+              Longitud{" "}
+              <strong className="font-bold text-ink">
+                {ubicacionMock.lng.toFixed(
+                  6,
+                )}
+              </strong>
+            </span>
+
+          </div>
+        </div>
+
+
+        {/* =========================================
             DIRECCIÓN
         ========================================= */}
 
@@ -677,74 +1011,6 @@ export function DatosPersonalesForm() {
 
 
         {/* =========================================
-            MAPA
-        ========================================= */}
-
-        <div
-          className={`sm:col-span-2 ${lockCls(
-            "direccion",
-          )}`}
-        >
-          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-
-            <div>
-              <p className="text-sm font-bold text-ink">
-                Ubicación de tu
-                domicilio
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-body">
-                Marca tu ubicación en
-                el mapa o mueve el pin
-                hasta tu domicilio.
-              </p>
-            </div>
-
-
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">
-              Mapa de referencia
-            </span>
-          </div>
-
-
-          <div className="hidden overflow-hidden rounded-[22px] bg-surface-blue sm:block">
-            <MapaUbicacion
-              value={
-                ubicacionMock
-              }
-              onChange={
-                setUbicacionMock
-              }
-            />
-          </div>
-
-
-          <div className="mt-3 hidden flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted sm:flex">
-
-            <span>
-              Latitud{" "}
-              <strong className="font-bold text-ink">
-                {ubicacionMock.lat.toFixed(
-                  6,
-                )}
-              </strong>
-            </span>
-
-
-            <span>
-              Longitud{" "}
-              <strong className="font-bold text-ink">
-                {ubicacionMock.lng.toFixed(
-                  6,
-                )}
-              </strong>
-            </span>
-
-          </div>
-        </div>
-
-
-        {/* =========================================
             DEPENDIENTES
         ========================================= */}
 
@@ -755,8 +1021,8 @@ export function DatosPersonalesForm() {
             )
           }
         >
-          <div className="mb-1.5 text-sm font-bold text-ink">
-            Número de dependientes
+          <div className="mb-1.5 text-sm font-bold text-ink sm:whitespace-nowrap">
+            ¿Cuántas personas dependen económicamente de ti?
           </div>
 
 

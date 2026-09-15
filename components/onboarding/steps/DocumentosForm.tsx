@@ -350,75 +350,100 @@ export function DocumentosForm() {
           />
         ) : null}
 
-        <div className="flex flex-col gap-4">
-          {esDesktop !== false
-            ? DOCUMENTOS
-                .filter(
-                  (documento) =>
-                    archivos[documento.key] !== null
-                )
-                .map((documento) => (
-                  <div
-                    key={documento.key}
-                    className="rounded-[20px] border border-border-soft bg-white p-5"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-extrabold text-ink">
-                          {documento.titulo}
-                        </p>
+        {esDesktop !== false ? (
+          <div className="overflow-hidden rounded-[20px] border border-border-soft bg-white">
+            {DOCUMENTOS.map((documento, index) => {
+              const recibido =
+                archivos[documento.key] !== null;
 
-                        <p className="mt-1 text-xs leading-5 text-muted">
-                          Captura recibida desde la cámara del celular.
-                        </p>
-                      </div>
-
-                      <span className="shrink-0 rounded-full bg-[#E8FFF6] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#04A66F]">
-                        Recibido
-                      </span>
-                    </div>
-
-                    <div className="mt-4 flex min-h-[96px] items-center justify-center rounded-2xl bg-[#F0FBF7]">
-                      <p className="max-w-sm px-5 text-center text-xs font-bold leading-5 text-muted">
-                        La captura quedó vinculada a esta sesión.
-                      </p>
-                    </div>
-                  </div>
-                ))
-            : DOCUMENTOS.map((documento) => (
-                <DocumentoSlot
+              return (
+                <div
                   key={documento.key}
-                  config={documento}
-                  file={
-                    archivos[
-                      documento.key
-                    ]
-                  }
-                  metaGuardada={
-                    guardados?.[
-                      documento.key
-                    ]
-                  }
-                  removidoLocal={
-                    removidos[
-                      documento.key
-                    ]
-                  }
-                  locked={false}
-                  onSelect={(file) =>
-                    onSelect(
-                      documento.key,
-                      file,
-                    )
-                  }
-                  onRemove={() =>
-                    onRemove(
-                      documento.key,
-                    )
-                  }
-                />
-              ))}
-        </div>
+                  className={`flex items-center gap-4 px-5 py-4 ${
+                    index !== DOCUMENTOS.length - 1
+                      ? "border-b border-border-soft"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ${
+                      recibido
+                        ? "bg-[#E8FFF6] text-[#04A66F]"
+                        : "border-2 border-border bg-white text-muted"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {recibido ? "✓" : index + 1}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-sm font-extrabold ${
+                        recibido
+                          ? "text-ink"
+                          : "text-body"
+                      }`}
+                    >
+                      {documento.titulo}
+                    </p>
+
+                    <p className="mt-0.5 text-xs leading-5 text-muted">
+                      {recibido
+                        ? "Documento recibido correctamente."
+                        : "Pendiente de captura."}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] ${
+                      recibido
+                        ? "bg-[#E8FFF6] text-[#04A66F]"
+                        : "bg-surface text-muted"
+                    }`}
+                  >
+                    {recibido ? "Recibido" : "Pendiente"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {DOCUMENTOS.map((documento) => (
+              <DocumentoSlot
+                key={documento.key}
+                config={documento}
+                file={
+                  archivos[
+                    documento.key
+                  ]
+                }
+                metaGuardada={
+                  guardados?.[
+                    documento.key
+                  ]
+                }
+                removidoLocal={
+                  removidos[
+                    documento.key
+                  ]
+                }
+                locked={false}
+                onSelect={(file) =>
+                  onSelect(
+                    documento.key,
+                    file,
+                  )
+                }
+                onRemove={() =>
+                  onRemove(
+                    documento.key,
+                  )
+                }
+              />
+            ))}
+          </div>
+        )}
       </section>
 
 
