@@ -19,10 +19,6 @@ import type {
   CaptureDocKey,
 } from "@/lib/mock-capture-sessions";
 
-import {
-  procesarCarnetOpenCv,
-} from "@/lib/procesar-documento-opencv";
-
 interface CapturaMovilProps {
   token: string;
 }
@@ -260,38 +256,11 @@ export function CapturaMovil({
 
       let capturaAjustada: string;
 
-      if (esCarnet) {
-        try {
-          const capturaOpenCv =
-            await procesarCarnetOpenCv(
-              screenshot,
-            );
-
-          capturaAjustada =
-            capturaOpenCv ??
-            (await recortarYOptimizarCaptura(
-              screenshot,
-              frame,
-            ));
-        } catch (error) {
-          console.warn(
-            "OpenCV no disponible. Usando procesamiento alternativo.",
-            error,
-          );
-
-          capturaAjustada =
-            await recortarYOptimizarCaptura(
-              screenshot,
-              frame,
-            );
-        }
-      } else {
-        capturaAjustada =
-          await recortarYOptimizarCaptura(
-            screenshot,
-            frame,
-          );
-      }
+      capturaAjustada =
+        await recortarYOptimizarCaptura(
+          screenshot,
+          frame,
+        );
 
       setPreview(capturaAjustada);
     } catch (err) {
