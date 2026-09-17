@@ -159,69 +159,46 @@ export function DocumentoSlot({
  }
 
  async function abrirCamara() {
- if (config.key !== "selfie") return;
+  if (config.key !== "selfie") return;
 
- setErrorCamara(null);
+  setErrorCamara(null);
 
- // MOCK: usamos la imagen de ejemplo como una selfie válida.
- try {
-   const response = await fetch("/selfie.png");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setErrorCamara(
+      "Tu navegador no permite acceder a la cámara. Revisa los permisos o intenta desde otro navegador."
+    );
+    return;
+  }
 
-   if (!response.ok) {
-     throw new Error("No se pudo cargar la selfie mock.");
-   }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
 
-   const blob = await response.blob();
+    streamRef.current = stream;
+    setCamaraAbierta(true);
 
-   const mockFile = new File(
-     [blob],
-     "selfie.png",
-     { type: blob.type || "image/png" },
-   );
+    requestAnimationFrame(() => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        void videoRef.current.play();
+      }
+    });
+  } catch (error) {
+    console.error("Error al abrir cámara:", error);
 
-   onSelect(mockFile);
- } catch {
-   setErrorCamara(
-     "No pudimos cargar la selfie de demostración.",
-   );
- }
+    setErrorCamara(
+      "No pudimos acceder a tu cámara. Revisa los permisos del navegador e inténtalo nuevamente."
+    );
+  }
+}
 
- return;
-
- if (!navigator.mediaDevices?.getUserMedia) {
- setErrorCamara(
- "Tu navegador no permite acceder a la cámara. Puedes subir una foto desde tu dispositivo.",
- );
- return;
- }
-
- try {
- const stream = await navigator.mediaDevices.getUserMedia({
- video: {
- facingMode: "user",
- width: { ideal: 1280 },
- height: { ideal: 720 },
- },
- audio: false,
- });
-
- streamRef.current = stream;
- setCamaraAbierta(true);
-
- requestAnimationFrame(() => {
- if (videoRef.current) {
- videoRef.current.srcObject = stream;
- void videoRef.current.play();
- }
- });
- } catch {
- setErrorCamara(
- "No pudimos acceder a tu cámara. Revisa los permisos del navegador e inténtalo nuevamente.",
- );
- }
- }
-
- function cerrarCamara() {
+function cerrarCamara() {
  detenerCamara();
  setCamaraAbierta(false);
  setErrorCamara(null);
