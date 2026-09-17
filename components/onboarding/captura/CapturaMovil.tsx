@@ -261,17 +261,30 @@ export function CapturaMovil({
       let capturaAjustada: string;
 
       if (esCarnet) {
-        const capturaOpenCv =
-          await procesarCarnetOpenCv(
-            screenshot,
+        try {
+          const capturaOpenCv =
+            await procesarCarnetOpenCv(
+              screenshot,
+            );
+
+          capturaAjustada =
+            capturaOpenCv ??
+            (await recortarYOptimizarCaptura(
+              screenshot,
+              frame,
+            ));
+        } catch (error) {
+          console.warn(
+            "OpenCV no disponible. Usando procesamiento alternativo.",
+            error,
           );
 
-        capturaAjustada =
-          capturaOpenCv ??
-          (await recortarYOptimizarCaptura(
-            screenshot,
-            frame,
-          ));
+          capturaAjustada =
+            await recortarYOptimizarCaptura(
+              screenshot,
+              frame,
+            );
+        }
       } else {
         capturaAjustada =
           await recortarYOptimizarCaptura(
