@@ -209,56 +209,20 @@ const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
  onEdit={() => editStep("datos-personales")}
  >
  <Dato
- label="Primer nombre"
- valor={datosPersonales.primerNombre}
+ label="Nombre completo"
+ valor={datosPersonales.nombreCompleto}
 />
 
 <Dato
- label="Segundo nombre"
- valor={datosPersonales.segundoNombre || "—"}
-/>
-
-<Dato
- label="Primer apellido"
- valor={datosPersonales.primerApellido}
-/>
-
-<Dato
- label="Segundo apellido"
- valor={datosPersonales.segundoApellido || "—"}
-/>
-
-<Dato
- label="Sexo"
+ label="Género"
  valor={
  datosPersonales.sexo === "MUJER"
  ? "Mujer"
- : "Hombre"
+ : datosPersonales.sexo === "HOMBRE"
+ ? "Varón"
+ : "Prefiero no decir"
  }
 />
-
-{datosPersonales.sexo === "MUJER" ? (
- <>
-  <Dato
-   label="¿Está casada?"
-   valor={
-    datosPersonales.esCasada === "SI"
-     ? "Sí"
-     : "No"
-   }
-  />
-
-  {datosPersonales.esCasada === "SI" ? (
-   <Dato
-    label="Apellido por matrimonio"
-    valor={
-     datosPersonales.apellidoMatrimonio ||
-     "—"
-    }
-   />
-  ) : null}
- </>
-) : null}
 
 <Dato
  label="Carnet"
@@ -301,7 +265,7 @@ const ciudad = buscarLabel(CIUDADES, datosPersonales.ciudad);
  onEdit={() => editStep("datos-financieros")}
  >
  <Dato
- label="Tipo de actividad"
+ label="Tipo de ingreso"
  valor={perfilLaboral}
  />
 

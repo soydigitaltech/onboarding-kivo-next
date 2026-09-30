@@ -282,10 +282,10 @@ export function DatosFinancierosForm() {
  mejor tu situación financiera.
  </p>
 
- {/* 1. Tipo de actividad */}
+ {/* 1. Tipo de ingreso */}
  <fieldset className={lockCls("perfilLaboral")}>
  <legend className="text-sm font-bold text-ink">
- Tipo de actividad
+ Tipo de ingreso
  </legend>
 
  <div className="mt-3 grid gap-3 sm:grid-cols-2">

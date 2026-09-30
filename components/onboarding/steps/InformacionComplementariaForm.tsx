@@ -207,10 +207,7 @@ export function InformacionComplementariaForm() {
  const esAsalariado =
  datosFinancieros?.perfilLaboral === "ASALARIADO";
 
- const esCasadaConApellido =
-  datosPersonales?.sexo === "MUJER" &&
-  datosPersonales?.esCasada === "SI" &&
-  Boolean(datosPersonales?.apellidoMatrimonio?.trim());
+ const esCasadaConApellido = false;
 
  const edad = datosPersonales
  ? calcularEdad(datosPersonales.fechaNacimiento)
@@ -767,7 +764,7 @@ export function InformacionComplementariaForm() {
       </p>
 
       <p className="mt-1 text-xs leading-5 text-error">
-       Para este tipo de actividad necesitamos que cuentes con
+       Para este tipo de ingreso necesitamos que cuentes con
        boletas de pago.
       </p>
      </div>

@@ -35,22 +35,17 @@ export interface Cuenta {
 }
 
 export interface DatosPersonales {
-  /** Nombre completo derivado para compatibilidad y visualización. */
+  /** Nombres de la persona solicitante. */
+  nombres: string;
+
+  /** Apellidos de la persona solicitante. */
+  apellidos: string;
+
+  /** Nombre completo generado para visualización. */
   nombreCompleto: string;
 
-  primerNombre: string;
-  segundoNombre?: string;
-  primerApellido: string;
-  segundoApellido?: string;
-
-  /** Sexo declarado por la persona solicitante. */
-  sexo: "HOMBRE" | "MUJER";
-
-  /** Solo aplica cuando sexo es MUJER. */
-  esCasada?: "SI" | "NO";
-
-  /** Apellido por matrimonio cuando corresponde. */
-  apellidoMatrimonio?: string;
+  /** Género declarado por la persona solicitante. */
+  sexo: "HOMBRE" | "MUJER" | "NO_RESPONDE";
 
   ci: string;
   fechaNacimiento: string;
@@ -90,7 +85,7 @@ export interface DeudaEspecial {
 }
 
 export interface DatosFinancieros {
-  /** Tipo de actividad declarada por el solicitante. */
+  /** Tipo de ingreso declarada por el solicitante. */
   perfilLaboral: "ASALARIADO" | "INDEPENDIENTE";
 
   /** Ingreso mensual después de descuentos o costos operativos. */

@@ -77,13 +77,9 @@ const MapaUbicacion = dynamic(
 
 
 const EMPTY_VALUES: DatosPersonalesValues = {
-  primerNombre: "",
-  segundoNombre: "",
-  primerApellido: "",
-  segundoApellido: "",
+  nombres: "",
+  apellidos: "",
   sexo: undefined as unknown as DatosPersonalesValues["sexo"],
-  esCasada: undefined,
-  apellidoMatrimonio: "",
   ci: "",
   fechaNacimiento: "",
   celular: "",
@@ -96,7 +92,6 @@ const EMPTY_VALUES: DatosPersonalesValues = {
 type Campo =
   | "nombres"
   | "sexo"
-  | "matrimonio"
   | "ci"
   | "fechaNacimiento"
   | "celular"
@@ -107,7 +102,6 @@ type Campo =
 const FIELD_ORDER: Campo[] = [
   "nombres",
   "sexo",
-  "matrimonio",
   "ci",
   "fechaNacimiento",
   "celular",
@@ -124,38 +118,16 @@ function campoCompleto(
   switch (campo) {
     case "nombres":
       return (
-        (values.primerNombre ?? "").trim().length >= 2 &&
-        (values.primerApellido ?? "").trim().length >= 2
+        (values.nombres ?? "").trim().length >= 2 &&
+        (values.apellidos ?? "").trim().length >= 2
       );
 
     case "sexo":
       return (
         values.sexo === "HOMBRE" ||
-        values.sexo === "MUJER"
+        values.sexo === "MUJER" ||
+        values.sexo === "NO_RESPONDE"
       );
-
-    case "matrimonio":
-      if (values.sexo === "HOMBRE") {
-        return true;
-      }
-
-      if (values.sexo !== "MUJER") {
-        return false;
-      }
-
-      if (!values.esCasada) {
-        return false;
-      }
-
-      if (values.esCasada === "SI") {
-        return (
-          (values.apellidoMatrimonio ?? "")
-            .trim()
-            .length >= 2
-        );
-      }
-
-      return true;
 
     case "ci":
       return /^\d{5,10}$/.test(
@@ -450,49 +422,16 @@ export function DatosPersonalesForm() {
     }
 
     const nombreCompleto = [
-
-
-      formValues.primerNombre,
-
-
-      formValues.segundoNombre,
-
-
-      formValues.primerApellido,
-
-
-      formValues.segundoApellido,
-
-
+      formValues.nombres,
+      formValues.apellidos,
     ]
-
-
-      .map((parte) => (parte ?? "").trim())
-
-
+      .map((parte) => parte?.trim())
       .filter(Boolean)
-
-
       .join(" ");
-
-
-    
-
 
     setDatosPersonales({
       ...formValues,
       nombreCompleto,
-
-      esCasada:
-        formValues.sexo === "MUJER"
-          ? formValues.esCasada
-          : undefined,
-
-      apellidoMatrimonio:
-        formValues.sexo === "MUJER" &&
-        formValues.esCasada === "SI"
-          ? formValues.apellidoMatrimonio?.trim()
-          : undefined,
 
       ubicacionDomicilio: {
         lat: ubicacionMock.lat,
@@ -531,46 +470,28 @@ export function DatosPersonalesForm() {
           )}`}
         >
           <p className="mb-4 text-xs leading-5 text-muted">
-            Ingresa tus nombres y apellidos tal como aparecen en tu carnet de identidad.
+            Ingresa todos tus nombres y apellidos tal como aparecen en tu carnet de identidad.
           </p>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5">
             <KivoInput
-              id="primerNombre"
-              label="Primer nombre"
+              id="nombres"
+              label="Nombres"
               type="text"
               autoComplete="given-name"
-              placeholder="EJ. SARA"
-              error={errors.primerNombre?.message}
-              {...register("primerNombre")}
+              placeholder="EJ. SARA VALENTINA"
+              error={errors.nombres?.message}
+              {...register("nombres")}
             />
 
             <KivoInput
-              id="segundoNombre"
-              label="Segundo nombre (opcional)"
-              type="text"
-              placeholder="EJ. VALENTINA"
-              error={errors.segundoNombre?.message}
-              {...register("segundoNombre")}
-            />
-
-            <KivoInput
-              id="primerApellido"
-              label="Primer apellido"
+              id="apellidos"
+              label="Apellidos"
               type="text"
               autoComplete="family-name"
-              placeholder="EJ. GONZALES"
-              error={errors.primerApellido?.message}
-              {...register("primerApellido")}
-            />
-
-            <KivoInput
-              id="segundoApellido"
-              label="Segundo apellido (opcional)"
-              type="text"
-              placeholder="EJ. MAMANI"
-              error={errors.segundoApellido?.message}
-              {...register("segundoApellido")}
+              placeholder="EJ. GONZALES MAMANI"
+              error={errors.apellidos?.message}
+              {...register("apellidos")}
             />
           </div>
         </div>
@@ -587,16 +508,20 @@ export function DatosPersonalesForm() {
             render={({ field }) => (
               <KivoSelect
                 id="sexo"
-                label="Sexo"
+                label="Género"
                 value={field.value ?? ""}
                 options={[
                   {
                     value: "HOMBRE",
-                    label: "Hombre",
+                    label: "Varón",
                   },
                   {
                     value: "MUJER",
                     label: "Mujer",
+                  },
+                  {
+                    value: "NO_RESPONDE",
+                    label: "Prefiero no decir",
                   },
                 ]}
                 placeholder="SELECCIONA UNA OPCIÓN"
@@ -604,87 +529,12 @@ export function DatosPersonalesForm() {
                 onChange={(value) => {
                   field.onChange(value);
 
-                  setValue(
-                    "esCasada",
-                    undefined,
-                  );
-
-                  setValue(
-                    "apellidoMatrimonio",
-                    "",
-                  );
                 }}
                 onBlur={field.onBlur}
               />
             )}
           />
         </div>
-
-
-        {values.sexo === "MUJER" ? (
-          <div className="sm:col-span-2">
-            <fieldset>
-              <legend className="text-sm font-bold text-ink">
-                ¿Estás casada?
-              </legend>
-
-              <div className="mt-3 flex flex-wrap gap-3">
-                <label
-                  className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
-                    values.esCasada === "SI"
-                      ? "bg-primary text-white"
-                      : "bg-surface-blue text-primary-dark"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value="SI"
-                    className="sr-only"
-                    {...register("esCasada")}
-                  />
-                  Sí
-                </label>
-
-                <label
-                  className={`cursor-pointer rounded-xl px-5 py-3 text-sm font-bold transition-colors ${
-                    values.esCasada === "NO"
-                      ? "bg-primary text-white"
-                      : "bg-surface-blue text-primary-dark"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value="NO"
-                    className="sr-only"
-                    {...register("esCasada")}
-                  />
-                  No
-                </label>
-              </div>
-
-              {errors.esCasada?.message ? (
-                <p className="mt-2 text-xs font-semibold text-error">
-                  {errors.esCasada.message}
-                </p>
-              ) : null}
-            </fieldset>
-
-            {values.esCasada === "SI" ? (
-              <div className="mt-5">
-                <KivoInput
-                  id="apellidoMatrimonio"
-                  label="Apellido por matrimonio"
-                  type="text"
-                  placeholder="EJ. DE PÉREZ"
-                  error={
-                    errors.apellidoMatrimonio?.message
-                  }
-                  {...register("apellidoMatrimonio")}
-                />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
 
 
         {/* =========================================

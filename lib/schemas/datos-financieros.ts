@@ -33,7 +33,7 @@ export const datosFinancierosSchema =
       ["ASALARIADO", "INDEPENDIENTE"],
       {
         message:
-          "Selecciona tu tipo de actividad.",
+          "Selecciona tu tipo de ingreso.",
       },
     ),
 

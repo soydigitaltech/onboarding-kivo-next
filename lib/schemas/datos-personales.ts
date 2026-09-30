@@ -48,41 +48,23 @@ export const EDAD_MINIMA = 18;
 export const EDAD_MAXIMA = 65;
 
 export const datosPersonalesSchema = z.object({
-  primerNombre: z
+  nombres: z
     .string()
     .trim()
-    .min(2, "Ingresa tu primer nombre."),
+    .min(2, "Ingresa tus nombres."),
 
-  segundoNombre: z
+  apellidos: z
     .string()
     .trim()
-    .optional(),
-
-  primerApellido: z
-    .string()
-    .trim()
-    .min(2, "Ingresa tu primer apellido."),
-
-  segundoApellido: z
-    .string()
-    .trim()
-    .optional(),
+    .min(2, "Ingresa tus apellidos."),
 
   sexo: z.enum(
-    ["HOMBRE", "MUJER"],
+    ["HOMBRE", "MUJER", "NO_RESPONDE"],
     {
-      message: "Selecciona tu sexo.",
+      message: "Selecciona tu género.",
     },
   ),
 
-  esCasada: z
-    .enum(["SI", "NO"])
-    .optional(),
-
-  apellidoMatrimonio: z
-    .string()
-    .trim()
-    .optional(),
 
   ci: z
     .string()
@@ -125,31 +107,6 @@ export const datosPersonalesSchema = z.object({
   perfilLaboral: z.enum(["ASALARIADO", "INDEPENDIENTE"]).optional(),
   rubroLaboral: z.string().optional(),
   direccionTrabajo: z.string().optional(),
-}).superRefine((values, ctx) => {
-  if (values.sexo !== "MUJER") {
-    return;
-  }
-
-  if (!values.esCasada) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["esCasada"],
-      message: "Indica si estás casada.",
-    });
-
-    return;
-  }
-
-  if (
-    values.esCasada === "SI" &&
-    (values.apellidoMatrimonio ?? "").trim().length < 2
-  ) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["apellidoMatrimonio"],
-      message: "Ingresa tu apellido por matrimonio.",
-    });
-  }
 });
 
 export type DatosPersonalesValues = z.infer<typeof datosPersonalesSchema>;
